@@ -10,33 +10,49 @@ const ReceivingPage = () => {
   const [stockMovements, setStockMovements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [dateRange, setDateRange] = useState('30'); // days
+  const [dateRange, setDateRange] = useState('84'); // 12 weeks default
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [useCustomDates, setUseCustomDates] = useState(false);
 
-  // Load data on component mount and when date range changes
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Load data on component mount
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
+        console.log('Loading stock movements data...');
 
         // Load stock movements (receiving history)
         const movementsData = await inventoryAPI.stockMovements.getAll();
-        setStockMovements(movementsData);
+        console.log('Loaded stock movements:', movementsData?.length || 0, 'items');
 
+        // Ensure we have valid data
+        const validMovements = (movementsData || []).filter(movement => {
+          if (!movement.created_at) {
+            console.warn('Movement missing created_at:', movement);
+            return false;
+          }
+          const date = new Date(movement.created_at);
+          if (isNaN(date.getTime())) {
+            console.warn('Invalid date format for movement:', movement.created_at, movement);
+            return false;
+          }
+          return true;
+        });
+
+        console.log('Valid movements after filtering:', validMovements.length);
+        setStockMovements(validMovements);
         setError(null);
       } catch (err) {
         console.error('Error loading data:', err);
-        setError('Failed to load receiving data');
+        setError('Failed to load receiving data: ' + (err.message || 'Unknown error'));
       } finally {
         setLoading(false);
       }
     };
 
     loadData();
-  }, [dateRange]);
+  }, []); // Only load once on mount
 
   // Filter stock movements based on criteria
   const filteredMovements = stockMovements.filter(movement => {
@@ -46,28 +62,61 @@ const ReceivingPage = () => {
 
     // Date filtering
     const movementDate = new Date(movement.created_at);
+    let matchesDate = true;
 
     if (useCustomDates && (fromDate || toDate)) {
       // Custom date range filtering
       if (fromDate) {
         const from = new Date(fromDate);
         from.setHours(0, 0, 0, 0); // Start of day
-        if (movementDate < from) return false;
+        if (movementDate < from) matchesDate = false;
       }
       if (toDate) {
         const to = new Date(toDate);
         to.setHours(23, 59, 59, 999); // End of day
-        if (movementDate > to) return false;
+        if (movementDate > to) matchesDate = false;
       }
     } else if (dateRange !== 'all') {
       // Preset date range filtering
-      const days = parseInt(dateRange);
+      let days = 0;
+      switch (dateRange) {
+        case '7':
+          days = 7;
+          break;
+        case '30':
+          days = 30;
+          break;
+        case '84': // 12 weeks
+          days = 84;
+          break;
+        case '90':
+          days = 90;
+          break;
+        case '365':
+          days = 365;
+          break;
+        default:
+          days = parseInt(dateRange) || 30;
+      }
+
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - days);
-      if (movementDate < cutoffDate) return false;
+      if (movementDate < cutoffDate) matchesDate = false;
     }
 
-    return matchesSearch && matchesType;
+    return matchesSearch && matchesType && matchesDate;
+  });
+
+  // Debug logging
+  console.log('Stock movements filtering:', {
+    total: stockMovements.length,
+    filtered: filteredMovements.length,
+    dateRange,
+    useCustomDates,
+    fromDate,
+    toDate,
+    typeFilter,
+    searchTerm
   });
 
   const setTodayFilter = () => {
@@ -81,7 +130,7 @@ const ReceivingPage = () => {
     setFromDate('');
     setToDate('');
     setUseCustomDates(false);
-    setDateRange('30');
+    setDateRange('84'); // Reset to 12 weeks
   };
 
   const handleDateFilterChange = (useCustom) => {
@@ -191,6 +240,7 @@ const ReceivingPage = () => {
               >
                 <option value="7">Last 7 days</option>
                 <option value="30">Last 30 days</option>
+                <option value="84">Last 12 weeks</option>
                 <option value="90">Last 90 days</option>
                 <option value="365">Last year</option>
                 <option value="all">All time</option>

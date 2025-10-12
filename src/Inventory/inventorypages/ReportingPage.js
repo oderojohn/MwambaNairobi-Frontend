@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { formatCurrency, toNumber, reportsAPI } from '../../services/ApiService/api';
+import { formatCurrency, toNumber, reportsAPI, purchaseOrdersAPI, inventoryAPI } from '../../services/ApiService/api';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import './ReportingPage.css';
@@ -22,10 +22,93 @@ const ReportingPage = () => {
     shifts: [],
     profitLoss: [],
     products: [],
-    suppliers: []
+    suppliers: [],
+    purchaseOrders: [],
+    profitAnalysis: {}
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const generateProfitAnalysis = useCallback((purchaseOrders, sales, inventory) => {
+    // Calculate total purchase costs
+    const totalPurchaseCost = purchaseOrders.reduce((sum, order) => {
+      if (order.status === 'received' && order.items) {
+        return sum + order.items.reduce((orderSum, item) => {
+          return orderSum + (toNumber(item.quantity) * toNumber(item.unit_price));
+        }, 0);
+      }
+      return sum;
+    }, 0);
+
+    // Calculate sales by type (retail vs wholesale)
+    const retailSales = sales.filter(sale => sale.sale_type === 'retail' || !sale.sale_type);
+    const wholesaleSales = sales.filter(sale => sale.sale_type === 'wholesale');
+
+    const retailRevenue = calculateTotals(retailSales, ['total_sales']).total_sales;
+    const wholesaleRevenue = calculateTotals(wholesaleSales, ['total_sales']).total_sales;
+    const totalRevenue = retailRevenue + wholesaleRevenue;
+
+    // Calculate cost of goods sold (COGS) - using average purchase price
+    const productCostMap = {};
+    inventory.forEach(product => {
+      productCostMap[product.id] = toNumber(product.cost_price || product.purchase_price || 0);
+    });
+
+    // For simplicity, assume 70% of revenue is COGS (this would need actual sales item data)
+    const estimatedCOGS = totalRevenue * 0.7;
+    const grossProfit = totalRevenue - estimatedCOGS;
+    const netProfit = grossProfit - (totalRevenue * 0.1); // Assume 10% operating expenses
+
+    // Calculate next purchase ability (assume 50% of profits can be used for purchases)
+    const nextPurchaseCapacity = Math.max(0, netProfit * 0.5);
+
+    return {
+      period: {
+        start: dateRange.start,
+        end: dateRange.end
+      },
+      purchaseOrders: {
+        total: purchaseOrders.length,
+        received: purchaseOrders.filter(o => o.status === 'received').length,
+        pending: purchaseOrders.filter(o => o.status === 'pending').length,
+        totalValue: totalPurchaseCost
+      },
+      sales: {
+        retail: {
+          revenue: retailRevenue,
+          transactions: retailSales.length
+        },
+        wholesale: {
+          revenue: wholesaleRevenue,
+          transactions: wholesaleSales.length
+        },
+        combined: {
+          revenue: totalRevenue,
+          transactions: sales.length
+        }
+      },
+      profitAnalysis: {
+        totalRevenue,
+        estimatedCOGS,
+        grossProfit,
+        operatingExpenses: totalRevenue * 0.1,
+        netProfit,
+        profitMargin: totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0
+      },
+      nextPurchase: {
+        capacity: nextPurchaseCapacity,
+        percentageOfProfit: 50,
+        recommendation: nextPurchaseCapacity > totalPurchaseCost * 0.1 ?
+          'Good capacity for restocking' : 'Limited capacity - focus on high-margin items'
+      },
+      inventory: {
+        totalProducts: inventory.length,
+        totalValue: inventory.reduce((sum, product) =>
+          sum + (toNumber(product.stock_quantity) * toNumber(product.cost_price || 0)), 0),
+        lowStockItems: inventory.filter(p => toNumber(p.stock_quantity) < 10).length
+      }
+    };
+  }, [dateRange]);
 
   const generateReports = useCallback(async () => {
     setLoading(true);
@@ -75,14 +158,49 @@ const ReportingPage = () => {
       }
 
       if (activeTab === 'profitLoss' || activeTab === 'all') {
+        // Use sales data to generate profit/loss analysis
         reportPromises.push(
-          reportsAPI.generateProfitLossReport(null, {
+          reportsAPI.generateSalesReport(null, {
             date_from: dateRange.start,
             date_to: dateRange.end
-          }).then(response => ({
-            type: 'profitLoss',
-            data: response || {}
-          }))
+          }).then(salesData => {
+            const sales = salesData || [];
+            const totalRevenue = calculateTotals(sales, ['total_sales']).total_sales;
+            const estimatedCOGS = totalRevenue * 0.7; // Estimate 70% COGS
+            const grossProfit = totalRevenue - estimatedCOGS;
+            const operatingExpenses = totalRevenue * 0.1; // Estimate 10% operating expenses
+            const netProfit = grossProfit - operatingExpenses;
+            const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+
+            return {
+              type: 'profitLoss',
+              data: {
+                date_from: dateRange.start,
+                date_to: dateRange.end,
+                total_revenue: totalRevenue,
+                cost_of_goods_sold: estimatedCOGS,
+                gross_profit: grossProfit,
+                operating_expenses: operatingExpenses,
+                net_profit: netProfit,
+                profit_margin_percentage: profitMargin
+              }
+            };
+          }).catch(error => {
+            console.error('Error generating profit/loss report:', error);
+            return {
+              type: 'profitLoss',
+              data: {
+                date_from: dateRange.start,
+                date_to: dateRange.end,
+                total_revenue: 0,
+                cost_of_goods_sold: 0,
+                gross_profit: 0,
+                operating_expenses: 0,
+                net_profit: 0,
+                profit_margin_percentage: 0
+              }
+            };
+          })
         );
       }
 
@@ -108,6 +226,57 @@ const ReportingPage = () => {
         );
       }
 
+      if (activeTab === 'purchaseOrders' || activeTab === 'all') {
+        reportPromises.push(
+          purchaseOrdersAPI.getPurchaseOrders()
+            .then(response => ({
+              type: 'purchaseOrders',
+              data: response || []
+            }))
+            .catch(error => {
+              console.error('Error fetching purchase orders:', error);
+              return { type: 'purchaseOrders', data: [] };
+            })
+        );
+
+        // Also fetch sales data for profit analysis
+        reportPromises.push(
+          reportsAPI.generateSalesReport(null, {
+            date_from: dateRange.start,
+            date_to: dateRange.end
+          }).then(response => ({
+            type: 'sales',
+            data: response || []
+          })).catch(error => {
+            console.error('Error fetching sales for profit analysis:', error);
+            return { type: 'sales', data: [] };
+          })
+        );
+
+        // Generate profit analysis using the same sales data fetched above
+        reportPromises.push(
+          Promise.all([
+            purchaseOrdersAPI.getPurchaseOrders().catch(() => []),
+            reportsAPI.generateSalesReport(null, {
+              date_from: dateRange.start,
+              date_to: dateRange.end
+            }).catch(() => []),
+            inventoryAPI.products.getAll().catch(() => [])
+          ])
+            .then(([purchaseOrders, sales, inventory]) => {
+              const profitAnalysis = generateProfitAnalysis(purchaseOrders, sales, inventory);
+              return {
+                type: 'profitAnalysis',
+                data: profitAnalysis
+              };
+            })
+            .catch(error => {
+              console.error('Error generating profit analysis:', error);
+              return { type: 'profitAnalysis', data: {} };
+            })
+        );
+      }
+
       const results = await Promise.all(reportPromises);
       const newReports = { ...reports };
 
@@ -122,13 +291,14 @@ const ReportingPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, dateRange, reports]);
+  }, [activeTab, dateRange, generateProfitAnalysis, reports]);
 
   useEffect(() => {
     generateReports();
   }, [dateRange, generateReports]);
 
-  const exportReport = (reportType) => {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const exportReport = useCallback((reportType) => {
     try {
       const reportData = reports[reportType.toLowerCase() + 's'] || reports[reportType.toLowerCase()] || reports[reportType.toLowerCase() + 'Loss'];
       if (!reportData || (Array.isArray(reportData) && reportData.length === 0)) {
@@ -166,7 +336,7 @@ const ReportingPage = () => {
       console.error('Error generating PDF:', error);
       alert(`Error generating ${reportType} PDF: ${error.message || 'Please try again.'}`);
     }
-  };
+  }, [reports, dateRange]);
 
   const exportSalesReport = (doc, yPosition) => {
     try {
@@ -381,12 +551,117 @@ const ReportingPage = () => {
     });
   };
 
+  const exportPurchaseOrdersReport = useCallback(() => {
+    try {
+      const profitData = reports.profitAnalysis || {};
+      const purchaseOrders = reports.purchaseOrders || [];
+
+      const doc = new jsPDF();
+      doc.setFontSize(20);
+      doc.text('Purchase Orders & Profit Analysis Report', 14, 22);
+      doc.setFontSize(12);
+      doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 32);
+      doc.text(`Period: ${dateRange.start} to ${dateRange.end}`, 14, 40);
+
+      let yPosition = 50;
+
+      // Purchase Orders Summary
+      doc.setFontSize(14);
+      doc.text('Purchase Orders Summary', 14, yPosition);
+      yPosition += 10;
+
+      doc.setFontSize(10);
+      doc.text(`Total Orders: ${profitData.purchaseOrders?.total || 0}`, 14, yPosition);
+      yPosition += 8;
+      doc.text(`Received Orders: ${profitData.purchaseOrders?.received || 0}`, 14, yPosition);
+      yPosition += 8;
+      doc.text(`Pending Orders: ${profitData.purchaseOrders?.pending || 0}`, 14, yPosition);
+      yPosition += 8;
+      doc.text(`Total Purchase Value: ${formatCurrency(profitData.purchaseOrders?.totalValue || 0)}`, 14, yPosition);
+      yPosition += 15;
+
+      // Sales Performance
+      doc.setFontSize(14);
+      doc.text('Sales Performance', 14, yPosition);
+      yPosition += 10;
+
+      doc.setFontSize(10);
+      doc.text(`Retail Sales: ${formatCurrency(profitData.sales?.retail?.revenue || 0)} (${profitData.sales?.retail?.transactions || 0} transactions)`, 14, yPosition);
+      yPosition += 8;
+      doc.text(`Wholesale Sales: ${formatCurrency(profitData.sales?.wholesale?.revenue || 0)} (${profitData.sales?.wholesale?.transactions || 0} transactions)`, 14, yPosition);
+      yPosition += 8;
+      doc.text(`Combined Sales: ${formatCurrency(profitData.sales?.combined?.revenue || 0)} (${profitData.sales?.combined?.transactions || 0} transactions)`, 14, yPosition);
+      yPosition += 15;
+
+      // Profit Analysis
+      doc.setFontSize(14);
+      doc.text('Profit & Loss Analysis', 14, yPosition);
+      yPosition += 10;
+
+      doc.setFontSize(10);
+      doc.text(`Total Revenue: ${formatCurrency(profitData.profitAnalysis?.totalRevenue || 0)}`, 14, yPosition);
+      yPosition += 8;
+      doc.text(`Cost of Goods Sold: ${formatCurrency(profitData.profitAnalysis?.estimatedCOGS || 0)}`, 14, yPosition);
+      yPosition += 8;
+      doc.text(`Gross Profit: ${formatCurrency(profitData.profitAnalysis?.grossProfit || 0)}`, 14, yPosition);
+      yPosition += 8;
+      doc.text(`Operating Expenses: ${formatCurrency(profitData.profitAnalysis?.operatingExpenses || 0)}`, 14, yPosition);
+      yPosition += 8;
+      doc.text(`Net Profit: ${formatCurrency(profitData.profitAnalysis?.netProfit || 0)}`, 14, yPosition);
+      yPosition += 8;
+      doc.text(`Profit Margin: ${(profitData.profitAnalysis?.profitMargin || 0).toFixed(2)}%`, 14, yPosition);
+      yPosition += 15;
+
+      // Next Purchase Capacity
+      doc.setFontSize(14);
+      doc.text('Next Purchase Capacity', 14, yPosition);
+      yPosition += 10;
+
+      doc.setFontSize(10);
+      doc.text(`Available for Purchases: ${formatCurrency(profitData.nextPurchase?.capacity || 0)}`, 14, yPosition);
+      yPosition += 8;
+      doc.text(`Recommendation: ${profitData.nextPurchase?.recommendation || 'N/A'}`, 14, yPosition);
+      yPosition += 15;
+
+      // Purchase Orders Table
+      if (purchaseOrders.length > 0) {
+        doc.setFontSize(14);
+        doc.text('Purchase Orders Details', 14, yPosition);
+        yPosition += 10;
+
+        const tableData = purchaseOrders.map(order => [
+          order.order_number || order.id,
+          order.supplier_name || 'N/A',
+          order.order_date,
+          order.status,
+          order.items?.length || 0,
+          formatCurrency(order.total_amount || 0)
+        ]);
+
+        doc.autoTable({
+          startY: yPosition,
+          head: [['Order #', 'Supplier', 'Date', 'Status', 'Items', 'Total Value']],
+          body: tableData,
+          theme: 'grid',
+          styles: { fontSize: 8 },
+          headStyles: { fillColor: [41, 128, 185] }
+        });
+      }
+
+      doc.save(`purchase_orders_profit_analysis_${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (error) {
+      console.error('Error generating purchase orders PDF:', error);
+      alert(`Error generating Purchase Orders PDF: ${error.message || 'Please try again.'}`);
+    }
+  }, [reports, dateRange]);
+
   const calculateTotals = (data, fields) => {
     return fields.reduce((totals, field) => {
       totals[field] = data.reduce((sum, item) => sum + toNumber(item[field]), 0);
       return totals;
     }, {});
   };
+
 
   const renderSalesReport = () => {
     const totals = calculateTotals(reports.sales, ['total_sales', 'cash_sales', 'card_sales', 'mobile_sales', 'transactions']);
@@ -812,6 +1087,163 @@ const ReportingPage = () => {
     );
   };
 
+  const renderPurchaseOrdersReport = () => {
+    const profitData = reports.profitAnalysis || {};
+    const purchaseOrders = reports.purchaseOrders || [];
+
+    return (
+      <div className="reporting-section">
+        <div className="reporting-header">
+          <h3 className="reporting-title">Purchase Orders & Profit Analysis</h3>
+          <button className="reporting-export-btn reporting-export-primary" onClick={() => exportPurchaseOrdersReport()}>
+            Export PDF
+          </button>
+        </div>
+
+        {/* Purchase Orders Summary */}
+        <div className="reporting-metrics">
+          <div className="reporting-metric-card">
+            <h4 className="reporting-metric-label">Total Purchase Orders</h4>
+            <p className="reporting-metric-value">{profitData.purchaseOrders?.total || 0}</p>
+          </div>
+          <div className="reporting-metric-card">
+            <h4 className="reporting-metric-label">Received Orders</h4>
+            <p className="reporting-metric-value">{profitData.purchaseOrders?.received || 0}</p>
+          </div>
+          <div className="reporting-metric-card">
+            <h4 className="reporting-metric-label">Pending Orders</h4>
+            <p className="reporting-metric-value">{profitData.purchaseOrders?.pending || 0}</p>
+          </div>
+          <div className="reporting-metric-card">
+            <h4 className="reporting-metric-label">Total Purchase Value</h4>
+            <p className="reporting-metric-value">{formatCurrency(profitData.purchaseOrders?.totalValue || 0)}</p>
+          </div>
+        </div>
+
+        {/* Sales Breakdown */}
+        <div className="reporting-subsection">
+          <h4>Sales Performance</h4>
+          <div className="reporting-metrics">
+            <div className="reporting-metric-card">
+              <h4 className="reporting-metric-label">Retail Sales</h4>
+              <p className="reporting-metric-value">{formatCurrency(profitData.sales?.retail?.revenue || 0)}</p>
+              <small>{profitData.sales?.retail?.transactions || 0} transactions</small>
+            </div>
+            <div className="reporting-metric-card">
+              <h4 className="reporting-metric-label">Wholesale Sales</h4>
+              <p className="reporting-metric-value">{formatCurrency(profitData.sales?.wholesale?.revenue || 0)}</p>
+              <small>{profitData.sales?.wholesale?.transactions || 0} transactions</small>
+            </div>
+            <div className="reporting-metric-card">
+              <h4 className="reporting-metric-label">Combined Sales</h4>
+              <p className="reporting-metric-value">{formatCurrency(profitData.sales?.combined?.revenue || 0)}</p>
+              <small>{profitData.sales?.combined?.transactions || 0} transactions</small>
+            </div>
+          </div>
+        </div>
+
+        {/* Profit Analysis */}
+        <div className="reporting-subsection">
+          <h4>Profit & Loss Analysis</h4>
+          <div className="reporting-metrics">
+            <div className="reporting-metric-card">
+              <h4 className="reporting-metric-label">Total Revenue</h4>
+              <p className="reporting-metric-value">{formatCurrency(profitData.profitAnalysis?.totalRevenue || 0)}</p>
+            </div>
+            <div className="reporting-metric-card">
+              <h4 className="reporting-metric-label">Cost of Goods Sold</h4>
+              <p className="reporting-metric-value">{formatCurrency(profitData.profitAnalysis?.estimatedCOGS || 0)}</p>
+            </div>
+            <div className="reporting-metric-card">
+              <h4 className="reporting-metric-label">Gross Profit</h4>
+              <p className={`reporting-metric-value ${profitData.profitAnalysis?.grossProfit >= 0 ? 'reporting-positive' : 'reporting-negative'}`}>
+                {formatCurrency(profitData.profitAnalysis?.grossProfit || 0)}
+              </p>
+            </div>
+            <div className="reporting-metric-card">
+              <h4 className="reporting-metric-label">Net Profit</h4>
+              <p className={`reporting-metric-value ${profitData.profitAnalysis?.netProfit >= 0 ? 'reporting-positive' : 'reporting-negative'}`}>
+                {formatCurrency(profitData.profitAnalysis?.netProfit || 0)}
+              </p>
+            </div>
+            <div className="reporting-metric-card">
+              <h4 className="reporting-metric-label">Profit Margin</h4>
+              <p className="reporting-metric-value">{(profitData.profitAnalysis?.profitMargin || 0).toFixed(2)}%</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Next Purchase Capacity */}
+        <div className="reporting-subsection">
+          <h4>Next Purchase Capacity</h4>
+          <div className="reporting-metrics">
+            <div className="reporting-metric-card">
+              <h4 className="reporting-metric-label">Available for Purchases</h4>
+              <p className="reporting-metric-value">{formatCurrency(profitData.nextPurchase?.capacity || 0)}</p>
+              <small>{profitData.nextPurchase?.percentageOfProfit || 0}% of net profits</small>
+            </div>
+            <div className="reporting-metric-card">
+              <h4 className="reporting-metric-label">Recommendation</h4>
+              <p className="reporting-metric-value">{profitData.nextPurchase?.recommendation || 'N/A'}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Inventory Summary */}
+        <div className="reporting-subsection">
+          <h4>Current Inventory Status</h4>
+          <div className="reporting-metrics">
+            <div className="reporting-metric-card">
+              <h4 className="reporting-metric-label">Total Products</h4>
+              <p className="reporting-metric-value">{profitData.inventory?.totalProducts || 0}</p>
+            </div>
+            <div className="reporting-metric-card">
+              <h4 className="reporting-metric-label">Inventory Value</h4>
+              <p className="reporting-metric-value">{formatCurrency(profitData.inventory?.totalValue || 0)}</p>
+            </div>
+            <div className="reporting-metric-card">
+              <h4 className="reporting-metric-label">Low Stock Items</h4>
+              <p className="reporting-metric-value">{profitData.inventory?.lowStockItems || 0}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Purchase Orders Table */}
+        <div className="reporting-table-container">
+          <h4>Purchase Orders Details</h4>
+          <table className="reporting-data-table">
+            <thead className="reporting-table-header">
+              <tr>
+                <th className="reporting-table-head">Order #</th>
+                <th className="reporting-table-head">Supplier</th>
+                <th className="reporting-table-head">Date</th>
+                <th className="reporting-table-head">Status</th>
+                <th className="reporting-table-head">Items</th>
+                <th className="reporting-table-head">Total Value</th>
+              </tr>
+            </thead>
+            <tbody className="reporting-table-body">
+              {purchaseOrders.map((order, index) => (
+                <tr key={index} className="reporting-table-row">
+                  <td className="reporting-table-cell">{order.order_number || order.id}</td>
+                  <td className="reporting-table-cell">{order.supplier_name || 'N/A'}</td>
+                  <td className="reporting-table-cell">{order.order_date}</td>
+                  <td className="reporting-table-cell">
+                    <span className={`status-badge ${order.status?.toLowerCase()}`}>
+                      {order.status}
+                    </span>
+                  </td>
+                  <td className="reporting-table-cell">{order.items?.length || 0}</td>
+                  <td className="reporting-table-cell">{formatCurrency(order.total_amount || 0)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="reporting-page">
       <div className="reporting-page-header">
@@ -884,6 +1316,12 @@ const ReportingPage = () => {
         >
           Supplier Performance
         </button>
+        <button
+          className={`reporting-tab ${activeTab === 'purchaseOrders' ? 'reporting-tab-active' : ''}`}
+          onClick={() => setActiveTab('purchaseOrders')}
+        >
+          Purchase Orders & Profit Analysis
+        </button>
       </div>
 
       <div className="reporting-content">
@@ -911,6 +1349,7 @@ const ReportingPage = () => {
             {activeTab === 'profitLoss' && renderProfitLossReport()}
             {activeTab === 'products' && renderProductsReport()}
             {activeTab === 'suppliers' && renderSuppliersReport()}
+            {activeTab === 'purchaseOrders' && renderPurchaseOrdersReport()}
           </>
         )}
       </div>

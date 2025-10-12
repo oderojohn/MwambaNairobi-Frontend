@@ -1,5 +1,5 @@
 // api.js
-const API_BASE_URL = 'http://localhost:8001';
+const API_BASE_URL = 'https://boat-browse-computation-tuner.trycloudflare.com';
 
 // Utility function to safely convert values to numbers
 export const toNumber = (value) => {
