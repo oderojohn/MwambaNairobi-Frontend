@@ -84,14 +84,6 @@ const ProductGrid = ({ products = [], categories = [], onAddToCart, loading = fa
     }
   };
 
-  // Get category ID for CSS class
-  const getCategoryId = (product) => {
-    try {
-      return product.category || 1;
-    } catch (error) {
-      return 1;
-    }
-  };
 
   const handleSearchToggle = () => {
     setIsSearchVisible(!isSearchVisible);

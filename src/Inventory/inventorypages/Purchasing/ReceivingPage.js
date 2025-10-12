@@ -8,7 +8,6 @@ const ReceivingPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [stockMovements, setStockMovements] = useState([]);
-  const [ setBatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [dateRange, setDateRange] = useState('30'); // days
@@ -26,10 +25,6 @@ const ReceivingPage = () => {
         // Load stock movements (receiving history)
         const movementsData = await inventoryAPI.stockMovements.getAll();
         setStockMovements(movementsData);
-
-        // Load batches for additional info
-        const batchesData = await inventoryAPI.batches.getAll();
-        setBatches(batchesData);
 
         setError(null);
       } catch (err) {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   FiPlus, FiFilter, FiDownload, FiPrinter, FiSearch,
-  FiEdit, FiTrash2, FiX, FiSave, FiCheck, FiEye, FiXCircle
+   FiTrash2, FiX, FiSave, FiCheck, FiEye, FiXCircle
 } from 'react-icons/fi';
 import { Link } from 'react-router-dom';
 import { purchaseOrdersAPI, suppliersAPI, inventoryAPI } from '../../../services/ApiService/api';
@@ -181,9 +181,6 @@ const OrdersPage = () => {
     }
   };
 
-  const deleteOrder = (id) => {
-    setOrders(orders.filter(order => order.id !== id));
-  };
 
   const openProductModal = (itemIndex) => {
     setCurrentItemIndex(itemIndex);

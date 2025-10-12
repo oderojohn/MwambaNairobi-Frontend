@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Header from './components/Header';
 import ProductGrid from './components/ProductGrid';
@@ -85,7 +85,7 @@ function PosApp() {
   };
 
   // Function to fetch data based on current mode
-  const fetchData = async (currentMode = mode) => {
+  const fetchData = useCallback(async (currentMode = mode) => {
     try {
       setLoading(true);
       const [productsRes, categoriesRes, customersRes, suppliersRes, chitsRes, currentShiftRes] = await Promise.all([
@@ -136,7 +136,7 @@ function PosApp() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [mode]);
 
   useEffect(() => {
     if (!user) {
@@ -145,7 +145,7 @@ function PosApp() {
     }
 
     fetchData();
-  }, [user]);
+  }, [user, fetchData]);
 
   // Handle mode changes
   const handleModeChange = async (newMode) => {

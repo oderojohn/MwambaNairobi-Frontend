@@ -1,6 +1,6 @@
 // Customers Management Page
 import React, { useState, useEffect } from 'react';
-import { FiPlus, FiFilter, FiEdit, FiTrash2, FiPrinter, FiDownload, FiRefreshCw, FiSearch, FiX, FiSave, FiFileText, FiEye, FiShoppingCart } from 'react-icons/fi';
+import { FiPlus, FiFilter, FiTrash2, FiPrinter, FiDownload, FiRefreshCw, FiSearch, FiX, FiSave, FiShoppingCart } from 'react-icons/fi';
 import { Link } from 'react-router-dom';
 import { customersAPI, inventoryAPI } from '../../../services/ApiService/api';
 

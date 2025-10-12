@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { toNumber, formatCurrency } from '../../services/ApiService/api';
 
 const ChitModal = ({ isOpen, onClose, chits, onLoadChit }) => {

@@ -110,7 +110,7 @@ const ReportingPage = () => {
 
       const results = await Promise.all(reportPromises);
       const newReports = { ...reports };
-      
+
       results.forEach(result => {
         newReports[result.type] = result.data;
       });
@@ -122,7 +122,7 @@ const ReportingPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, dateRange]);
+  }, [activeTab, dateRange, reports]);
 
   useEffect(() => {
     generateReports();
