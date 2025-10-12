@@ -1,0 +1,531 @@
+// OrderPreparationPage.js - Purchase Order Creation Page
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { toNumber, formatCurrency, purchaseOrdersAPI } from '../../services/ApiService/api';
+import './OrderPreparationPage.css';
+
+const OrderPreparationPage = ({ products, categories, suppliers }) => {
+  const navigate = useNavigate();
+
+  // State management
+  const [orderItems, setOrderItems] = useState([]);
+  const [selectedSupplier, setSelectedSupplier] = useState(null);
+  const [orderNotes, setOrderNotes] = useState('');
+  const [deliveryDate, setDeliveryDate] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [editingOrderId, setEditingOrderId] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [sortBy, setSortBy] = useState('stock');
+
+  // Check for edit parameter in URL
+  React.useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const editOrderId = urlParams.get('edit');
+
+    if (editOrderId) {
+      loadOrderForEditing(editOrderId);
+    }
+  }, []);
+
+
+  // Filter and sort products
+  const filteredProducts = products
+    .filter(product => {
+      const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          product.description?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCategory = selectedCategory === 'all' || product.category === parseInt(selectedCategory);
+      return matchesSearch && matchesCategory;
+    })
+    .sort((a, b) => {
+      const stockA = a.stock_quantity || 0;
+      const stockB = b.stock_quantity || 0;
+      
+      // Always sort by stock level first (low stock first)
+      if (stockA !== stockB) {
+        return stockA - stockB;
+      }
+      
+      // Then apply secondary sort
+      switch (sortBy) {
+        case 'name':
+          return a.name.localeCompare(b.name);
+        case 'price':
+          return (a.cost_price || 0) - (b.cost_price || 0);
+        default:
+          return 0;
+      }
+    });
+
+  const getStockStatus = (stock) => {
+    if (stock === 0) return 'out';
+    if (stock <= 5) return 'critical';
+    if (stock <= 10) return 'low';
+    if (stock <= 20) return 'medium';
+    return 'good';
+  };
+
+  const getStockStatusText = (stock) => {
+    if (stock === 0) return 'Out of Stock';
+    if (stock <= 5) return 'Critical';
+    if (stock <= 10) return 'Low';
+    if (stock <= 20) return 'Medium';
+    return 'Good';
+  };
+
+  const addToOrder = (product) => {
+    setOrderItems(prevItems => {
+      const existingItem = prevItems.find(item => item.id === product.id);
+      if (existingItem) {
+        return prevItems.map(item =>
+          item.id === product.id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        );
+      } else {
+        const price = product.cost_price || product.display_price || product.selling_price || product.price || 0;
+        return [...prevItems, {
+          ...product,
+          quantity: 1,
+          price: price,
+          unit_price: price
+        }];
+      }
+    });
+  };
+
+  const updateQuantity = (productId, newQuantity) => {
+    if (newQuantity <= 0) {
+      removeFromOrder(productId);
+      return;
+    }
+
+    setOrderItems(prevItems =>
+      prevItems.map(item =>
+        item.id === productId
+          ? { ...item, quantity: newQuantity }
+          : item
+      )
+    );
+  };
+
+  const removeFromOrder = (productId) => {
+    setOrderItems(prevItems => prevItems.filter(item => item.id !== productId));
+  };
+
+  const calculateTotal = () => {
+    return orderItems.reduce((total, item) => total + (toNumber(item.unit_price) * toNumber(item.quantity)), 0);
+  };
+
+  const handleSaveOrder = async () => {
+    if (orderItems.length === 0) {
+      alert('Please add at least one item to the purchase order');
+      return;
+    }
+
+    if (!selectedSupplier) {
+      alert('Please select a supplier');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const orderData = {
+        supplier: selectedSupplier.id,
+        expected_delivery_date: deliveryDate || null,
+        notes: orderNotes,
+        items: orderItems.map(item => ({
+          product: item.id,
+          quantity: item.quantity,
+          unit_price: item.unit_price
+        }))
+      };
+
+      if (editingOrderId) {
+        await purchaseOrdersAPI.updatePurchaseOrder(editingOrderId, orderData);
+        alert('Purchase order updated successfully!');
+      } else {
+        await purchaseOrdersAPI.createPurchaseOrder(orderData);
+        alert('Purchase order created successfully!');
+      }
+
+      clearOrder();
+      navigate('/order-management');
+    } catch (error) {
+      console.error('Error saving purchase order:', error);
+      alert('Failed to save purchase order. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const clearOrder = () => {
+    setOrderItems([]);
+    setSelectedSupplier(null);
+    setOrderNotes('');
+    setDeliveryDate('');
+    setEditingOrderId(null);
+  };
+
+  const handleBack = () => {
+    navigate('/');
+  };
+
+  const loadOrderForEditing = async (orderId) => {
+    try {
+      setIsLoading(true);
+      const order = await purchaseOrdersAPI.getPurchaseOrder(orderId);
+      setEditingOrderId(order.id);
+      setSelectedSupplier(order.supplier);
+      setOrderNotes(order.notes || '');
+      setDeliveryDate(order.expected_delivery_date || '');
+      setOrderItems(order.items?.map(item => ({
+        ...item,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        price: item.unit_price
+      })) || []);
+    } catch (error) {
+      console.error('Error loading order for editing:', error);
+      alert('Failed to load order for editing');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+
+
+  const renderProductsTable = () => (
+    <div className="order-prep-products-panel">
+      <div className="order-prep-panel-header">
+        <h3>Product Catalog</h3>
+        <div className="order-prep-products-controls">
+          <div className="order-prep-search">
+            <i className="fas fa-search"></i>
+            <input
+              type="text"
+              placeholder="Search products by name or description..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            className="order-prep-category-filter"
+          >
+            <option value="all">All Categories</option>
+            {categories?.map(category => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="order-prep-sort-filter"
+          >
+            <option value="stock">Sort by Stock</option>
+            <option value="name">Sort by Name</option>
+            <option value="price">Sort by Price</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="order-prep-products-table">
+        {filteredProducts.length === 0 ? (
+          <div className="order-prep-empty">
+            <i className="fas fa-search"></i>
+            <h3>No Products Found</h3>
+            <p>Try adjusting your search criteria or filters</p>
+          </div>
+        ) : (
+          <table className="order-prep-table">
+            <thead>
+              <tr>
+                <th>Product Name</th>
+                <th>Category</th>
+                <th>Cost Price</th>
+                <th>Stock Level</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredProducts.map(product => {
+                const stock = product.stock_quantity || 0;
+                const stockStatus = getStockStatus(stock);
+                const statusText = getStockStatusText(stock);
+
+                return (
+                  <tr key={product.id}>
+                    <td>
+                      <div>
+                        <strong>{product.name}</strong>
+                        {product.description && (
+                          <div style={{ fontSize: '0.75rem', color: '#6c757d', marginTop: '0.25rem' }}>
+                            {product.description}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td>
+                      {categories?.find(cat => cat.id === product.category)?.name || 'Uncategorized'}
+                    </td>
+                    <td style={{ textAlign: 'right', fontWeight: '600' }}>
+                      {formatCurrency(product.cost_price || 0)}
+                    </td>
+                    <td>
+                      <div className="order-prep-stock-info">
+                        <span className="order-prep-stock-quantity">{stock}</span>
+                        <div className="order-prep-stock-bar">
+                          <div
+                            className={`order-prep-stock-fill ${stockStatus}`}
+                            style={{
+                              width: `${stockStatus === 'out' ? 0 : Math.min(100, (stock / 50) * 100)}%`
+                            }}
+                          ></div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <span className={`order-prep-status-tag ${stockStatus}`}>
+                        {statusText}
+                      </span>
+                    </td>
+                    <td>
+                      <button
+                        className="order-prep-btn order-prep-btn-primary"
+                        onClick={() => addToOrder(product)}
+                        style={{ fontSize: '0.75rem', padding: '0.4rem 0.75rem' }}
+                      >
+                        <i className="fas fa-plus"></i> Add
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderOrderItemsTable = () => (
+    <div className="order-prep-summary-panel">
+      <div className="order-prep-panel-header">
+        <h3>
+          Order Items
+          <span className="order-prep-items-count">({orderItems.length})</span>
+        </h3>
+      </div>
+
+      {!selectedSupplier && (
+        <div className="order-prep-supplier-section">
+          <label>Select Supplier *</label>
+          <select
+            value={selectedSupplier?.id || ''}
+            onChange={(e) => {
+              const supplierId = e.target.value;
+              const supplier = suppliers.find(s => s.id === parseInt(supplierId));
+              setSelectedSupplier(supplier || null);
+            }}
+            className="order-prep-supplier-select"
+          >
+            <option value="">Choose a supplier...</option>
+            {suppliers?.map(supplier => (
+              <option key={supplier.id} value={supplier.id}>
+                {supplier.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {selectedSupplier && (
+        <div className="order-prep-supplier-section">
+          <label>Supplier</label>
+          <div className="order-prep-supplier-info">
+            <h4>
+              <i className="fas fa-truck"></i>
+              {selectedSupplier.name}
+            </h4>
+            <p>{selectedSupplier.contact_info || 'No contact information'}</p>
+          </div>
+        </div>
+      )}
+
+      <div className="order-prep-items-section">
+        {orderItems.length === 0 ? (
+          <div className="order-prep-empty">
+            <i className="fas fa-shopping-cart"></i>
+            <h3>No Items Added</h3>
+            <p>Add products from the catalog to create your purchase order</p>
+          </div>
+        ) : (
+          <table className="order-prep-table order-prep-items-table">
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Price</th>
+                <th>Qty</th>
+                <th>Total</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {orderItems.map(item => (
+                <tr key={item.id}>
+                  <td className="order-prep-item-name">
+                    <strong>{item.product_name || item.name}</strong>
+                  </td>
+
+                  <td className="order-prep-item-price">
+                    {formatCurrency(item.unit_price || item.price)}
+                  </td>
+
+                  <td>
+                    <div className="order-prep-qty-controls">
+                      <button
+                        className="order-prep-qty-btn"
+                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                      >
+                        -
+                      </button>
+                      <span className="order-prep-quantity">{item.quantity}</span>
+                      <button
+                        className="order-prep-qty-btn"
+                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                      >
+                        +
+                      </button>
+                    </div>
+                  </td>
+
+                  <td className="order-prep-item-total">
+                    {formatCurrency((item.unit_price || item.price) * item.quantity)}
+                  </td>
+
+                  <td>
+                    <button
+                      className="order-prep-remove-btn"
+                      onClick={() => removeFromOrder(item.id)}
+                      title="Remove item"
+                    >
+                      <i className="fas fa-trash"></i>
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {orderItems.length > 0 && (
+        <>
+          <div className="order-prep-details">
+            <div className="order-prep-detail-group">
+              <label>Expected Delivery Date</label>
+              <input
+                type="date"
+                value={deliveryDate}
+                onChange={(e) => setDeliveryDate(e.target.value)}
+                min={new Date().toISOString().split('T')[0]}
+              />
+            </div>
+            <div className="order-prep-detail-group">
+              <label>Notes</label>
+              <textarea
+                value={orderNotes}
+                onChange={(e) => setOrderNotes(e.target.value)}
+                placeholder="Add any notes or special instructions..."
+                rows="3"
+              />
+            </div>
+          </div>
+
+          <div className="order-prep-total-section">
+            <div className="order-prep-total-line">
+              <span>Total Amount:</span>
+              <span className="order-prep-total-amount">
+                {formatCurrency(calculateTotal())}
+              </span>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+
+
+  return (
+    <div className="order-prep-page">
+      {/* Header */}
+      <header className="order-prep-header">
+        <div className="order-prep-header-content">
+          <button className="order-prep-back-btn" onClick={handleBack}>
+            <i className="fas fa-arrow-left"></i>
+            Back to POS
+          </button>
+
+          <div className="order-prep-header-title">
+            <i className="fas fa-clipboard-list"></i>
+            <h1>Create Purchase Order</h1>
+          </div>
+        </div>
+
+        <div className="order-prep-mode-selector">
+          <button
+            className="order-prep-mode-btn order-prep-mode-active"
+          >
+            <i className="fas fa-plus-circle"></i>
+            Create Order
+          </button>
+          <button
+            className="order-prep-mode-btn"
+            onClick={() => navigate('/order-management')}
+          >
+            <i className="fas fa-list"></i>
+            Manage Orders
+          </button>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="order-prep-main-content" style={{ height: 'calc(100vh - 200px)', overflow: 'hidden' }}>
+        <div className="order-prep-layout">
+          {renderProductsTable()}
+          {renderOrderItemsTable()}
+        </div>
+      </main>
+
+      {/* Footer Actions */}
+      <footer className="order-prep-actions-footer">
+        <div className="order-prep-actions-container">
+          <button
+            className="order-prep-btn order-prep-btn-secondary"
+            onClick={clearOrder}
+            disabled={orderItems.length === 0}
+          >
+            <i className="fas fa-times"></i>
+            Clear All
+          </button>
+          <button
+            className="order-prep-btn order-prep-btn-primary"
+            onClick={handleSaveOrder}
+            disabled={orderItems.length === 0 || !selectedSupplier || isLoading}
+          >
+            <i className="fas fa-save"></i>
+            {editingOrderId ? 'Update Order' : 'Create Purchase Order'}
+          </button>
+        </div>
+      </footer>
+
+    </div>
+  );
+};
+
+export default OrderPreparationPage;

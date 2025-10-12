@@ -1,0 +1,394 @@
+/* Header.css */
+.pos-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+  color: white;
+  padding: 0.5rem 1.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-bottom: 3px solid #3498db;
+  min-height: 50px;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+/* Brand Section */
+.pos-header__brand {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-shrink: 0;
+}
+
+.pos-header__logo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.pos-header__logo-icon {
+  font-size: 2rem;
+  color: #3498db;
+  background: white;
+  padding: 0.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.pos-header__logo-text {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: white;
+  letter-spacing: -0.5px;
+}
+
+.pos-header__mode-indicator {
+  padding: 0.4rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: 2px solid;
+}
+
+.pos-header__mode-indicator--retail {
+  background: rgba(52, 152, 219, 0.2);
+  border-color: #3498db;
+  color: #3498db;
+}
+
+.pos-header__mode-indicator--wholesale {
+  background: rgba(46, 204, 113, 0.2);
+  border-color: #2ecc71;
+  color: #2ecc71;
+}
+
+/* Shift Status */
+.pos-header__shift-status {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.pos-header__shift-status--active {
+  background: rgba(46, 204, 113, 0.15);
+  border: 1px solid rgba(46, 204, 113, 0.3);
+  color: #2ecc71;
+}
+
+.pos-header__shift-status--inactive {
+  background: rgba(231, 76, 60, 0.15);
+  border: 1px solid rgba(231, 76, 60, 0.3);
+  color: #e74c3c;
+}
+
+.pos-header__shift-icon {
+  font-size: 1.25rem;
+}
+
+.pos-header__shift-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.pos-header__shift-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.pos-header__shift-time {
+  font-size: 0.8rem;
+  opacity: 0.9;
+}
+
+/* Header Controls */
+.pos-header__controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+/* Mode Toggle */
+.pos-header__mode-toggle {
+  display: flex;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 0.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.pos-header__mode-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: white;
+}
+
+.pos-header__mode-btn--retail {
+  background: transparent;
+}
+
+.pos-header__mode-btn--retail-active {
+  background: #3498db;
+  box-shadow: 0 2px 8px rgba(52, 152, 219, 0.4);
+}
+
+.pos-header__mode-btn--wholesale {
+  background: transparent;
+}
+
+.pos-header__mode-btn--wholesale-active {
+  background: #2ecc71;
+  box-shadow: 0 2px 8px rgba(46, 204, 113, 0.4);
+}
+
+.pos-header__mode-icon {
+  font-size: 0.9rem;
+}
+
+.pos-header__mode-text {
+  white-space: nowrap;
+}
+
+/* Customer Button */
+.pos-header__customer-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.pos-header__customer-btn--default {
+  background: rgba(52, 152, 219, 0.2);
+  color: #3498db;
+  border: 1px solid #3498db;
+}
+
+.pos-header__customer-btn--selected {
+  background: #2ecc71;
+  color: white;
+  border: 1px solid #27ae60;
+  box-shadow: 0 2px 8px rgba(46, 204, 113, 0.4);
+}
+
+.pos-header__customer-icon {
+  font-size: 0.9rem;
+}
+
+.pos-header__customer-text {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Action Buttons */
+.pos-header__action-buttons {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.pos-header__action-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: white;
+  white-space: nowrap;
+}
+
+.pos-header__action-btn--secondary {
+  background: #95a5a6;
+  border: 1px solid #7f8c8d;
+}
+
+.pos-header__action-btn--secondary:hover {
+  background: #7f8c8d;
+  transform: translateY(-1px);
+}
+
+.pos-header__action-btn--info {
+  background: #3498db;
+  border: 1px solid #2980b9;
+}
+
+.pos-header__action-btn--info:hover {
+  background: #2980b9;
+  transform: translateY(-1px);
+}
+
+.pos-header__action-btn--warning {
+  background: #f39c12;
+  border: 1px solid #d35400;
+}
+
+.pos-header__action-btn--warning:hover {
+  background: #e67e22;
+  transform: translateY(-1px);
+}
+
+.pos-header__action-btn--success {
+  background: #2ecc71;
+  border: 1px solid #27ae60;
+}
+
+.pos-header__action-btn--success:hover {
+  background: #27ae60;
+  transform: translateY(-1px);
+}
+
+.pos-header__action-btn--danger {
+  background: #e74c3c;
+  border: 1px solid #c0392b;
+}
+
+.pos-header__action-btn--danger:hover {
+  background: #c0392b;
+  transform: translateY(-1px);
+}
+
+.pos-header__action-icon {
+  font-size: 0.9rem;
+}
+
+.pos-header__action-text {
+  white-space: nowrap;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .pos-header {
+    padding: 1rem;
+    gap: 1rem;
+  }
+  
+  .pos-header__controls {
+    gap: 0.75rem;
+  }
+  
+  .pos-header__action-buttons {
+    gap: 0.4rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .pos-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+    padding: 1rem;
+  }
+  
+  .pos-header__brand {
+    justify-content: space-between;
+  }
+  
+  .pos-header__controls {
+    justify-content: space-between;
+    gap: 1rem;
+  }
+  
+  .pos-header__mode-toggle {
+    order: 1;
+  }
+  
+  .pos-header__customer-btn {
+    order: 2;
+  }
+  
+  .pos-header__action-buttons {
+    order: 3;
+    justify-content: center;
+    width: 100%;
+  }
+  
+  .pos-header__shift-status {
+    order: 4;
+    justify-content: center;
+    margin-top: 0.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .pos-header {
+    padding: 0.75rem;
+  }
+  
+  .pos-header__logo-text {
+    font-size: 1.25rem;
+  }
+  
+  .pos-header__mode-indicator {
+    font-size: 0.7rem;
+    padding: 0.3rem 0.6rem;
+  }
+  
+  .pos-header__action-btn {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+  }
+  
+  .pos-header__mode-btn {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+  }
+  
+  .pos-header__customer-btn {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+  }
+  
+  .pos-header__action-text,
+  .pos-header__mode-text {
+    display: none;
+  }
+  
+  .pos-header__action-btn,
+  .pos-header__mode-btn,
+  .pos-header__customer-btn {
+    gap: 0;
+  }
+}
+
+/* Animation for better UX */
+.pos-header__action-btn:active,
+.pos-header__mode-btn:active,
+.pos-header__customer-btn:active {
+  transform: translateY(0);
+}
+
+/* Focus states for accessibility */
+.pos-header__action-btn:focus,
+.pos-header__mode-btn:focus,
+.pos-header__customer-btn:focus {
+  outline: 2px solid rgba(255, 255, 255, 0.5);
+  outline-offset: 2px;
+}
