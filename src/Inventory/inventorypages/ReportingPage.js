@@ -297,8 +297,7 @@ const ReportingPage = () => {
     generateReports();
   }, [dateRange, generateReports]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const exportReport = useCallback((reportType) => {
+  const exportReport = (reportType) => {
     try {
       const reportData = reports[reportType.toLowerCase() + 's'] || reports[reportType.toLowerCase()] || reports[reportType.toLowerCase() + 'Loss'];
       if (!reportData || (Array.isArray(reportData) && reportData.length === 0)) {
@@ -336,7 +335,7 @@ const ReportingPage = () => {
       console.error('Error generating PDF:', error);
       alert(`Error generating ${reportType} PDF: ${error.message || 'Please try again.'}`);
     }
-  }, [reports, dateRange]);
+  };
 
   const exportSalesReport = (doc, yPosition) => {
     try {
