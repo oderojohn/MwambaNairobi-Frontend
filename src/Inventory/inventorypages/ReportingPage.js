@@ -108,10 +108,11 @@ const ReportingPage = () => {
         lowStockItems: inventory.filter(p => toNumber(p.stock_quantity) < 10).length
       }
     };
-  }, [dateRange]);
+  }, [dateRange.start, dateRange.end]);
 
   const generateReports = useCallback(async () => {
     setLoading(true);
+    setError('');
     try {
       const reportPromises = [];
 
@@ -241,20 +242,6 @@ const ReportingPage = () => {
 
         // Also fetch sales data for profit analysis
         reportPromises.push(
-          reportsAPI.generateSalesReport(null, {
-            date_from: dateRange.start,
-            date_to: dateRange.end
-          }).then(response => ({
-            type: 'sales',
-            data: response || []
-          })).catch(error => {
-            console.error('Error fetching sales for profit analysis:', error);
-            return { type: 'sales', data: [] };
-          })
-        );
-
-        // Generate profit analysis using the same sales data fetched above
-        reportPromises.push(
           Promise.all([
             purchaseOrdersAPI.getPurchaseOrders().catch(() => []),
             reportsAPI.generateSalesReport(null, {
@@ -278,24 +265,28 @@ const ReportingPage = () => {
       }
 
       const results = await Promise.all(reportPromises);
-      const newReports = { ...reports };
-
-      results.forEach(result => {
-        newReports[result.type] = result.data;
+      
+      // Use functional update to avoid dependency on reports state
+      setReports(prevReports => {
+        const newReports = { ...prevReports };
+        results.forEach(result => {
+          newReports[result.type] = result.data;
+        });
+        return newReports;
       });
-
-      setReports(newReports);
     } catch (error) {
       console.error('Error generating reports:', error);
       setError(`Failed to load reports: ${error.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
-  }, [activeTab, dateRange, generateProfitAnalysis, reports]);
+  }, [activeTab, dateRange.start, dateRange.end, generateProfitAnalysis]);
 
+  // Only generate reports when manually requested or when tab changes
   useEffect(() => {
+    // Initial load or when tab changes
     generateReports();
-  }, [dateRange, generateReports]);
+  }, [activeTab]); // Only depend on activeTab
 
   const exportReport = (reportType) => {
     try {
@@ -655,12 +646,12 @@ const ReportingPage = () => {
   }, [reports, dateRange]);
 
   const calculateTotals = (data, fields) => {
+    if (!data || !Array.isArray(data)) return {};
     return fields.reduce((totals, field) => {
-      totals[field] = data.reduce((sum, item) => sum + toNumber(item[field]), 0);
+      totals[field] = data.reduce((sum, item) => sum + toNumber(item[field] || 0), 0);
       return totals;
     }, {});
   };
-
 
   const renderSalesReport = () => {
     const totals = calculateTotals(reports.sales, ['total_sales', 'cash_sales', 'card_sales', 'mobile_sales', 'transactions']);
@@ -1267,7 +1258,7 @@ const ReportingPage = () => {
             />
           </div>
           <button className="reporting-generate-btn reporting-export-secondary" onClick={generateReports}>
-            Generate Reports
+            {loading ? 'Generating...' : 'Generate Reports'}
           </button>
         </div>
       </div>

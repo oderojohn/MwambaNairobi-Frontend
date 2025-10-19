@@ -1,6 +1,7 @@
 // OrderManagementPage.js - Purchase Order Management Page
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import logo from '../../logo.png';
 import { formatCurrency, purchaseOrdersAPI } from '../../services/ApiService/api';
 import './OrderManagementPage.css';
 
@@ -15,6 +16,7 @@ const OrderManagementPage = ({ suppliers }) => {
   const [receiveComment, setReceiveComment] = useState('');
   const [showReceiveModal, setShowReceiveModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [editingOrder, setEditingOrder] = useState(null);
   const [editFormData, setEditFormData] = useState({});
   const [filterStatus, setFilterStatus] = useState('all');
@@ -82,6 +84,36 @@ const OrderManagementPage = ({ suppliers }) => {
       }))
     });
     setShowEditModal(true);
+  };
+
+  const handleViewOrderDetails = (order) => {
+    setSelectedOrder(order);
+    setShowDetailsModal(true);
+  };
+
+  const copyOrderToWhatsApp = (order) => {
+    const orderDetails = `
+Order #${order.order_number || order.id}
+Supplier: ${order.supplier_name}
+Status: ${order.status?.replace('_', ' ')}
+Order Date: ${order.order_date}
+Expected Delivery: ${order.expected_delivery_date || 'Not set'}
+Total Amount: ${formatCurrency(order.total_amount || 0)}
+
+Items:
+${order.items?.map(item =>
+  `- ${item.product_name || item.name}: ${item.quantity} @ ${formatCurrency(item.unit_price)} = ${formatCurrency(item.unit_price * item.quantity)} (Received: ${item.received_quantity || 0})`
+).join('\n')}
+
+${order.notes ? `Notes: ${order.notes}` : ''}
+    `.trim();
+
+    navigator.clipboard.writeText(orderDetails).then(() => {
+      alert('Order details copied to clipboard! You can now paste it into WhatsApp.');
+    }).catch(err => {
+      console.error('Failed to copy: ', err);
+      alert('Failed to copy order details. Please try again.');
+    });
   };
 
   const updateEditFormData = (field, value) => {
@@ -222,7 +254,7 @@ const OrderManagementPage = ({ suppliers }) => {
           </button>
         </div>
         <h1>
-          <i className="fas fa-clipboard-list"></i>
+          <img src={logo} alt="Logo" className="order-management-logo-png" />
           Purchase Order Management
         </h1>
       </div>
@@ -295,7 +327,7 @@ const OrderManagementPage = ({ suppliers }) => {
               </thead>
               <tbody>
                 {filteredOrders.map(order => (
-                  <tr key={order.id}>
+                  <tr key={order.id} onClick={() => handleViewOrderDetails(order)} style={{ cursor: 'pointer' }}>
                     <td>
                       <strong>#{order.order_number || order.id}</strong>
                     </td>
@@ -313,7 +345,7 @@ const OrderManagementPage = ({ suppliers }) => {
                     <td>{order.order_date}</td>
                     <td>{order.expected_delivery_date || 'Not set'}</td>
                     <td>
-                      <div className="table-actions">
+                      <div className="table-actions" onClick={(e) => e.stopPropagation()}>
                         {order.status === 'pending' && (
                           <>
                             <button
@@ -486,6 +518,91 @@ const OrderManagementPage = ({ suppliers }) => {
                 disabled={isLoading || !editFormData.supplier}
               >
                 {isLoading ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Order Details Modal */}
+      {showDetailsModal && selectedOrder && (
+        <div className="modal active">
+          <div className="modal-content modal-large">
+            <div className="modal-header">
+              <h3>Order Details #{selectedOrder.order_number || selectedOrder.id}</h3>
+              <span className="close" onClick={() => setShowDetailsModal(false)}>&times;</span>
+            </div>
+            <div className="modal-body">
+              <div className="order-details-header">
+                <div className="order-info-grid">
+                  <div className="info-item">
+                    <label>Supplier:</label>
+                    <span>{selectedOrder.supplier_name}</span>
+                  </div>
+                  <div className="info-item">
+                    <label>Status:</label>
+                    <span className={`status-badge ${selectedOrder.status?.toLowerCase()}`} style={{ backgroundColor: getStatusColor(selectedOrder.status) }}>
+                      {selectedOrder.status?.replace('_', ' ')}
+                    </span>
+                  </div>
+                  <div className="info-item">
+                    <label>Order Date:</label>
+                    <span>{selectedOrder.order_date}</span>
+                  </div>
+                  <div className="info-item">
+                    <label>Expected Delivery:</label>
+                    <span>{selectedOrder.expected_delivery_date || 'Not set'}</span>
+                  </div>
+                  <div className="info-item">
+                    <label>Total Amount:</label>
+                    <span className="total-amount">{formatCurrency(selectedOrder.total_amount || 0)}</span>
+                  </div>
+                  <div className="info-item">
+                    <label>Items:</label>
+                    <span>{selectedOrder.items?.length || 0} items</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="order-items-section">
+                <h4>Order Items</h4>
+                <table className="order-items-table">
+                  <thead>
+                    <tr>
+                      <th>Product</th>
+                      <th>Quantity</th>
+                      <th>Unit Price</th>
+                      <th>Total</th>
+                      <th>Received</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedOrder.items?.map(item => (
+                      <tr key={item.id}>
+                        <td className="product-name">{item.product_name || item.name}</td>
+                        <td>{item.quantity}</td>
+                        <td>{formatCurrency(item.unit_price)}</td>
+                        <td>{formatCurrency(item.unit_price * item.quantity)}</td>
+                        <td>{item.received_quantity || 0}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {selectedOrder.notes && (
+                <div className="order-notes-section">
+                  <h4>Notes</h4>
+                  <p>{selectedOrder.notes}</p>
+                </div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => copyOrderToWhatsApp(selectedOrder)}>
+                <i className="fab fa-whatsapp"></i> Copy to WhatsApp
+              </button>
+              <button className="btn btn-warning" onClick={() => setShowDetailsModal(false)}>
+                Close
               </button>
             </div>
           </div>

@@ -1,6 +1,7 @@
 import React, { useState, useContext } from 'react';
-import { FiLogIn, FiLock, FiPackage, FiEye, FiEyeOff, FiUser } from 'react-icons/fi';
-import { AuthContext } from '../services/context/authContext' 
+import { FiLogIn, FiLock, FiEye, FiEyeOff, FiUser } from 'react-icons/fi';
+import logo from '../logo.png';
+import { AuthContext } from '../services/context/authContext'
 import '../assets/pagesStyles/LoginPage.css';
 import { useNavigate } from 'react-router-dom';
 
@@ -35,7 +36,7 @@ const LoginPage = () => {
       <div className="stockmaster-login-container">
         <div className="stockmaster-login-branding">
           <div className="stockmaster-logo">
-            <FiPackage size={36} />
+            <img src={logo} alt="Logo" className="login-logo-png" />
             <h1>POS</h1>
           </div>
           <p className="stockmaster-tagline">DecodeX POS</p>

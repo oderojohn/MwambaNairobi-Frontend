@@ -40,6 +40,16 @@
   font-size: 28px;
 }
 
+.order-management-logo-png {
+  width: 2.5rem;
+  height: 2.5rem;
+  background: white;
+  padding: 0.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  object-fit: contain;
+}
+
 .page-header-actions {
   display: flex;
   gap: 10px;

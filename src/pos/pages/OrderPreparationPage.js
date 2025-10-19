@@ -1,6 +1,7 @@
 // OrderPreparationPage.js - Purchase Order Creation Page
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import logo from '../../logo.png';
 import { toNumber, formatCurrency, purchaseOrdersAPI } from '../../services/ApiService/api';
 import './OrderPreparationPage.css';
 
@@ -17,6 +18,8 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
   const [editingOrderId, setEditingOrderId] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [sortBy, setSortBy] = useState('stock');
+  const [savedOrder, setSavedOrder] = useState(null);
+  const [orderSaved, setOrderSaved] = useState(false);
 
   // Check for edit parameter in URL
   React.useEffect(() => {
@@ -83,7 +86,7 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
             : item
         );
       } else {
-        const price = product.cost_price || product.display_price || product.selling_price || product.price || 0;
+        const price = product.cost_price || 0; // Use cost_price as buying price
         return [...prevItems, {
           ...product,
           quantity: 1,
@@ -141,16 +144,18 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
         }))
       };
 
+      let savedOrder;
       if (editingOrderId) {
-        await purchaseOrdersAPI.updatePurchaseOrder(editingOrderId, orderData);
+        savedOrder = await purchaseOrdersAPI.updatePurchaseOrder(editingOrderId, orderData);
         alert('Purchase order updated successfully!');
       } else {
-        await purchaseOrdersAPI.createPurchaseOrder(orderData);
+        savedOrder = await purchaseOrdersAPI.createPurchaseOrder(orderData);
         alert('Purchase order created successfully!');
       }
 
-      clearOrder();
-      navigate('/order-management');
+      // Store the saved order for viewing
+      setSavedOrder(savedOrder);
+      setOrderSaved(true);
     } catch (error) {
       console.error('Error saving purchase order:', error);
       alert('Failed to save purchase order. Please try again.');
@@ -165,6 +170,64 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
     setOrderNotes('');
     setDeliveryDate('');
     setEditingOrderId(null);
+    setSavedOrder(null);
+    setOrderSaved(false);
+  };
+
+  const copyOrderToWhatsApp = (useSavedOrder = false) => {
+    const items = useSavedOrder && savedOrder ? savedOrder.items : orderItems;
+    const supplier = useSavedOrder && savedOrder ? savedOrder.supplier : selectedSupplier;
+    const notes = useSavedOrder && savedOrder ? savedOrder.notes : orderNotes;
+    const delivery = useSavedOrder && savedOrder ? savedOrder.expected_delivery_date : deliveryDate;
+    const orderNumber = useSavedOrder && savedOrder ? savedOrder.order_number : null;
+
+    if (items.length === 0) {
+      alert('No items in the order to copy');
+      return;
+    }
+
+    if (!supplier) {
+      alert('Please select a supplier first');
+      return;
+    }
+
+    let message = `*Purchase Order`;
+    if (orderNumber) message += ` #${orderNumber}`;
+    message += ` for ${supplier.name}*\n\n`;
+    message += `*Order Items:*\n`;
+
+    items.forEach((item, index) => {
+      message += `${index + 1}. ${item.product_name || item.name}\n`;
+      message += `   Quantity: ${item.quantity}\n`;
+      message += `   Unit Price: ${formatCurrency(item.unit_price)}\n`;
+      message += `   Total: ${formatCurrency(item.unit_price * item.quantity)}\n\n`;
+    });
+
+    const total = items.reduce((sum, item) => sum + (toNumber(item.unit_price) * toNumber(item.quantity)), 0);
+    message += `*Total Amount: ${formatCurrency(total)}*\n`;
+
+    if (delivery) {
+      message += `*Expected Delivery: ${new Date(delivery).toLocaleDateString()}*\n`;
+    }
+
+    if (notes) {
+      message += `*Notes: ${notes}*\n`;
+    }
+
+    // Copy to clipboard
+    navigator.clipboard.writeText(message).then(() => {
+      alert('Order details copied to clipboard! You can now paste it in WhatsApp.');
+    }).catch(err => {
+      console.error('Failed to copy: ', err);
+      // Fallback: create a temporary textarea to copy from
+      const textArea = document.createElement('textarea');
+      textArea.value = message;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      alert('Order details copied to clipboard! You can now paste it in WhatsApp.');
+    });
   };
 
   const handleBack = () => {
@@ -387,21 +450,14 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
                   </td>
 
                   <td>
-                    <div className="order-prep-qty-controls">
-                      <button
-                        className="order-prep-qty-btn"
-                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                      >
-                        -
-                      </button>
-                      <span className="order-prep-quantity">{item.quantity}</span>
-                      <button
-                        className="order-prep-qty-btn"
-                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                      >
-                        +
-                      </button>
-                    </div>
+                    <input
+                      type="number"
+                      min="1"
+                      value={item.quantity}
+                      onChange={(e) => updateQuantity(item.id, parseInt(e.target.value) || 1)}
+                      className="order-prep-quantity-input"
+                      style={{ width: '60px', textAlign: 'center' }}
+                    />
                   </td>
 
                   <td className="order-prep-item-total">
@@ -460,6 +516,87 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
     </div>
   );
 
+  const renderSavedOrderDetails = () => {
+    if (!savedOrder) return null;
+
+    return (
+      <div className="order-prep-saved-order-panel">
+        <div className="order-prep-panel-header">
+          <h3>
+            <i className="fas fa-check-circle"></i>
+            Order Saved Successfully
+          </h3>
+          <div className="order-prep-saved-actions">
+            <button
+              className="order-prep-btn order-prep-btn-secondary"
+              onClick={() => copyOrderToWhatsApp(true)}
+            >
+              <i className="fab fa-whatsapp"></i>
+              Copy to WhatsApp
+            </button>
+            <button
+              className="order-prep-btn order-prep-btn-outline"
+              onClick={() => navigate('/order-management')}
+            >
+              <i className="fas fa-list"></i>
+              View All Orders
+            </button>
+          </div>
+        </div>
+
+        <div className="order-prep-saved-order-info">
+          <div className="order-prep-saved-order-header">
+            <div className="order-prep-saved-order-meta">
+              <h4>Order #{savedOrder.order_number || savedOrder.id}</h4>
+              <p>Supplier: {savedOrder.supplier?.name || 'N/A'}</p>
+              <p>Status: <span className={`status-badge ${savedOrder.status?.toLowerCase()}`}>{savedOrder.status}</span></p>
+              <p>Date: {new Date(savedOrder.order_date || savedOrder.created_at).toLocaleDateString()}</p>
+              {savedOrder.expected_delivery_date && (
+                <p>Expected Delivery: {new Date(savedOrder.expected_delivery_date).toLocaleDateString()}</p>
+              )}
+            </div>
+            <div className="order-prep-saved-order-total">
+              <h4>Total: {formatCurrency(savedOrder.total_amount || 0)}</h4>
+            </div>
+          </div>
+
+          <div className="order-prep-saved-order-items">
+            <h4>Order Items</h4>
+            <table className="order-prep-table">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>Quantity</th>
+                  <th>Unit Price</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {savedOrder.items?.map((item, index) => (
+                  <tr key={index}>
+                    <td>{item.product_name || item.name}</td>
+                    <td>{item.quantity}</td>
+                    <td>{formatCurrency(item.unit_price)}</td>
+                    <td>{formatCurrency(item.unit_price * item.quantity)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {savedOrder.notes && (
+            <div className="order-prep-saved-order-notes">
+              <h4>Notes</h4>
+              <p>{savedOrder.notes}</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+
+
 
   return (
     <div className="order-prep-page">
@@ -472,7 +609,7 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
           </button>
 
           <div className="order-prep-header-title">
-            <i className="fas fa-clipboard-list"></i>
+            <img src={logo} alt="Logo" className="order-prep-logo-png" />
             <h1>Create Purchase Order</h1>
           </div>
         </div>
@@ -499,6 +636,7 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
         <div className="order-prep-layout">
           {renderProductsTable()}
           {renderOrderItemsTable()}
+          {orderSaved && savedOrder && renderSavedOrderDetails()}
         </div>
       </main>
 
@@ -512,6 +650,14 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
           >
             <i className="fas fa-times"></i>
             Clear All
+          </button>
+          <button
+            className="order-prep-btn order-prep-btn-secondary"
+            onClick={copyOrderToWhatsApp}
+            disabled={orderItems.length === 0 || !selectedSupplier}
+          >
+            <i className="fab fa-whatsapp"></i>
+            Copy to WhatsApp
           </button>
           <button
             className="order-prep-btn order-prep-btn-primary"

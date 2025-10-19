@@ -1,5 +1,6 @@
 // Header.js
 import React from 'react';
+import logo from '../../logo.png';
 import './Header.css';
 
 const Header = ({ onOpenHeldOrders, onShiftManagement, onPrint, onLogout, onOpenSalesSummary, onOpenOrderPreparation, currentShift, mode, onModeChange, onCustomerLookup, onCustomerClear, selectedCustomer }) => {
@@ -9,7 +10,7 @@ const Header = ({ onOpenHeldOrders, onShiftManagement, onPrint, onLogout, onOpen
       {/* Logo Section */}
       <div className="pos-header__brand">
         <div className="pos-header__logo">
-          <i className="fas fa-cash-register pos-header__logo-icon"></i>
+          <img src={logo} alt="Logo" className="pos-header__logo-png" />
           <span className="pos-header__logo-text">ModernPOS</span>
         </div>
         <span className={`pos-header__mode-indicator pos-header__mode-indicator--${mode}`}>
