@@ -286,7 +286,7 @@ const ReportingPage = () => {
   useEffect(() => {
     // Initial load or when tab changes
     generateReports();
-  }, [activeTab]); // Only depend on activeTab
+  }, [activeTab, generateReports]); // Include generateReports in dependencies
 
   const exportReport = (reportType) => {
     try {
