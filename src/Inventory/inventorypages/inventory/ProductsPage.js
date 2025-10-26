@@ -12,7 +12,9 @@ const ProductsPage = () => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [addMode, setAddMode] = useState('single'); // 'single' or 'bulk'
   const [editingId, setEditingId] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState(false);
   const [error, setError] = useState('');
   const [products, setProducts] = useState([
     { 
@@ -218,9 +220,32 @@ const ProductsPage = () => {
         is_active: true
       });
       setShowAddForm(false);
+
+      // Show success message
+      if (window.Swal) {
+        window.Swal.fire({
+          icon: 'success',
+          title: 'Success',
+          text: 'Product created successfully!',
+          timer: 2000,
+          showConfirmButton: false
+        });
+      } else {
+        alert('Product created successfully!');
+      }
     } catch (err) {
       console.error('Error creating product:', err);
       setError('Failed to create product');
+      // Show error message
+      if (window.Swal) {
+        window.Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Failed to create product. Please try again.'
+        });
+      } else {
+        alert('Failed to create product. Please try again.');
+      }
     }
   };
 
@@ -321,13 +346,18 @@ const ProductsPage = () => {
       description: product.description || '',
       is_active: product.is_active !== undefined ? product.is_active : true
     });
+    setShowEditModal(true);
   };
 
+  // eslint-disable-next-line no-unused-vars
   const cancelEditing = () => {
     setEditingId(null);
+    setShowEditModal(false);
   };
 
-  const saveEditedProduct = async () => {
+  const saveEditedProduct = async (e) => {
+    e.preventDefault();
+    setUpdating(true);
     try {
       const productData = {
         name: editProduct.name,
@@ -351,9 +381,49 @@ const ProductsPage = () => {
       const response = await inventoryAPI.getProducts();
       setProducts(response || []);
       setEditingId(null);
+      setShowEditModal(false);
+      setEditProduct({
+        sku: '',
+        name: '',
+        serial_number: '',
+        category: '',
+        cost_price: 0,
+        selling_price: 0,
+        wholesale_price: 0,
+        wholesale_min_qty: 10,
+        stock_quantity: 0,
+        low_stock_threshold: 10,
+        barcode: '',
+        description: '',
+        is_active: true
+      });
+      // Show success message
+      if (typeof window.Swal !== 'undefined') {
+        window.Swal.fire({
+          icon: 'success',
+          title: 'Success',
+          text: 'Product updated successfully!',
+          timer: 2000,
+          showConfirmButton: false
+        });
+      } else {
+        // Fallback to console.log if Swal is not available
+        console.log('Product updated successfully!');
+      }
     } catch (err) {
-      console.error('Error updating product:', err);
-      setError('Failed to update product');
+      // Use Swal if available, fallback to alert
+      if (typeof window.Swal !== 'undefined') {
+        window.Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Failed to update product. Please try again.'
+        });
+      } else {
+        // Fallback to console.error if Swal is not available
+        console.error('Failed to update product. Please try again.');
+      }
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -779,6 +849,7 @@ const ProductsPage = () => {
                   <th>ID</th>
                   <th>Product Name</th>
                   <th>SKU</th>
+                  <th>Buying Price</th>
                   <th>Category</th>
                   <th>Selling Price</th>
                   <th>Wholesale Price</th>
@@ -792,87 +863,13 @@ const ProductsPage = () => {
                 {filteredProducts.map(product => (
                   <tr key={product.id}>
                     <td>{product.id}</td>
-                    <td>
-                      {editingId === product.id ? (
-                        <input
-                          type="text"
-                          name="name"
-                          value={editProduct.name}
-                          onChange={handleEditInputChange}
-                        />
-                      ) : (
-                        product.name
-                      )}
-                    </td>
-                    <td>
-                      {editingId === product.id ? (
-                        <input
-                          type="text"
-                          name="sku"
-                          value={editProduct.sku}
-                          onChange={handleEditInputChange}
-                        />
-                      ) : (
-                        product.sku
-                      )}
-                    </td>
-                    <td>
-                      {editingId === product.id ? (
-                        <select
-                          name="category"
-                          value={editProduct.category}
-                          onChange={handleEditInputChange}
-                        >
-                          <option value="">Select Category</option>
-                          {categories.filter(cat => cat.id !== 'all').map(category => (
-                            <option key={category.id} value={category.name}>{category.name}</option>
-                          ))}
-                        </select>
-                      ) : (
-                        product.category_name || 'N/A'
-                      )}
-                    </td>
-                    <td>
-                      {editingId === product.id ? (
-                        <input
-                          type="number"
-                          name="selling_price"
-                          value={editProduct.selling_price}
-                          onChange={handleEditInputChange}
-                          min="0"
-                          step="0.01"
-                        />
-                      ) : (
-                        `Ksh${(Number(product.selling_price) || 0).toFixed(2)}`
-                      )}
-                    </td>
-                    <td>
-                      {editingId === product.id ? (
-                        <input
-                          type="number"
-                          name="wholesale_price"
-                          value={editProduct.wholesale_price}
-                          onChange={handleEditInputChange}
-                          min="0"
-                          step="0.01"
-                        />
-                      ) : (
-                        product.wholesale_price ? `Ksh${(Number(product.wholesale_price) || 0).toFixed(2)}` : 'N/A'
-                      )}
-                    </td>
-                    <td>
-                      {editingId === product.id ? (
-                        <input
-                          type="number"
-                          name="stock_quantity"
-                          value={editProduct.stock_quantity}
-                          onChange={handleEditInputChange}
-                          min="0"
-                        />
-                      ) : (
-                        product.stock_quantity
-                      )}
-                    </td>
+                    <td>{product.name}</td>
+                    <td>{product.sku}</td>
+                    <td>{`Ksh${(Number(product.cost_price) || 0).toFixed(2)}`}</td>
+                    <td>{product.category_name || 'N/A'}</td>
+                    <td>{`Ksh${(Number(product.selling_price) || 0).toFixed(2)}`}</td>
+                    <td>{product.wholesale_price ? `Ksh${(Number(product.wholesale_price) || 0).toFixed(2)}` : 'N/A'}</td>
+                    <td>{product.stock_quantity}</td>
                     <td>
                       <span className={`status-badge ${product.stock_quantity <= product.low_stock_threshold ? 'low-stock' : 'in-stock'}`}>
                         {product.stock_quantity <= product.low_stock_threshold ? 'Low Stock' : 'In Stock'}
@@ -882,41 +879,22 @@ const ProductsPage = () => {
                       {product.created_at ? new Date(product.created_at).toLocaleDateString() : 'N/A'}
                     </td>
                     <td>
-                      {editingId === product.id ? (
-                        <div className="action-buttons">
-                          <button
-                            className="btn-icon success"
-                            onClick={saveEditedProduct}
-                            title="Save"
-                          >
-                            <FiCheck />
-                          </button>
-                          <button
-                            className="btn-icon danger"
-                            onClick={cancelEditing}
-                            title="Cancel"
-                          >
-                            <FiX />
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="action-buttons">
-                          <button
-                            className="btn-icon"
-                            onClick={() => startEditing(product)}
-                            title="Edit"
-                          >
-                            <FiEdit />
-                          </button>
-                          <button
-                            className="btn-icon danger"
-                            onClick={() => deleteProduct(product.id)}
-                            title="Delete"
-                          >
-                            <FiTrash2 />
-                          </button>
-                        </div>
-                      )}
+                      <div className="action-buttons">
+                        <button
+                          className="btn-icon"
+                          onClick={() => startEditing(product)}
+                          title="Edit"
+                        >
+                          <FiEdit />
+                        </button>
+                        <button
+                          className="btn-icon danger"
+                          onClick={() => deleteProduct(product.id)}
+                          title="Delete"
+                        >
+                          <FiTrash2 />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -935,6 +913,243 @@ const ProductsPage = () => {
             </div>
           </div>
         </>
+      )}
+
+      {showEditModal && (
+        <div className="modal-overlay active">
+          <div className="modal-container form-animate">
+            <div className="modal-header">
+              <h3 className="modal-title">Edit Product</h3>
+              <button
+                className="modal-close"
+                onClick={() => {
+                  setShowEditModal(false);
+                  setEditProduct({
+                    sku: '',
+                    name: '',
+                    serial_number: '',
+                    category: '',
+                    cost_price: 0,
+                    selling_price: 0,
+                    wholesale_price: 0,
+                    wholesale_min_qty: 10,
+                    stock_quantity: 0,
+                    low_stock_threshold: 10,
+                    barcode: '',
+                    description: '',
+                    is_active: true
+                  });
+                }}
+              >
+                <FiX />
+              </button>
+            </div>
+            <form onSubmit={saveEditedProduct} className="product-form">
+              <div className="modal-body">
+                <div className="form-grid two-column">
+                  <div className="form-group">
+                    <label>SKU*</label>
+                    <input
+                      type="text"
+                      name="sku"
+                      value={editProduct.sku}
+                      onChange={handleEditInputChange}
+                      placeholder="e.g. ALC-001"
+                      required
+                    />
+                  </div>
+  
+                  <div className="form-group">
+                    <label>Product Name*</label>
+                    <input
+                      type="text"
+                      name="name"
+                      value={editProduct.name}
+                      onChange={handleEditInputChange}
+                      placeholder="e.g. Whiskey - Jack Daniels"
+                      required
+                    />
+                  </div>
+  
+                  <div className="form-group">
+                    <label>Serial Number</label>
+                    <input
+                      type="text"
+                      name="serial_number"
+                      value={editProduct.serial_number}
+                      onChange={handleEditInputChange}
+                      placeholder="Serial number"
+                    />
+                  </div>
+  
+                  <div className="form-group">
+                    <label>Category</label>
+                    <select
+                      name="category"
+                      value={editProduct.category}
+                      onChange={handleEditInputChange}
+                    >
+                      <option value="">Select Category</option>
+                      {categories.filter(cat => cat.id !== 'all').map(category => (
+                        <option key={category.id} value={category.name}>{category.name}</option>
+                      ))}
+                    </select>
+                  </div>
+  
+                  <div className="form-group">
+                    <label>Buying Price (Ksh)</label>
+                    <input
+                      type="number"
+                      name="cost_price"
+                      value={editProduct.cost_price}
+                      onChange={handleEditInputChange}
+                      placeholder="0.00"
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+  
+                  <div className="form-group">
+                    <label>Selling Price (Ksh)</label>
+                    <input
+                      type="number"
+                      name="selling_price"
+                      value={editProduct.selling_price}
+                      onChange={handleEditInputChange}
+                      placeholder="0.00"
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+  
+                  <div className="form-group">
+                    <label>Wholesale Price (Ksh)</label>
+                    <input
+                      type="number"
+                      name="wholesale_price"
+                      value={editProduct.wholesale_price}
+                      onChange={handleEditInputChange}
+                      placeholder="0.00"
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+  
+                  <div className="form-group">
+                    <label>Wholesale Min Qty</label>
+                    <input
+                      type="number"
+                      name="wholesale_min_qty"
+                      value={editProduct.wholesale_min_qty}
+                      onChange={handleEditInputChange}
+                      placeholder="10"
+                      min="1"
+                    />
+                  </div>
+  
+                  <div className="form-group">
+                    <label>Stock Quantity</label>
+                    <input
+                      type="number"
+                      name="stock_quantity"
+                      value={editProduct.stock_quantity}
+                      onChange={handleEditInputChange}
+                      placeholder="0"
+                      min="0"
+                    />
+                  </div>
+  
+                  <div className="form-group">
+                    <label>Low Stock Threshold</label>
+                    <input
+                      type="number"
+                      name="low_stock_threshold"
+                      value={editProduct.low_stock_threshold}
+                      onChange={handleEditInputChange}
+                      placeholder="10"
+                      min="0"
+                    />
+                  </div>
+  
+                  <div className="form-group">
+                    <label>Barcode</label>
+                    <input
+                      type="text"
+                      name="barcode"
+                      value={editProduct.barcode}
+                      onChange={handleEditInputChange}
+                      placeholder="Barcode number"
+                    />
+                  </div>
+  
+                  <div className="form-group">
+                    <label>Description</label>
+                    <textarea
+                      name="description"
+                      value={editProduct.description}
+                      onChange={handleEditInputChange}
+                      placeholder="Product description"
+                      rows="3"
+                    />
+                  </div>
+  
+                  <div className="form-group full-width">
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <input
+                        type="checkbox"
+                        name="is_active"
+                        checked={editProduct.is_active}
+                        onChange={(e) => setEditProduct(prev => ({ ...prev, is_active: e.target.checked }))}
+                      />
+                      Is Active
+                    </label>
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setEditProduct({
+                      sku: '',
+                      name: '',
+                      serial_number: '',
+                      category: '',
+                      cost_price: 0,
+                      selling_price: 0,
+                      wholesale_price: 0,
+                      wholesale_min_qty: 10,
+                      stock_quantity: 0,
+                      low_stock_threshold: 10,
+                      barcode: '',
+                      description: '',
+                      is_active: true
+                    });
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={!editProduct.name || !editProduct.sku || updating}
+                >
+                  {updating ? (
+                    <>
+                      <div className="spinner-small"></div> Updating...
+                    </>
+                  ) : (
+                    <>
+                      <FiCheck /> Update Product
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );
