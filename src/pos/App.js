@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import Swal from 'sweetalert2';
 import Header from './components/Header';
 import ProductGrid from './components/ProductGrid';
 import ShoppingCart from './components/ShoppingCart';
@@ -45,6 +46,7 @@ function PosApp() {
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState('retail');
   const [showErrorModal, setShowErrorModal] = useState(false);
+  // eslint-disable-next-line no-unused-vars
   const [errorDetails, setErrorDetails] = useState({ title: '', message: '', details: '', errors: [] });
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [receiptData, setReceiptData] = useState(null);
@@ -132,7 +134,19 @@ function PosApp() {
       }
     } catch (error) {
       console.error('Error fetching data:', error);
-      showError('Data Loading Error', 'Failed to load application data. Please refresh the page.', [], error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Data Loading Error',
+        text: 'Failed to load application data. Please refresh the page.',
+        zIndex: 10000,
+        confirmButtonText: 'Refresh',
+        showCancelButton: true,
+        cancelButtonText: 'Cancel'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          window.location.reload();
+        }
+      });
     } finally {
       setLoading(false);
     }
@@ -153,10 +167,17 @@ function PosApp() {
 
     // Clear cart when switching modes
     if (cart.length > 0) {
-      const confirmSwitch = window.confirm(
-        `Switching to ${newMode} mode will clear your current cart. Continue?`
-      );
-      if (!confirmSwitch) return;
+      const result = await Swal.fire({
+        title: 'Switch Mode',
+        text: `Switching to ${newMode} mode will clear your current cart. Continue?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, switch',
+        cancelButtonText: 'Cancel',
+        zIndex: 10000
+      });
+
+      if (!result.isConfirmed) return;
       setCart([]);
     }
 
@@ -210,15 +231,8 @@ function PosApp() {
             : item
         );
       } else {
-        // For new items, use minimum wholesale quantity in wholesale mode
+        // For new items, always use minimum quantity of 1
         let initialQuantity = 1;
-        if (mode === 'wholesale') {
-          if (selectedCustomer) {
-            initialQuantity = 1;
-          } else {
-            initialQuantity = product.wholesale_min_qty || 10;
-          }
-        }
 
         // Check if initial quantity exceeds stock
         if (initialQuantity > product.stock_quantity) {
@@ -245,13 +259,10 @@ function PosApp() {
 
       const newQuantity = item.quantity + change;
       
-      // Validate minimum quantity based on mode
-      if (mode === 'wholesale' && !selectedCustomer) {
-        const minQty = item.wholesale_min_qty || 10;
-        if (newQuantity < minQty && newQuantity > 0) {
-          showError('Minimum Quantity', `Minimum wholesale quantity for "${item.name}" is ${minQty}.`);
-          return prevCart;
-        }
+      // Validate minimum quantity - always 1
+      if (newQuantity < 1 && newQuantity > 0) {
+        showError('Minimum Quantity', `Minimum quantity for "${item.name}" is 1.`);
+        return prevCart;
       }
 
       if (newQuantity <= 0) {
@@ -299,7 +310,12 @@ function PosApp() {
       setShowShiftModal(false);
     } catch (error) {
       console.error('Error starting shift:', error);
-      showError('Shift Start Failed', 'Failed to start shift. Please try again.', [], error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Shift Start Failed',
+        text: 'Failed to start shift. Please try again.',
+        zIndex: 10000
+      });
     }
   };
 
@@ -353,7 +369,12 @@ function PosApp() {
       alert(message);
     } catch (error) {
       console.error('Error ending shift:', error);
-      showError('Shift End Failed', 'Failed to end shift. Please try again.', [], error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Shift End Failed',
+        text: 'Failed to end shift. Please try again.',
+        zIndex: 10000
+      });
     }
   };
 
@@ -364,20 +385,52 @@ function PosApp() {
       // Validate cart
       const cartErrors = validateCartForSale(cart, mode, selectedCustomer);
       if (cartErrors.length > 0) {
-        showError('Cart Validation Failed', 'Please fix the following issues before proceeding:', cartErrors);
+        Swal.fire({
+          icon: 'error',
+          title: 'Cart Validation Failed',
+          text: 'Please fix the following issues before proceeding:\n\n' + cartErrors.join('\n'),
+          zIndex: 10000
+        });
         return;
       }
 
       // Validate payment data
       const paymentErrors = validatePaymentData(paymentData, total);
       if (paymentErrors.length > 0) {
-        showError('Payment Validation Failed', 'Please fix the following payment issues:', paymentErrors);
+        Swal.fire({
+          icon: 'error',
+          title: 'Payment Validation Failed',
+          text: 'Please fix the following payment issues:\n\n' + paymentErrors.join('\n'),
+          zIndex: 10000
+        });
         return;
       }
+
+      // Show loading Swal in upper left
+      const loadingSwal = Swal.fire({
+        title: 'Processing Payment...',
+        text: 'Please wait while we process your payment',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        zIndex: 99999,
+        position: 'top-start',
+        toast: true,
+        showClass: {
+          popup: 'animate__animated animate__fadeInLeft'
+        },
+        hideClass: {
+          popup: 'animate__animated animate__fadeOutLeft'
+        },
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
 
       // Check if this is a held order being completed
       if (currentHeldOrderId) {
         await completeHeldOrder(currentHeldOrderId, paymentData);
+        loadingSwal.close();
         return;
       }
 
@@ -431,7 +484,13 @@ function PosApp() {
 
       // Validate sale ID
       if (!sale.id) {
-        showError('Invalid Sale', 'Sale was created but no sale ID was returned.');
+        loadingSwal.close();
+        Swal.fire({
+          icon: 'error',
+          title: 'Invalid Sale',
+          text: 'Sale was created but no sale ID was returned.',
+          zIndex: 10000
+        });
         return;
       }
 
@@ -449,6 +508,8 @@ function PosApp() {
 
       // Refresh shift data to update totals
       await refreshShiftData();
+
+      loadingSwal.close();
 
       // Prepare receipt data
       const receiptInfo = {
@@ -471,7 +532,10 @@ function PosApp() {
       setSelectedCustomer(null);
     } catch (error) {
       console.error('Error processing payment:', error);
-      
+
+      // Close loading if it's still open
+      Swal.close();
+
       if (error.response?.data) {
         let errorMessage = 'Payment processing failed. Please try again.';
         let errorList = [];
@@ -487,18 +551,38 @@ function PosApp() {
           errorMessage = error.response.data;
         }
 
-        showError('Payment Failed', errorMessage, errorList, error.response.data);
+        Swal.fire({
+          icon: 'error',
+          title: 'Payment Failed',
+          text: errorMessage + (errorList.length > 0 ? '\n\nDetails:\n' + errorList.join('\n') : ''),
+          zIndex: 10000
+        });
       } else if (error.message) {
         if (error.message.includes('Session expired')) {
-          showError('Session Expired', 'Your session has expired. Please login again.');
+          Swal.fire({
+            icon: 'error',
+            title: 'Session Expired',
+            text: 'Your session has expired. Please login again.',
+            zIndex: 10000
+          });
           setTimeout(() => {
             window.location.href = '/login';
           }, 2000);
         } else {
-          showError('Payment Error', error.message, [], error);
+          Swal.fire({
+            icon: 'error',
+            title: 'Payment Error',
+            text: error.message,
+            zIndex: 10000
+          });
         }
       } else {
-        showError('Connection Error', 'Payment processing failed. Please check your connection and try again.');
+        Swal.fire({
+          icon: 'error',
+          title: 'Connection Error',
+          text: 'Payment processing failed. Please check your connection and try again.',
+          zIndex: 10000
+        });
       }
     }
   };
@@ -510,9 +594,27 @@ function PosApp() {
       // Validate cart before holding
       const cartErrors = validateCartForSale(cart, mode, selectedCustomer);
       if (cartErrors.length > 0) {
-        showError('Cannot Hold Order', 'Please fix the following issues before holding the order:', cartErrors);
+        Swal.fire({
+          icon: 'error',
+          title: 'Cannot Hold Order',
+          text: 'Please fix the following issues before holding the order:\n\n' + cartErrors.join('\n'),
+          zIndex: 10000
+        });
         return;
       }
+
+      // Show loading Swal
+      const loadingSwal = Swal.fire({
+        title: 'Holding Order...',
+        text: 'Please wait while we save your order',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        zIndex: 10000,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
 
       // Prepare cart data for backend with hold_order flag
       const cartData = {
@@ -537,14 +639,26 @@ function PosApp() {
       const heldCart = await salesAPI.createSale(cartData);
       console.log('Order held successfully:', heldCart);
 
+      loadingSwal.close();
+
       // Clear cart and customer
       setCart([]);
       setSelectedCustomer(null);
       setCurrentHeldOrderId(null);
 
-      alert('Order held successfully! You can retrieve it later to complete payment.');
+      Swal.fire({
+        icon: 'success',
+        title: 'Order Held',
+        text: 'Order held successfully! You can retrieve it later to complete payment.',
+        timer: 2000,
+        showConfirmButton: false,
+        zIndex: 10000
+      });
     } catch (error) {
       console.error('Error holding order:', error);
+
+      // Close loading if it's still open
+      Swal.close();
 
       if (error.response?.data) {
         let errorMessage = 'Failed to hold order.';
@@ -561,9 +675,19 @@ function PosApp() {
           errorMessage = error.response.data;
         }
 
-        showError('Hold Order Failed', errorMessage, errorList, error.response.data);
+        Swal.fire({
+          icon: 'error',
+          title: 'Hold Order Failed',
+          text: errorMessage + (errorList.length > 0 ? '\n\nDetails:\n' + errorList.join('\n') : ''),
+          zIndex: 10000
+        });
       } else {
-        showError('Hold Order Error', error.message || 'Error holding order. Please try again.');
+        Swal.fire({
+          icon: 'error',
+          title: 'Hold Order Error',
+          text: error.message || 'Error holding order. Please try again.',
+          zIndex: 10000
+        });
       }
     }
   };
@@ -594,7 +718,12 @@ function PosApp() {
       setShowChitModal(false);
     } catch (error) {
       console.error('Error loading chit:', error);
-      showError('Chit Loading Failed', error.message || 'Error loading chit. Please try again.');
+      Swal.fire({
+        icon: 'error',
+        title: 'Chit Loading Failed',
+        text: error.message || 'Error loading chit. Please try again.',
+        zIndex: 10000
+      });
     }
   };
 
@@ -605,7 +734,12 @@ function PosApp() {
     } catch (error) {
       console.error('Error fetching held orders:', error);
       setHeldOrders([]);
-      showError('Held Orders Error', 'Failed to load held orders. Please try again.');
+      Swal.fire({
+        icon: 'error',
+        title: 'Held Orders Error',
+        text: 'Failed to load held orders. Please try again.',
+        zIndex: 10000
+      });
     }
   };
 
@@ -621,7 +755,12 @@ function PosApp() {
 
       // Validate held order data
       if (!heldOrder || !heldOrder.items || heldOrder.items.length === 0) {
-        showError('Invalid Held Order', 'Held order has no items or is invalid.');
+        Swal.fire({
+          icon: 'error',
+          title: 'Invalid Held Order',
+          text: 'Held order has no items or is invalid.',
+          zIndex: 10000
+        });
         return;
       }
 
@@ -689,7 +828,12 @@ function PosApp() {
       }, 100);
     } catch (error) {
       console.error('Error loading held order for payment:', error);
-      showError('Held Order Loading Failed', error.message || 'Error loading held order. Please try again.');
+      Swal.fire({
+        icon: 'error',
+        title: 'Held Order Loading Failed',
+        text: error.message || 'Error loading held order. Please try again.',
+        zIndex: 10000
+      });
     }
   };
 
@@ -809,10 +953,20 @@ function PosApp() {
   const saveOrderPreparation = async (orderData) => {
     try {
       console.log('Saving order preparation:', orderData);
-      alert(`Order prepared successfully!\n\nItems: ${orderData.items.length}\nTotal: ${formatCurrency(orderData.total_amount)}\nCustomer: ${orderData.customer ? 'Assigned' : 'Walk-in'}`);
+      Swal.fire({
+        icon: 'success',
+        title: 'Order Prepared Successfully!',
+        text: `Items: ${orderData.items.length}\nTotal: ${formatCurrency(orderData.total_amount)}\nCustomer: ${orderData.customer ? 'Assigned' : 'Walk-in'}`,
+        zIndex: 10000
+      });
     } catch (error) {
       console.error('Error saving order preparation:', error);
-      showError('Order Preparation Failed', 'Failed to save order preparation. Please try again.');
+      Swal.fire({
+        icon: 'error',
+        title: 'Order Preparation Failed',
+        text: 'Failed to save order preparation. Please try again.',
+        zIndex: 10000
+      });
     }
   };
 
@@ -909,8 +1063,22 @@ function PosApp() {
   };
 
   const showError = (title, message, errors = [], details = '') => {
-    setErrorDetails({ title, message, errors, details });
-    setShowErrorModal(true);
+    // Use Swal for all errors instead of the custom ErrorModal
+    let fullMessage = message;
+    if (errors && errors.length > 0) {
+      fullMessage += '\n\nDetails:\n' + errors.join('\n');
+    }
+    if (details) {
+      fullMessage += '\n\nTechnical Details: ' + (typeof details === 'string' ? details : JSON.stringify(details, null, 2));
+    }
+
+    Swal.fire({
+      icon: 'error',
+      title: title,
+      text: fullMessage,
+      zIndex: 10000,
+      confirmButtonText: 'OK'
+    });
   };
 
   const subtotal = cart.reduce((sum, item) => sum + (toNumber(item.price) * toNumber(item.quantity)), 0);

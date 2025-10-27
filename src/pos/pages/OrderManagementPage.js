@@ -1,6 +1,7 @@
 // OrderManagementPage.js - Purchase Order Management Page
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Swal from 'sweetalert2';
 import logo from '../../logo.png';
 import { formatCurrency, purchaseOrdersAPI } from '../../services/ApiService/api';
 import './OrderManagementPage.css';
@@ -45,10 +46,22 @@ const OrderManagementPage = ({ suppliers }) => {
       setIsLoading(true);
       await purchaseOrdersAPI.updatePurchaseOrder(orderId, { status: newStatus });
       await loadOrders(); // Reload to reflect changes
-      alert(`Order status updated successfully.`);
+      Swal.fire({
+        icon: 'success',
+        title: 'Status Updated!',
+        text: `Order status updated to ${newStatus.replace('_', ' ')} successfully.`,
+        timer: 2000,
+        showConfirmButton: false,
+        zIndex: 10000
+      });
     } catch (error) {
       console.error('Error updating order status:', error);
-      alert('Failed to update order status. Please try again.');
+      Swal.fire({
+        icon: 'error',
+        title: 'Update Failed',
+        text: 'Failed to update order status. Please try again.',
+        zIndex: 10000
+      });
     } finally {
       setIsLoading(false);
     }
@@ -109,10 +122,22 @@ ${order.notes ? `Notes: ${order.notes}` : ''}
     `.trim();
 
     navigator.clipboard.writeText(orderDetails).then(() => {
-      alert('Order details copied to clipboard! You can now paste it into WhatsApp.');
+      Swal.fire({
+        icon: 'success',
+        title: 'Copied!',
+        text: 'Order details copied to clipboard! You can now paste it into WhatsApp.',
+        timer: 2000,
+        showConfirmButton: false,
+        zIndex: 10000
+      });
     }).catch(err => {
       console.error('Failed to copy: ', err);
-      alert('Failed to copy order details. Please try again.');
+      Swal.fire({
+        icon: 'error',
+        title: 'Copy Failed',
+        text: 'Failed to copy order details. Please try again.',
+        zIndex: 10000
+      });
     });
   };
 
@@ -149,13 +174,25 @@ ${order.notes ? `Notes: ${order.notes}` : ''}
       };
 
       await purchaseOrdersAPI.updatePurchaseOrder(editingOrder.id, orderData);
-      alert('Order updated successfully!');
+      Swal.fire({
+        icon: 'success',
+        title: 'Order Updated!',
+        text: 'Purchase order has been updated successfully.',
+        timer: 2000,
+        showConfirmButton: false,
+        zIndex: 10000
+      });
       setShowEditModal(false);
       setEditingOrder(null);
       await loadOrders();
     } catch (error) {
       console.error('Error updating order:', error);
-      alert('Failed to update order. Please try again.');
+      Swal.fire({
+        icon: 'error',
+        title: 'Update Failed',
+        text: 'Failed to update order. Please try again.',
+        zIndex: 10000
+      });
     } finally {
       setIsLoading(false);
     }
@@ -208,13 +245,25 @@ ${order.notes ? `Notes: ${order.notes}` : ''}
         });
       }
 
-      alert('Order received successfully! Stock has been updated.');
+      Swal.fire({
+        icon: 'success',
+        title: 'Order Received!',
+        text: 'Order received successfully! Stock has been updated.',
+        timer: 2000,
+        showConfirmButton: false,
+        zIndex: 10000
+      });
       setShowReceiveModal(false);
       setSelectedOrder(null);
       await loadOrders();
     } catch (error) {
       console.error('Error receiving order:', error);
-      alert('Failed to receive order. Please try again.');
+      Swal.fire({
+        icon: 'error',
+        title: 'Receive Failed',
+        text: 'Failed to receive order. Please try again.',
+        zIndex: 10000
+      });
     } finally {
       setIsLoading(false);
     }

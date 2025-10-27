@@ -5,6 +5,7 @@ const PaymentModal = ({ isOpen, onClose, onProcessPayment, totalAmount, selected
   console.log('PaymentModal render - isOpen:', isOpen, 'totalAmount:', totalAmount, 'type:', typeof totalAmount);
 
   const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Set initial method when modal opens
   React.useEffect(() => {
@@ -33,13 +34,15 @@ const PaymentModal = ({ isOpen, onClose, onProcessPayment, totalAmount, selected
     setCashAmount(amount);
   };
 
-  const handlePayment = () => {
+  const handlePayment = async () => {
+    // Prevent multiple clicks
+    if (isProcessing) return;
+
     // Validate required fields based on payment method
     if (paymentMethod === 'mpesa' && !mpesaNumber.trim()) {
       alert('Please enter M-Pesa phone number');
       return;
     }
-
 
     if (paymentMethod === 'cash' && !cashAmount) {
       alert('Please enter cash amount received');
@@ -56,19 +59,28 @@ const PaymentModal = ({ isOpen, onClose, onProcessPayment, totalAmount, selected
       }
     }
 
-    const paymentData = {
-      method: paymentMethod,
-      amount: totalAmount,
-      transactionId: transactionId.trim() || null,
-      // Additional data based on payment method
-      ...(paymentMethod === 'mpesa' && { mpesaNumber: mpesaNumber.trim() }),
-      ...(paymentMethod === 'cash' && {
-        cashReceived: parseFloat(cashAmount),
-        change: change
-      })
-    };
+    // Set processing state
+    setIsProcessing(true);
 
-    onProcessPayment(paymentData);
+    try {
+      const paymentData = {
+        method: paymentMethod,
+        amount: totalAmount,
+        transactionId: transactionId.trim() || null,
+        // Additional data based on payment method
+        ...(paymentMethod === 'mpesa' && { mpesaNumber: mpesaNumber.trim() }),
+        ...(paymentMethod === 'cash' && {
+          cashReceived: parseFloat(cashAmount),
+          change: change
+        })
+      };
+
+      await onProcessPayment(paymentData);
+    } catch (error) {
+      console.error('Payment processing error:', error);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -180,11 +192,15 @@ const PaymentModal = ({ isOpen, onClose, onProcessPayment, totalAmount, selected
           </div>
 
           <div className="modal-footer">
-            <button className="btn btn-warning" onClick={onClose}>
+            <button className="btn btn-warning" onClick={onClose} disabled={isProcessing}>
               Cancel
             </button>
-            <button className="btn btn-success" onClick={handlePayment}>
-              Confirm Payment
+            <button
+              className="btn btn-success"
+              onClick={handlePayment}
+              disabled={isProcessing}
+            >
+              {isProcessing ? 'Processing...' : 'Confirm Payment'}
             </button>
           </div>
         </div>

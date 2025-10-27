@@ -252,6 +252,7 @@
 .pos-products-grid__product-body {
   flex: 1;
   margin-bottom: 0.75rem;
+  min-height: 0; /* Allow flex item to shrink below content size */
 }
 
 .pos-products-grid__product-name {
@@ -261,9 +262,10 @@
   margin: 0 0 0.25rem 0;
   line-height: 1.3;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  max-height: 2.6rem; /* 2 lines * 1.3 line-height * 1rem font-size */
 }
 
 .pos-products-grid__product-category {
@@ -274,8 +276,10 @@
 
 .pos-products-grid__product-footer {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
+  margin-top: auto;
+  flex-shrink: 0;
 }
 
 .pos-products-grid__product-price {

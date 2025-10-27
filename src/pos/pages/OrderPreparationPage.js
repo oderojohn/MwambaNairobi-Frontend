@@ -1,6 +1,7 @@
 // OrderPreparationPage.js - Purchase Order Creation Page
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Swal from 'sweetalert2';
 import logo from '../../logo.png';
 import { toNumber, formatCurrency, purchaseOrdersAPI } from '../../services/ApiService/api';
 import './OrderPreparationPage.css';
@@ -131,6 +132,19 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
       return;
     }
 
+    // Show loading Swal
+    const loadingSwal = Swal.fire({
+      title: 'Creating Purchase Order...',
+      text: 'Please wait while we process your order',
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      showConfirmButton: false,
+      zIndex: 10000,
+      didOpen: () => {
+        Swal.showLoading();
+      }
+    });
+
     try {
       setIsLoading(true);
       const orderData = {
@@ -147,10 +161,28 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
       let savedOrder;
       if (editingOrderId) {
         savedOrder = await purchaseOrdersAPI.updatePurchaseOrder(editingOrderId, orderData);
-        alert('Purchase order updated successfully!');
+        loadingSwal.close();
+        // Show success message
+        Swal.fire({
+          icon: 'success',
+          title: 'Order Updated!',
+          text: 'Purchase order has been updated successfully.',
+          timer: 2000,
+          showConfirmButton: false,
+          zIndex: 10000
+        });
       } else {
         savedOrder = await purchaseOrdersAPI.createPurchaseOrder(orderData);
-        alert('Purchase order created successfully!');
+        loadingSwal.close();
+        // Show success message
+        Swal.fire({
+          icon: 'success',
+          title: 'Order Created!',
+          text: 'Purchase order has been created successfully.',
+          timer: 2000,
+          showConfirmButton: false,
+          zIndex: 10000
+        });
       }
 
       // Store the saved order for viewing
@@ -158,7 +190,14 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
       setOrderSaved(true);
     } catch (error) {
       console.error('Error saving purchase order:', error);
-      alert('Failed to save purchase order. Please try again.');
+      loadingSwal.close();
+      // Show error message
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Failed to save purchase order. Please try again.',
+        zIndex: 10000
+      });
     } finally {
       setIsLoading(false);
     }

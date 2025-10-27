@@ -1,5 +1,5 @@
 // api.js
-const API_BASE_URL = 'https://pos-iota-five.vercel.app';
+const API_BASE_URL = 'http://127.0.0.1:8001';
 
 // Utility function to safely convert values to numbers
 export const toNumber = (value) => {
@@ -325,6 +325,15 @@ export const salesAPI = {
       return result;
     } catch (error) {
       console.error('Error in salesAPI.voidHeldOrder:', error);
+      throw error;
+    }
+  },
+  holdOrder: async (saleData) => {
+    try {
+      console.log('Holding order with data:', saleData);
+      return await apiRequest('/api/sales/hold_order/', 'POST', saleData);
+    } catch (error) {
+      console.error('Error in salesAPI.holdOrder:', error);
       throw error;
     }
   },
