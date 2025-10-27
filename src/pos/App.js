@@ -203,8 +203,17 @@ function PosApp() {
   const addToCart = (product) => {
     // Strict shift check - no operations allowed without active shift
     if (!currentShift) {
-      setShowShiftModal(true);
-      showError('Shift Required', 'You must start a shift before adding items to cart.');
+      Swal.fire({
+        icon: 'warning',
+        title: 'Shift Required',
+        text: 'You must start a shift before adding items to cart.',
+        confirmButtonText: 'Start Shift',
+        zIndex: 99999
+      }).then((result) => {
+        if (result.isConfirmed) {
+          setShowShiftModal(true);
+        }
+      });
       return;
     }
 
@@ -253,12 +262,28 @@ function PosApp() {
   };
 
   const updateQuantity = (productId, change) => {
+    // Strict shift check - no operations allowed without active shift
+    if (!currentShift) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Shift Required',
+        text: 'You must start a shift before modifying cart items.',
+        confirmButtonText: 'Start Shift',
+        zIndex: 99999
+      }).then((result) => {
+        if (result.isConfirmed) {
+          setShowShiftModal(true);
+        }
+      });
+      return;
+    }
+
     setCart(prevCart => {
       const item = prevCart.find(item => item.id === productId);
       if (!item) return prevCart;
 
       const newQuantity = item.quantity + change;
-      
+
       // Validate minimum quantity - always 1
       if (newQuantity < 1 && newQuantity > 0) {
         showError('Minimum Quantity', `Minimum quantity for "${item.name}" is 1.`);
@@ -284,101 +309,258 @@ function PosApp() {
   };
 
   const removeItem = (productId) => {
+    // Strict shift check - no operations allowed without active shift
+    if (!currentShift) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Shift Required',
+        text: 'You must start a shift before removing items from cart.',
+        confirmButtonText: 'Start Shift',
+        zIndex: 99999
+      }).then((result) => {
+        if (result.isConfirmed) {
+          setShowShiftModal(true);
+        }
+      });
+      return;
+    }
+
     setCart(prevCart => prevCart.filter(item => item.id !== productId));
   };
 
   const newSale = () => {
-    if (cart.length > 0) {
-      const confirmNew = window.confirm('Start a new sale? This will clear the current cart.');
-      if (!confirmNew) return;
+    // Strict shift check - no operations allowed without active shift
+    if (!currentShift) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Shift Required',
+        text: 'You must start a shift before starting a new sale.',
+        confirmButtonText: 'Start Shift',
+        zIndex: 99999
+      }).then((result) => {
+        if (result.isConfirmed) {
+          setShowShiftModal(true);
+        }
+      });
+      return;
     }
-    setCart([]);
-    setSelectedCustomer(null);
-    setCurrentHeldOrderId(null);
+
+    if (cart.length > 0) {
+      Swal.fire({
+        title: 'Start New Sale',
+        text: 'This will clear the current cart. Continue?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, clear cart',
+        cancelButtonText: 'Cancel',
+        zIndex: 99999
+      }).then((result) => {
+        if (result.isConfirmed) {
+          setCart([]);
+          setSelectedCustomer(null);
+          setCurrentHeldOrderId(null);
+        }
+      });
+    } else {
+      setCart([]);
+      setSelectedCustomer(null);
+      setCurrentHeldOrderId(null);
+    }
   };
 
   const startShift = async (startingCash) => {
     try {
+      // Show loading modal for starting shift
+      const loadingSwal = Swal.fire({
+        title: 'Starting Shift...',
+        text: 'Please wait while we set up your shift',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        zIndex: 99999,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+
       const shiftData = {
         starting_cash: startingCash
       };
       await shiftsAPI.startShift(shiftData);
 
+      // Close loading modal
+      loadingSwal.close();
+
       // Refresh shift data to get accurate information from backend
       await refreshShiftData();
 
       setShowShiftModal(false);
+
+      // Show success message
+      Swal.fire({
+        icon: 'success',
+        title: 'Shift Started Successfully!',
+        text: `Your shift has started with KSh ${startingCash.toFixed(2)} in starting cash.`,
+        timer: 2000,
+        showConfirmButton: false,
+        zIndex: 99999
+      });
     } catch (error) {
       console.error('Error starting shift:', error);
+
+      // Close any open loading modals
+      Swal.close();
+
       Swal.fire({
         icon: 'error',
         title: 'Shift Start Failed',
         text: 'Failed to start shift. Please try again.',
-        zIndex: 10000
+        zIndex: 99999
       });
     }
   };
 
   const endShift = async () => {
     try {
-      // Ask for ending cash amount
-      const endingCash = prompt('Enter ending cash amount (KSh):', '0');
-      if (endingCash === null) return;
+      // Ask for ending cash amount using Swal with highest z-index
+      const result = await Swal.fire({
+        title: 'End Shift',
+        text: 'Enter ending cash amount (KSh):',
+        input: 'number',
+        inputPlaceholder: '0.00',
+        inputAttributes: {
+          step: '0.01',
+          min: '0'
+        },
+        showCancelButton: true,
+        confirmButtonText: 'End Shift',
+        cancelButtonText: 'Cancel',
+        zIndex: 99999,
+        inputValidator: (value) => {
+          if (!value || isNaN(parseFloat(value))) {
+            return 'Please enter a valid number for ending cash.';
+          }
+        }
+      });
 
-      const endingCashAmount = parseFloat(endingCash) || 0;
-      if (isNaN(endingCashAmount)) {
-        showError('Invalid Amount', 'Please enter a valid number for ending cash.');
-        return;
-      }
+      if (!result.isConfirmed) return;
+
+      const endingCashAmount = parseFloat(result.value) || 0;
+
+      // Show loading modal for ending shift
+      const loadingSwal = Swal.fire({
+        title: 'Ending Shift...',
+        text: 'Please wait while we process the shift closure',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        zIndex: 99999,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
 
       const response = await shiftsAPI.endShift({ ending_cash: endingCashAmount });
+
+      // Close loading modal
+      loadingSwal.close();
 
       // Refresh shift data to confirm shift is ended
       await refreshShiftData();
 
       setShowShiftModal(false);
 
-      // Display detailed reconciliation information
+      // Display detailed reconciliation information using Swal
       const recon = response.reconciliation;
       const discrepancyType = recon.discrepancy_type;
       const discrepancyAmount = Math.abs(recon.discrepancy);
 
-      let message = `🧾 Shift Closed Successfully!\n\n`;
-      message += `📊 Shift Summary:\n`;
-      message += `• Opening Balance: KSh ${recon.opening_balance.toFixed(2)}\n`;
-      message += `• Cash Sales: KSh ${recon.cash_sales.toFixed(2)}\n`;
-      message += `• Card Sales: KSh ${recon.card_sales.toFixed(2)}\n`;
-      message += `• Mobile Sales: KSh ${recon.mobile_sales.toFixed(2)}\n`;
-      message += `• Total Sales: KSh ${recon.total_sales.toFixed(2)}\n\n`;
+      let htmlContent = `
+        <div style="text-align: left; font-family: monospace; font-size: 14px; line-height: 1.6;">
+          <div style="margin-bottom: 15px;">
+            <strong>📊 Shift Summary:</strong><br>
+            • Opening Balance: KSh ${recon.opening_balance.toFixed(2)}<br>
+            • Cash Sales: KSh ${recon.cash_sales.toFixed(2)}<br>
+            • Card Sales: KSh ${recon.card_sales.toFixed(2)}<br>
+            • Mobile Sales: KSh ${recon.mobile_sales.toFixed(2)}<br>
+            • Total Sales: KSh ${recon.total_sales.toFixed(2)}
+          </div>
 
-      message += `💰 Cash Reconciliation:\n`;
-      message += `• Expected Cash: KSh ${recon.expected_closing_balance.toFixed(2)}\n`;
-      message += `• Actual Cash: KSh ${recon.actual_closing_balance.toFixed(2)}\n`;
-      message += `• ${recon.discrepancy_description}\n`;
+          <div style="margin-bottom: 15px;">
+            <strong>💰 Cash Reconciliation:</strong><br>
+            • Expected Cash: KSh ${recon.expected_closing_balance.toFixed(2)}<br>
+            • Actual Cash: KSh ${recon.actual_closing_balance.toFixed(2)}<br>
+            • ${recon.discrepancy_description}
+          </div>
+      `;
 
       if (discrepancyType === 'shortage') {
-        message += `\n⚠️ SHORTAGE DETECTED: KSh ${discrepancyAmount.toFixed(2)}\n`;
-        message += `Please investigate the missing amount.`;
+        htmlContent += `
+          <div style="color: #dc3545; margin-top: 10px;">
+            <strong>⚠️ SHORTAGE DETECTED: KSh ${discrepancyAmount.toFixed(2)}</strong><br>
+            Please investigate the missing amount.
+          </div>
+        `;
       } else if (discrepancyType === 'overage') {
-        message += `\n✅ OVERAGE DETECTED: KSh ${discrepancyAmount.toFixed(2)}\n`;
-        message += `Additional cash found in register.`;
+        htmlContent += `
+          <div style="color: #28a745; margin-top: 10px;">
+            <strong>✅ OVERAGE DETECTED: KSh ${discrepancyAmount.toFixed(2)}</strong><br>
+            Additional cash found in register.
+          </div>
+        `;
       } else {
-        message += `\n✅ PERFECT BALANCE: Register is balanced!`;
+        htmlContent += `
+          <div style="color: #28a745; margin-top: 10px;">
+            <strong>✅ PERFECT BALANCE: Register is balanced!</strong>
+          </div>
+        `;
       }
 
-      alert(message);
+      htmlContent += `</div>`;
+
+      await Swal.fire({
+        title: '🧾 Shift Closed Successfully!',
+        html: htmlContent,
+        icon: 'success',
+        confirmButtonText: 'OK',
+        zIndex: 99999,
+        width: '600px',
+        customClass: {
+          popup: 'shift-closure-modal'
+        }
+      });
     } catch (error) {
       console.error('Error ending shift:', error);
+
+      // Close any open loading modals
+      Swal.close();
+
       Swal.fire({
         icon: 'error',
         title: 'Shift End Failed',
         text: 'Failed to end shift. Please try again.',
-        zIndex: 10000
+        zIndex: 99999
       });
     }
   };
 
   const processPayment = async (paymentData) => {
+    // Strict shift check - no operations allowed without active shift
+    if (!currentShift) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Shift Required',
+        text: 'You must start a shift before processing payments.',
+        confirmButtonText: 'Start Shift',
+        zIndex: 99999
+      }).then((result) => {
+        if (result.isConfirmed) {
+          setShowShiftModal(true);
+        }
+      });
+      return;
+    }
+
     try {
       console.log('Processing payment with data:', paymentData);
 
@@ -389,7 +571,7 @@ function PosApp() {
           icon: 'error',
           title: 'Cart Validation Failed',
           text: 'Please fix the following issues before proceeding:\n\n' + cartErrors.join('\n'),
-          zIndex: 10000
+          zIndex: 99999
         });
         return;
       }
@@ -588,6 +770,22 @@ function PosApp() {
   };
 
   const holdOrder = async () => {
+    // Strict shift check - no operations allowed without active shift
+    if (!currentShift) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Shift Required',
+        text: 'You must start a shift before holding orders.',
+        confirmButtonText: 'Start Shift',
+        zIndex: 99999
+      }).then((result) => {
+        if (result.isConfirmed) {
+          setShowShiftModal(true);
+        }
+      });
+      return;
+    }
+
     try {
       console.log('Attempting to hold order with cart:', cart);
 
@@ -598,7 +796,7 @@ function PosApp() {
           icon: 'error',
           title: 'Cannot Hold Order',
           text: 'Please fix the following issues before holding the order:\n\n' + cartErrors.join('\n'),
-          zIndex: 10000
+          zIndex: 99999
         });
         return;
       }
@@ -1131,7 +1329,7 @@ function PosApp() {
         selectedCustomer={selectedCustomer}
       />
 
-      {!currentShift && !showShiftModal && (
+      {/* {!currentShift && !showShiftModal && (
         <div className="shift-required-overlay">
           <div className="shift-required-message">
             <h3>Shift Required</h3>
@@ -1144,7 +1342,7 @@ function PosApp() {
             </button>
           </div>
         </div>
-      )}
+      )} */}
 
       <ProductGrid
         products={products}

@@ -14,6 +14,7 @@ const ShiftModal = ({ isOpen, onClose, onStartShift, onEndShift, currentShift, o
     }
   };
 
+  // eslint-disable-next-line no-unused-vars
   const fetchShiftSummary = async () => {
     if (!currentShift || !currentShift.id) return;
     setLoadingSummary(true);
@@ -177,12 +178,9 @@ const ShiftModal = ({ isOpen, onClose, onStartShift, onEndShift, currentShift, o
                   </button>
                   
                   {!currentShift.end_time && (
-                    <button 
-                      className="shift-btn shift-btn-danger" 
-                      onClick={() => { 
-                        setShowEndShiftConfirm(true); 
-                        fetchShiftSummary(); 
-                      }}
+                    <button
+                      className="shift-btn shift-btn-danger"
+                      onClick={handleEndShift}
                     >
                       <i className="shift-btn-icon"></i>
                       End Shift
