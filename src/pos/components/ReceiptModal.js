@@ -387,9 +387,9 @@ const ReceiptModal = ({
                 </div>
                 <h1 className="receipt-title">RECEIPT</h1>
                 <div className="receipt-store-info">
-                  <h2>MWAMBA STORES</h2>
-                  <p>Nairobi, Kenya</p>
-                  <p>Tel: +254 700 123 456</p>
+                  <h2>MWAMBA LIQUOR STORES</h2>
+                  <p>RONGO</p>
+                  <p>Tel: +254 745 119 135</p>
                 </div>
               </div>
 
