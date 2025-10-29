@@ -18,6 +18,9 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [editingOrderId, setEditingOrderId] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isAddingToOrder, setIsAddingToOrder] = useState(false);
+  const [isClearingOrder, setIsClearingOrder] = useState(false);
+  const [isCopyingToWhatsApp, setIsCopyingToWhatsApp] = useState(false);
   const [sortBy, setSortBy] = useState('stock');
   const [savedOrder, setSavedOrder] = useState(null);
   const [orderSaved, setOrderSaved] = useState(false);
@@ -77,25 +80,71 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
     return 'Good';
   };
 
-  const addToOrder = (product) => {
-    setOrderItems(prevItems => {
-      const existingItem = prevItems.find(item => item.id === product.id);
-      if (existingItem) {
-        return prevItems.map(item =>
-          item.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        );
-      } else {
-        const price = product.cost_price || 0; // Use cost_price as buying price
-        return [...prevItems, {
-          ...product,
-          quantity: 1,
-          price: price,
-          unit_price: price
-        }];
+  const addToOrder = async (product) => {
+    if (isAddingToOrder) return; // Prevent multiple clicks
+
+    setIsAddingToOrder(true);
+
+    // Show loading Swal
+    const loadingSwal = Swal.fire({
+      title: 'Adding to Order...',
+      text: 'Please wait',
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      showConfirmButton: false,
+      zIndex: 10000,
+      didOpen: () => {
+        Swal.showLoading();
       }
     });
+
+    try {
+      // Simulate a small delay for better UX
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      setOrderItems(prevItems => {
+        const existingItem = prevItems.find(item => item.id === product.id);
+        if (existingItem) {
+          return prevItems.map(item =>
+            item.id === product.id
+              ? { ...item, quantity: item.quantity + 1 }
+              : item
+          );
+        } else {
+          const price = product.cost_price || 0; // Use cost_price as buying price
+          return [...prevItems, {
+            ...product,
+            quantity: 1,
+            price: price,
+            unit_price: price
+          }];
+        }
+      });
+
+      loadingSwal.close();
+
+      // Show success message briefly
+      Swal.fire({
+        icon: 'success',
+        title: 'Added!',
+        text: `${product.name} added to order`,
+        timer: 800,
+        showConfirmButton: false,
+        zIndex: 10000
+      });
+
+    } catch (error) {
+      console.error('Error adding to order:', error);
+      loadingSwal.close();
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Failed to add item to order',
+        zIndex: 10000
+      });
+    } finally {
+      setIsAddingToOrder(false);
+    }
   };
 
   const updateQuantity = (productId, newQuantity) => {
@@ -203,70 +252,214 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
     }
   };
 
-  const clearOrder = () => {
-    setOrderItems([]);
-    setSelectedSupplier(null);
-    setOrderNotes('');
-    setDeliveryDate('');
-    setEditingOrderId(null);
-    setSavedOrder(null);
-    setOrderSaved(false);
+  const clearOrder = async () => {
+    if (isClearingOrder) return; // Prevent multiple clicks
+
+    setIsClearingOrder(true);
+
+    // Show loading Swal
+    const loadingSwal = Swal.fire({
+      title: 'Clearing Order...',
+      text: 'Please wait',
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      showConfirmButton: false,
+      zIndex: 10000,
+      didOpen: () => {
+        Swal.showLoading();
+      }
+    });
+
+    try {
+      // Simulate a small delay for better UX
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      setOrderItems([]);
+      setSelectedSupplier(null);
+      setOrderNotes('');
+      setDeliveryDate('');
+      setEditingOrderId(null);
+      setSavedOrder(null);
+      setOrderSaved(false);
+
+      loadingSwal.close();
+
+      // Show success message briefly
+      Swal.fire({
+        icon: 'success',
+        title: 'Cleared!',
+        text: 'Order has been cleared',
+        timer: 800,
+        showConfirmButton: false,
+        zIndex: 10000
+      });
+
+    } catch (error) {
+      console.error('Error clearing order:', error);
+      loadingSwal.close();
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Failed to clear order',
+        zIndex: 10000
+      });
+    } finally {
+      setIsClearingOrder(false);
+    }
   };
 
-  const copyOrderToWhatsApp = (useSavedOrder = false) => {
-    const items = useSavedOrder && savedOrder ? savedOrder.items : orderItems;
-    const supplier = useSavedOrder && savedOrder ? savedOrder.supplier : selectedSupplier;
-    const notes = useSavedOrder && savedOrder ? savedOrder.notes : orderNotes;
-    const delivery = useSavedOrder && savedOrder ? savedOrder.expected_delivery_date : deliveryDate;
-    const orderNumber = useSavedOrder && savedOrder ? savedOrder.order_number : null;
+  const copyOrderToWhatsApp = async (useSavedOrder = false) => {
+    if (isCopyingToWhatsApp) return; // Prevent multiple clicks
 
-    if (items.length === 0) {
-      alert('No items in the order to copy');
-      return;
-    }
+    setIsCopyingToWhatsApp(true);
 
-    if (!supplier) {
-      alert('Please select a supplier first');
-      return;
-    }
-
-    let message = `*Purchase Order`;
-    if (orderNumber) message += ` #${orderNumber}`;
-    message += ` for ${supplier.name}*\n\n`;
-    message += `*Order Items:*\n`;
-
-    items.forEach((item, index) => {
-      message += `${index + 1}. ${item.product_name || item.name}\n`;
-      message += `   Quantity: ${item.quantity}\n`;
-      message += `   Unit Price: ${formatCurrency(item.unit_price)}\n`;
-      message += `   Total: ${formatCurrency(item.unit_price * item.quantity)}\n\n`;
+    // Show loading Swal
+    const loadingSwal = Swal.fire({
+      title: 'Copying to WhatsApp...',
+      text: 'Please wait',
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      showConfirmButton: false,
+      zIndex: 10000,
+      didOpen: () => {
+        Swal.showLoading();
+      }
     });
 
-    const total = items.reduce((sum, item) => sum + (toNumber(item.unit_price) * toNumber(item.quantity)), 0);
-    message += `*Total Amount: ${formatCurrency(total)}*\n`;
+    try {
+      const items = useSavedOrder && savedOrder ? savedOrder.items : orderItems;
+      const supplier = useSavedOrder && savedOrder ? savedOrder.supplier : selectedSupplier;
+      const notes = useSavedOrder && savedOrder ? savedOrder.notes : orderNotes;
+      const delivery = useSavedOrder && savedOrder ? savedOrder.expected_delivery_date : deliveryDate;
+      const orderNumber = useSavedOrder && savedOrder ? savedOrder.order_number : null;
 
-    if (delivery) {
-      message += `*Expected Delivery: ${new Date(delivery).toLocaleDateString()}*\n`;
+      if (items.length === 0) {
+        loadingSwal.close();
+        Swal.fire({
+          icon: 'warning',
+          title: 'No Items',
+          text: 'No items in the order to copy',
+          zIndex: 10000
+        });
+        return;
+      }
+
+      if (!supplier) {
+        loadingSwal.close();
+        Swal.fire({
+          icon: 'warning',
+          title: 'No Supplier',
+          text: 'Please select a supplier first',
+          zIndex: 10000
+        });
+        return;
+      }
+
+      let message = `*Purchase Order`;
+      if (orderNumber) message += ` #${orderNumber}`;
+      message += ` for ${supplier.name}*\n\n`;
+      message += `*Order Items:*\n`;
+
+      items.forEach((item, index) => {
+        message += `${index + 1}. ${item.product_name || item.name}\n`;
+        message += `   Quantity: ${item.quantity}\n`;
+        message += `   Unit Price: ${formatCurrency(item.unit_price)}\n`;
+        message += `   Total: ${formatCurrency(item.unit_price * item.quantity)}\n\n`;
+      });
+
+      const total = items.reduce((sum, item) => sum + (toNumber(item.unit_price) * toNumber(item.quantity)), 0);
+      message += `*Total Amount: ${formatCurrency(total)}*\n`;
+
+      if (delivery) {
+        message += `*Expected Delivery: ${new Date(delivery).toLocaleDateString()}*\n`;
+      }
+
+      if (notes) {
+        message += `*Notes: ${notes}*\n`;
+      }
+
+      // Simulate processing time
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Copy to clipboard
+      await navigator.clipboard.writeText(message);
+
+      loadingSwal.close();
+
+      // Show success message
+      Swal.fire({
+        icon: 'success',
+        title: 'Copied!',
+        text: 'Order details copied to clipboard! You can now paste it in WhatsApp.',
+        timer: 2000,
+        showConfirmButton: false,
+        zIndex: 10000
+      });
+
+    } catch (error) {
+      console.error('Error copying to WhatsApp:', error);
+      loadingSwal.close();
+
+      // Try fallback method
+      try {
+        const items = useSavedOrder && savedOrder ? savedOrder.items : orderItems;
+        const supplier = useSavedOrder && savedOrder ? savedOrder.supplier : selectedSupplier;
+        const notes = useSavedOrder && savedOrder ? savedOrder.notes : orderNotes;
+        const delivery = useSavedOrder && savedOrder ? savedOrder.expected_delivery_date : deliveryDate;
+        const orderNumber = useSavedOrder && savedOrder ? savedOrder.order_number : null;
+
+        let message = `*Purchase Order`;
+        if (orderNumber) message += ` #${orderNumber}`;
+        message += ` for ${supplier.name}*\n\n`;
+        message += `*Order Items:*\n`;
+
+        items.forEach((item, index) => {
+          message += `${index + 1}. ${item.product_name || item.name}\n`;
+          message += `   Quantity: ${item.quantity}\n`;
+          message += `   Unit Price: ${formatCurrency(item.unit_price)}\n`;
+          message += `   Total: ${formatCurrency(item.unit_price * item.quantity)}\n\n`;
+        });
+
+        const total = items.reduce((sum, item) => sum + (toNumber(item.unit_price) * toNumber(item.quantity)), 0);
+        message += `*Total Amount: ${formatCurrency(total)}*\n`;
+
+        if (delivery) {
+          message += `*Expected Delivery: ${new Date(delivery).toLocaleDateString()}*\n`;
+        }
+
+        if (notes) {
+          message += `*Notes: ${notes}*\n`;
+        }
+
+        // Fallback: create a temporary textarea to copy from
+        const textArea = document.createElement('textarea');
+        textArea.value = message;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+
+        Swal.fire({
+          icon: 'success',
+          title: 'Copied!',
+          text: 'Order details copied to clipboard using fallback method!',
+          timer: 2000,
+          showConfirmButton: false,
+          zIndex: 10000
+        });
+
+      } catch (fallbackError) {
+        console.error('Fallback copy failed:', fallbackError);
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Failed to copy order details. Please try again.',
+          zIndex: 10000
+        });
+      }
+    } finally {
+      setIsCopyingToWhatsApp(false);
     }
-
-    if (notes) {
-      message += `*Notes: ${notes}*\n`;
-    }
-
-    // Copy to clipboard
-    navigator.clipboard.writeText(message).then(() => {
-      alert('Order details copied to clipboard! You can now paste it in WhatsApp.');
-    }).catch(err => {
-      console.error('Failed to copy: ', err);
-      // Fallback: create a temporary textarea to copy from
-      const textArea = document.createElement('textarea');
-      textArea.value = message;
-      document.body.appendChild(textArea);
-      textArea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textArea);
-      alert('Order details copied to clipboard! You can now paste it in WhatsApp.');
-    });
   };
 
   const handleBack = () => {
@@ -398,12 +591,13 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
                     </td>
                     <td>
                       <button
-                        className="order-prep-btn order-prep-btn-primary"
-                        onClick={() => addToOrder(product)}
-                        style={{ fontSize: '0.75rem', padding: '0.4rem 0.75rem' }}
-                      >
-                        <i className="fas fa-plus"></i> Add
-                      </button>
+                          className="order-prep-btn order-prep-btn-primary"
+                          onClick={() => addToOrder(product)}
+                          disabled={isAddingToOrder}
+                          style={{ fontSize: '0.75rem', padding: '0.4rem 0.75rem' }}
+                        >
+                          <i className="fas fa-plus"></i> {isAddingToOrder ? 'Adding...' : 'Add'}
+                        </button>
                     </td>
                   </tr>
                 );
@@ -685,18 +879,18 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
           <button
             className="order-prep-btn order-prep-btn-secondary"
             onClick={clearOrder}
-            disabled={orderItems.length === 0}
+            disabled={orderItems.length === 0 || isClearingOrder}
           >
             <i className="fas fa-times"></i>
-            Clear All
+            {isClearingOrder ? 'Clearing...' : 'Clear All'}
           </button>
           <button
             className="order-prep-btn order-prep-btn-secondary"
             onClick={copyOrderToWhatsApp}
-            disabled={orderItems.length === 0 || !selectedSupplier}
+            disabled={orderItems.length === 0 || !selectedSupplier || isCopyingToWhatsApp}
           >
             <i className="fab fa-whatsapp"></i>
-            Copy to WhatsApp
+            {isCopyingToWhatsApp ? 'Copying...' : 'Copy to WhatsApp'}
           </button>
           <button
             className="order-prep-btn order-prep-btn-primary"
@@ -704,7 +898,7 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
             disabled={orderItems.length === 0 || !selectedSupplier || isLoading}
           >
             <i className="fas fa-save"></i>
-            {editingOrderId ? 'Update Order' : 'Create Purchase Order'}
+            {isLoading ? 'Saving...' : (editingOrderId ? 'Update Order' : 'Create Purchase Order')}
           </button>
         </div>
       </footer>

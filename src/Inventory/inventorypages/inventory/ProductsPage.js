@@ -5,6 +5,13 @@ import {
 } from 'react-icons/fi';
 import { Link } from 'react-router-dom';
 import { inventoryAPI } from '../../../services/ApiService/api';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+
+// Extend jsPDF with autoTable
+if (typeof jsPDF !== 'undefined') {
+  jsPDF.API.autoTable = autoTable;
+}
 
 const ProductsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -439,6 +446,204 @@ const ProductsPage = () => {
     }
   };
 
+  const exportProductsToPDF = () => {
+    try {
+      // Create a simple HTML table and print it instead of using jsPDF
+      const printWindow = window.open('', '_blank');
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>MWAMBA LIQUORS - Product Inventory Report</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              margin: 20px;
+              color: #333;
+            }
+            .header {
+              text-align: center;
+              margin-bottom: 30px;
+              border-bottom: 2px solid #3498db;
+              padding-bottom: 20px;
+            }
+            .header h1 {
+              color: #2c3e50;
+              margin: 0;
+              font-size: 28px;
+            }
+            .header h2 {
+              color: #7f8c8d;
+              margin: 10px 0;
+              font-size: 18px;
+            }
+            .summary {
+              display: grid;
+              grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+              gap: 15px;
+              margin-bottom: 30px;
+            }
+            .summary-item {
+              background: #f8f9fa;
+              padding: 15px;
+              border-radius: 8px;
+              border-left: 4px solid #3498db;
+            }
+            .summary-item strong {
+              display: block;
+              font-size: 24px;
+              color: #2c3e50;
+            }
+            .summary-item span {
+              color: #7f8c8d;
+              font-size: 14px;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 20px;
+              font-size: 12px;
+            }
+            th, td {
+              border: 1px solid #ddd;
+              padding: 8px;
+              text-align: left;
+            }
+            th {
+              background-color: #3498db;
+              color: white;
+              font-weight: bold;
+            }
+            tr:nth-child(even) {
+              background-color: #f8f9fa;
+            }
+            .status-low-stock {
+              background-color: #fee;
+              color: #c0392b;
+              font-weight: bold;
+            }
+            .status-in-stock {
+              background-color: #efe;
+              color: #27ae60;
+              font-weight: bold;
+            }
+            .footer {
+              margin-top: 30px;
+              text-align: center;
+              font-size: 10px;
+              color: #7f8c8d;
+              border-top: 1px solid #ddd;
+              padding-top: 15px;
+            }
+            @media print {
+              body { margin: 0; }
+              .no-print { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>MWAMBA LIQUORS</h1>
+            <h2>Complete Product List with Stock Levels</h2>
+            <p>Generated on: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</p>
+            <p>Total Products: ${filteredProducts.length}</p>
+          </div>
+
+          <div class="summary">
+            ${(() => {
+              const totalValue = filteredProducts.reduce((sum, product) =>
+                sum + ((Number(product.stock_quantity) || 0) * (Number(product.cost_price) || 0)), 0);
+              const lowStockCount = filteredProducts.filter(p => (Number(p.stock_quantity) || 0) <= (Number(p.low_stock_threshold) || 10)).length;
+              const outOfStockCount = filteredProducts.filter(p => (Number(p.stock_quantity) || 0) === 0).length;
+
+              return `
+                <div class="summary-item">
+                  <strong>${filteredProducts.length}</strong>
+                  <span>Total Products</span>
+                </div>
+                <div class="summary-item">
+                  <strong>Ksh ${totalValue.toFixed(2)}</strong>
+                  <span>Total Inventory Value</span>
+                </div>
+                <div class="summary-item">
+                  <strong>${lowStockCount}</strong>
+                  <span>Low Stock Items</span>
+                </div>
+                <div class="summary-item">
+                  <strong>${outOfStockCount}</strong>
+                  <span>Out of Stock Items</span>
+                </div>
+              `;
+            })()}
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Product Name</th>
+                <th>SKU</th>
+                <th>Category</th>
+                <th>Cost Price</th>
+                <th>Selling Price</th>
+                <th>Wholesale Price</th>
+                <th>Stock Qty</th>
+                <th>Low Stock Threshold</th>
+                <th>Status</th>
+                <th>Barcode</th>
+                <th>Created Date</th>
+                <th>Stock Take Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filteredProducts.map(product => `
+                <tr>
+                  <td>${product.id || 'N/A'}</td>
+                  <td>${product.name || 'N/A'}</td>
+                  <td>${product.sku || 'N/A'}</td>
+                  <td>${product.category_name || 'N/A'}</td>
+                  <td>Ksh ${(Number(product.cost_price) || 0).toFixed(2)}</td>
+                  <td>Ksh ${(Number(product.selling_price) || 0).toFixed(2)}</td>
+                  <td>${product.wholesale_price ? `Ksh ${(Number(product.wholesale_price) || 0).toFixed(2)}` : 'N/A'}</td>
+                  <td>${Number(product.stock_quantity) || 0}</td>
+                  <td>${Number(product.low_stock_threshold) || 10}</td>
+                  <td class="${(Number(product.stock_quantity) || 0) <= (Number(product.low_stock_threshold) || 10) ? 'status-low-stock' : 'status-in-stock'}">
+                    ${(Number(product.stock_quantity) || 0) <= (Number(product.low_stock_threshold) || 10) ? 'Low Stock' : 'In Stock'}
+                  </td>
+                  <td>${product.barcode || 'N/A'}</td>
+                  <td>${product.created_at ? new Date(product.created_at).toLocaleDateString() : 'N/A'}</td>
+                  <td></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+
+          <div class="footer">
+            <p>MWAMBA LIQUORS - Product Inventory Report</p>
+            <p>Generated: ${new Date().toLocaleString()}</p>
+          </div>
+
+          <script>
+            window.onload = function() {
+              window.print();
+              setTimeout(function() {
+                window.close();
+              }, 1000);
+            };
+          </script>
+        </body>
+        </html>
+      `;
+
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+
+    } catch (error) {
+      console.error('Error generating products PDF:', error);
+      alert(`Error generating Products PDF: ${error.message || 'Please try again.'}`);
+    }
+  };
+
   if (loading) {
     return (
       <div className="page-container">
@@ -501,8 +706,8 @@ const ProductsPage = () => {
           >
             <FiPlus /> Add Product
           </button>
-          <button className="btn btn-secondary">
-            <FiDownload /> Export
+          <button className="btn btn-secondary" onClick={exportProductsToPDF}>
+            <FiDownload /> Export to PDF
           </button>
           <button className="btn btn-secondary">
             <FiPrinter /> Print
