@@ -1,6 +1,6 @@
-d// ReportingPage.js - Refined with Important Reports
+// ReportingPage.js - Refined with Important Reports
 import React, { useState, useEffect, useCallback } from 'react';
-import { formatCurrency, toNumber, reportsAPI, purchaseOrdersAPI, inventoryAPI } from '../../services/ApiService/api';
+import { formatCurrency, toNumber, reportsAPI, purchaseOrdersAPI } from '../../services/ApiService/api';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import './ReportingPage.css';
