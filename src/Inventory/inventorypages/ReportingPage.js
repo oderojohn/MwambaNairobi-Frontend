@@ -1,3 +1,4 @@
+d// ReportingPage.js - Refined with Important Reports
 import React, { useState, useEffect, useCallback } from 'react';
 import { formatCurrency, toNumber, reportsAPI, purchaseOrdersAPI, inventoryAPI } from '../../services/ApiService/api';
 import jsPDF from 'jspdf';
@@ -10,139 +11,41 @@ if (typeof jsPDF !== 'undefined') {
 }
 
 const ReportingPage = () => {
-  const [activeTab, setActiveTab] = useState('daily');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [dateRange, setDateRange] = useState({
-    start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     end: new Date().toISOString().split('T')[0]
   });
   const [reports, setReports] = useState({
     sales: [],
     inventory: [],
-    customers: [],
-    shifts: [],
-    profitLoss: [],
-    products: [],
-    suppliers: [],
-    purchaseOrders: [],
-    profitAnalysis: {},
-    products_today: [],
-    daily_summary: {},
-    stock_movements_today: []
+    profitLoss: {},
+    productPerformance: [],
+    dailySummary: {},
+    purchaseOrders: []
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const generateProfitAnalysis = useCallback((purchaseOrders, sales, inventory) => {
-    // Calculate total purchase costs
-    const totalPurchaseCost = purchaseOrders.reduce((sum, order) => {
-      if (order.status === 'received' && order.items) {
-        return sum + order.items.reduce((orderSum, item) => {
-          return orderSum + (toNumber(item.quantity) * toNumber(item.unit_price));
-        }, 0);
-      }
-      return sum;
-    }, 0);
-
-    // Calculate sales by type (retail vs wholesale)
-    const retailSales = sales.filter(sale => sale.sale_type === 'retail' || !sale.sale_type);
-    const wholesaleSales = sales.filter(sale => sale.sale_type === 'wholesale');
-
-    const retailRevenue = calculateTotals(retailSales, ['total_sales']).total_sales;
-    const wholesaleRevenue = calculateTotals(wholesaleSales, ['total_sales']).total_sales;
-    const totalRevenue = retailRevenue + wholesaleRevenue;
-
-    // Calculate cost of goods sold (COGS) - using average purchase price
-    const productCostMap = {};
-    inventory.forEach(product => {
-      productCostMap[product.id] = toNumber(product.cost_price || product.purchase_price || 0);
-    });
-
-    // For simplicity, assume 70% of revenue is COGS (this would need actual sales item data)
-    const estimatedCOGS = totalRevenue * 0.7;
-    const grossProfit = totalRevenue - estimatedCOGS;
-    const netProfit = grossProfit - (totalRevenue * 0.1); // Assume 10% operating expenses
-
-    // Calculate next purchase ability (assume 50% of profits can be used for purchases)
-    const nextPurchaseCapacity = Math.max(0, netProfit * 0.5);
-
-    return {
-      period: {
-        start: dateRange.start,
-        end: dateRange.end
-      },
-      purchaseOrders: {
-        total: purchaseOrders.length,
-        received: purchaseOrders.filter(o => o.status === 'received').length,
-        pending: purchaseOrders.filter(o => o.status === 'pending').length,
-        totalValue: totalPurchaseCost
-      },
-      sales: {
-        retail: {
-          revenue: retailRevenue,
-          transactions: retailSales.length
-        },
-        wholesale: {
-          revenue: wholesaleRevenue,
-          transactions: wholesaleSales.length
-        },
-        combined: {
-          revenue: totalRevenue,
-          transactions: sales.length
-        }
-      },
-      profitAnalysis: {
-        totalRevenue,
-        estimatedCOGS,
-        grossProfit,
-        operatingExpenses: totalRevenue * 0.1,
-        netProfit,
-        profitMargin: totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0
-      },
-      nextPurchase: {
-        capacity: nextPurchaseCapacity,
-        percentageOfProfit: 50,
-        recommendation: nextPurchaseCapacity > totalPurchaseCost * 0.1 ?
-          'Good capacity for restocking' : 'Limited capacity - focus on high-margin items'
-      },
-      inventory: {
-        totalProducts: inventory.length,
-        totalValue: inventory.reduce((sum, product) =>
-          sum + (toNumber(product.stock_quantity) * toNumber(product.cost_price || 0)), 0),
-        lowStockItems: inventory.filter(p => toNumber(p.stock_quantity) < 10).length
-      }
-    };
-  }, [dateRange.start, dateRange.end]);
-
+  // Generate comprehensive reports
   const generateReports = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
       const reportPromises = [];
 
-      // Always fetch today's summary for daily reports
-      if (activeTab === 'daily' || activeTab === 'all') {
+      // Always fetch dashboard data
+      if (activeTab === 'dashboard' || activeTab === 'all') {
         reportPromises.push(
           reportsAPI.getTodaySummary().then(response => ({
-            type: 'today_summary',
+            type: 'dailySummary',
             data: response || {}
-          }))
-        );
-        reportPromises.push(
-          reportsAPI.getSalesSummary().then(response => {
-            // Extract products sold today from sales summary
-            const productsToday = response.products_today || [];
-            return {
-              type: 'products_today',
-              data: productsToday
-            };
-          }).catch(() => ({
-            type: 'products_today',
-            data: []
-          }))
+          })).catch(() => ({ type: 'dailySummary', data: {} }))
         );
       }
 
-      if (activeTab === 'sales' || activeTab === 'all') {
+      // Sales data for multiple reports
+      if (['dashboard', 'sales', 'profit', 'products'].includes(activeTab)) {
         reportPromises.push(
           reportsAPI.generateSalesReport(null, {
             date_from: dateRange.start,
@@ -150,161 +53,51 @@ const ReportingPage = () => {
           }).then(response => ({
             type: 'sales',
             data: response || []
-          }))
+          })).catch(() => ({ type: 'sales', data: [] }))
         );
       }
 
-      if (activeTab === 'inventory' || activeTab === 'all') {
+      // Inventory data
+      if (['dashboard', 'inventory'].includes(activeTab)) {
         reportPromises.push(
           reportsAPI.generateInventoryReport({
-            date_from: dateRange.start,
-            date_to: dateRange.end,
-            report: 'detailed'
-          })
-            .then(response => ({
-              type: 'inventory',
-              data: response || []
-            }))
-        );
-      }
-
-      if (activeTab === 'customers' || activeTab === 'all') {
-        reportPromises.push(
-          reportsAPI.generateCustomerReport({
-            date_from: dateRange.start,
-            date_to: dateRange.end,
-            report: 'detailed'
-          })
-            .then(response => ({
-              type: 'customers',
-              data: response || []
-            }))
-        );
-      }
-
-      if (activeTab === 'shifts' || activeTab === 'all') {
-        reportPromises.push(
-          reportsAPI.getShiftSummary()
-            .then(response => ({
-              type: 'shifts',
-              data: response || []
-            }))
-        );
-      }
-
-      if (activeTab === 'profitLoss' || activeTab === 'all') {
-        // Use sales data to generate profit/loss analysis
-        reportPromises.push(
-          reportsAPI.generateSalesReport(null, {
-            date_from: dateRange.start,
-            date_to: dateRange.end
-          }).then(salesData => {
-            const sales = salesData || [];
-            const totalRevenue = calculateTotals(sales, ['total_sales']).total_sales;
-            const estimatedCOGS = totalRevenue * 0.7; // Estimate 70% COGS
-            const grossProfit = totalRevenue - estimatedCOGS;
-            const operatingExpenses = totalRevenue * 0.1; // Estimate 10% operating expenses
-            const netProfit = grossProfit - operatingExpenses;
-            const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
-
-            return {
-              type: 'profitLoss',
-              data: {
-                date_from: dateRange.start,
-                date_to: dateRange.end,
-                total_revenue: totalRevenue,
-                cost_of_goods_sold: estimatedCOGS,
-                gross_profit: grossProfit,
-                operating_expenses: operatingExpenses,
-                net_profit: netProfit,
-                profit_margin_percentage: profitMargin
-              }
-            };
-          }).catch(error => {
-            console.error('Error generating profit/loss report:', error);
-            return {
-              type: 'profitLoss',
-              data: {
-                date_from: dateRange.start,
-                date_to: dateRange.end,
-                total_revenue: 0,
-                cost_of_goods_sold: 0,
-                gross_profit: 0,
-                operating_expenses: 0,
-                net_profit: 0,
-                profit_margin_percentage: 0
-              }
-            };
-          })
-        );
-      }
-
-      if (activeTab === 'products' || activeTab === 'all') {
-        reportPromises.push(
-          reportsAPI.generateSalesReport(null, {
             date_from: dateRange.start,
             date_to: dateRange.end
           }).then(response => ({
-            type: 'products',
-            data: response || []
-          }))
+            type: 'inventory',
+            data: Array.isArray(response) ? response : []
+          })).catch(() => ({ type: 'inventory', data: [] }))
         );
       }
 
-      if (activeTab === 'suppliers' || activeTab === 'all') {
+      // Product performance
+      if (['dashboard', 'products'].includes(activeTab)) {
         reportPromises.push(
-          reportsAPI.generateInventoryReport({
+          reportsAPI.getProfitLossSummary({
+            product_performance: 'true',
             date_from: dateRange.start,
-            date_to: dateRange.end,
-            report: 'detailed'
-          })
-            .then(response => ({
-              type: 'suppliers',
-              data: response || []
-            }))
+            date_to: dateRange.end
+          }).then(response => ({
+            type: 'productPerformance',
+            data: Array.isArray(response) ? response : []
+          })).catch(() => ({ type: 'productPerformance', data: [] }))
         );
       }
 
-      if (activeTab === 'purchaseOrders' || activeTab === 'all') {
+      // Purchase orders for profit analysis
+      if (['dashboard', 'profit'].includes(activeTab)) {
         reportPromises.push(
           purchaseOrdersAPI.getPurchaseOrders()
             .then(response => ({
               type: 'purchaseOrders',
               data: response || []
             }))
-            .catch(error => {
-              console.error('Error fetching purchase orders:', error);
-              return { type: 'purchaseOrders', data: [] };
-            })
-        );
-
-        // Also fetch sales data for profit analysis
-        reportPromises.push(
-          Promise.all([
-            purchaseOrdersAPI.getPurchaseOrders().catch(() => []),
-            reportsAPI.generateSalesReport(null, {
-              date_from: dateRange.start,
-              date_to: dateRange.end
-            }).catch(() => []),
-            inventoryAPI.products.getAll().catch(() => [])
-          ])
-            .then(([purchaseOrders, sales, inventory]) => {
-              const profitAnalysis = generateProfitAnalysis(purchaseOrders, sales, inventory);
-              return {
-                type: 'profitAnalysis',
-                data: profitAnalysis
-              };
-            })
-            .catch(error => {
-              console.error('Error generating profit analysis:', error);
-              return { type: 'profitAnalysis', data: {} };
-            })
+            .catch(() => ({ type: 'purchaseOrders', data: [] }))
         );
       }
 
       const results = await Promise.all(reportPromises);
       
-      // Use functional update to avoid dependency on reports state
       setReports(prevReports => {
         const newReports = { ...prevReports };
         results.forEach(result => {
@@ -312,505 +105,20 @@ const ReportingPage = () => {
         });
         return newReports;
       });
+
     } catch (error) {
       console.error('Error generating reports:', error);
       setError(`Failed to load reports: ${error.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
-  }, [activeTab, dateRange.start, dateRange.end, generateProfitAnalysis]);
+  }, [activeTab, dateRange.start, dateRange.end]);
 
-  // Only generate reports when manually requested or when tab changes
   useEffect(() => {
-    // Initial load or when tab changes
     generateReports();
-  }, [activeTab, generateReports]); // Include generateReports in dependencies
+  }, [generateReports]);
 
-  const exportReport = (reportType) => {
-    try {
-      const reportData = reports[reportType.toLowerCase() + 's'] || reports[reportType.toLowerCase()] || reports[reportType.toLowerCase() + 'Loss'];
-      if (!reportData || (Array.isArray(reportData) && reportData.length === 0)) {
-        alert(`No ${reportType} data available to export. Please generate reports first.`);
-        return;
-      }
-
-      const doc = new jsPDF();
-      // Add MWAMBA LIQUORS header
-      doc.setFontSize(24);
-      doc.setFont('helvetica', 'bold');
-      doc.text('MWAMBA LIQUORS', 105, 20, { align: 'center' });
-
-      doc.setFontSize(16);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`${reportType} Report`, 105, 35, { align: 'center' });
-
-      doc.setFontSize(10);
-      doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 50);
-      doc.text(`Date Range: ${dateRange.start} to ${dateRange.end}`, 14, 58);
-
-      // Add a line separator
-      doc.setLineWidth(0.5);
-      doc.line(14, 65, 196, 65);
-
-      let yPosition = 75;
-
-      if (reportType === 'Sales') {
-        exportSalesReport(doc, yPosition);
-      } else if (reportType === 'Inventory') {
-        exportInventoryReport(doc, yPosition);
-      } else if (reportType === 'Customer') {
-        exportCustomerReport(doc, yPosition);
-      } else if (reportType === 'Shift') {
-        exportShiftReport(doc, yPosition);
-      } else if (reportType === 'ProfitLoss') {
-        exportProfitLossReport(doc, yPosition);
-      } else if (reportType === 'Products') {
-        exportProductsReport(doc, yPosition);
-      } else if (reportType === 'Suppliers') {
-        exportSuppliersReport(doc, yPosition);
-      }
-
-      // Add footer with page number and company info
-      const pageCount = doc.internal.getNumberOfPages();
-      for (let i = 1; i <= pageCount; i++) {
-        doc.setPage(i);
-        doc.setFontSize(8);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`Page ${i} of ${pageCount}`, 105, 285, { align: 'center' });
-        doc.text('MWAMBA LIQUORS - Generated by POS System', 105, 290, { align: 'center' });
-      }
-
-      doc.save(`${reportType.toLowerCase()}_report_${new Date().toISOString().split('T')[0]}.pdf`);
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-      alert(`Error generating ${reportType} PDF: ${error.message || 'Please try again.'}`);
-    }
-  };
-
-  const exportSalesReport = (doc, yPosition) => {
-    try {
-      const totals = calculateTotals(reports.sales, ['total_sales', 'cash_sales', 'card_sales', 'mobile_sales', 'transactions']);
-
-      doc.setFontSize(14);
-      doc.text('Summary', 14, yPosition);
-      yPosition += 10;
-
-      doc.setFontSize(10);
-      doc.text(`Total Sales: ${formatCurrency(totals.total_sales)}`, 14, yPosition);
-      yPosition += 8;
-      doc.text(`Cash Sales: ${formatCurrency(totals.cash_sales)}`, 14, yPosition);
-      yPosition += 8;
-      doc.text(`Card Sales: ${formatCurrency(totals.card_sales)}`, 14, yPosition);
-      yPosition += 8;
-      doc.text(`Mobile Sales: ${formatCurrency(totals.mobile_sales)}`, 14, yPosition);
-      yPosition += 8;
-      doc.text(`Total Transactions: ${totals.transactions}`, 14, yPosition);
-      yPosition += 15;
-
-      const tableData = reports.sales.map(row => [
-        row.date,
-        formatCurrency(row.total_sales),
-        formatCurrency(row.cash_sales),
-        formatCurrency(row.card_sales),
-        formatCurrency(row.mobile_sales),
-        row.transactions.toString()
-      ]);
-
-      doc.autoTable({
-        startY: yPosition,
-        head: [['Date', 'Total Sales', 'Cash', 'Card', 'Mobile', 'Transactions']],
-        body: tableData,
-        theme: 'grid',
-        styles: { fontSize: 7 },
-        headStyles: { fillColor: [41, 128, 185], fontSize: 8 },
-        columnStyles: {
-          0: { cellWidth: 25 }, // Date
-          1: { cellWidth: 30, halign: 'right' }, // Total Sales
-          2: { cellWidth: 25, halign: 'right' }, // Cash
-          3: { cellWidth: 25, halign: 'right' }, // Card
-          4: { cellWidth: 25, halign: 'right' }, // Mobile
-          5: { cellWidth: 25, halign: 'center' } // Transactions
-        },
-        margin: { left: 14, right: 14 },
-        tableWidth: 'auto'
-      });
-    } catch (error) {
-      console.error('Error generating sales report PDF:', error);
-      doc.setFontSize(12);
-      doc.text('Error generating sales report. Please check data format.', 14, yPosition);
-    }
-  };
-
-  const exportInventoryReport = (doc, yPosition) => {
-    try {
-      const totals = calculateTotals(reports.inventory, ['stock_level', 'sold_today', 'value']);
-
-      doc.setFontSize(14);
-      doc.text('Summary', 14, yPosition);
-      yPosition += 10;
-
-      doc.setFontSize(10);
-      doc.text(`Total Stock Value: ${formatCurrency(totals.value)}`, 14, yPosition);
-      yPosition += 8;
-      doc.text(`Total Items Sold Today: ${totals.sold_today}`, 14, yPosition);
-      yPosition += 8;
-      doc.text(`Low Stock Items: ${reports.inventory.filter(item => item.stock_level < 50).length}`, 14, yPosition);
-      yPosition += 8;
-      doc.text(`Total Products: ${reports.inventory.length}`, 14, yPosition);
-      yPosition += 15;
-
-      const tableData = reports.inventory.map(row => [
-        row.product || 'N/A',
-        row.category || 'Uncategorized',
-        row.stock_level?.toString() || '0',
-        row.sold_today?.toString() || '0',
-        formatCurrency(row.value || 0)
-      ]);
-
-      doc.autoTable({
-        startY: yPosition,
-        head: [['Product', 'Category', 'Stock Level', 'Sold Today', 'Value']],
-        body: tableData,
-        theme: 'grid',
-        styles: { fontSize: 6 },
-        headStyles: { fillColor: [41, 128, 185], fontSize: 7 },
-        columnStyles: {
-          0: { cellWidth: 50 }, // Product
-          1: { cellWidth: 35 }, // Category
-          2: { cellWidth: 20, halign: 'center' }, // Stock Level
-          3: { cellWidth: 20, halign: 'center' }, // Sold Today
-          4: { cellWidth: 25, halign: 'right' } // Value
-        },
-        margin: { left: 14, right: 14 },
-        tableWidth: 'auto'
-      });
-    } catch (error) {
-      console.error('Error generating inventory report PDF:', error);
-      doc.setFontSize(12);
-      doc.text('Error generating inventory report. Please check data format.', 14, yPosition);
-    }
-  };
-
-  const exportCustomerReport = (doc, yPosition) => {
-    const totals = calculateTotals(reports.customers, ['total_purchases', 'loyalty_points']);
-
-    doc.setFontSize(14);
-    doc.text('Summary', 14, yPosition);
-    yPosition += 10;
-
-    doc.setFontSize(10);
-    doc.text(`Total Customer Value: ${formatCurrency(totals.total_purchases)}`, 14, yPosition);
-    yPosition += 8;
-    doc.text(`Active Customers: ${reports.customers.length}`, 14, yPosition);
-    yPosition += 8;
-    doc.text(`Avg Customer Value: ${formatCurrency(totals.total_purchases / reports.customers.length)}`, 14, yPosition);
-    yPosition += 15;
-
-    const tableData = reports.customers.map(row => [
-      row.name,
-      row.phone || '',
-      formatCurrency(row.total_purchases),
-      row.last_visit || '',
-      row.loyalty_points.toString()
-    ]);
-
-    doc.autoTable({
-      startY: yPosition,
-      head: [['Customer Name', 'Phone', 'Total Purchases', 'Last Visit', 'Loyalty Points']],
-      body: tableData,
-      theme: 'grid',
-      styles: { fontSize: 6 },
-      headStyles: { fillColor: [41, 128, 185], fontSize: 7 },
-      columnStyles: {
-        0: { cellWidth: 45 }, // Customer Name
-        1: { cellWidth: 25 }, // Phone
-        2: { cellWidth: 30, halign: 'right' }, // Total Purchases
-        3: { cellWidth: 25 }, // Last Visit
-        4: { cellWidth: 25, halign: 'center' } // Loyalty Points
-      },
-      margin: { left: 14, right: 14 },
-      tableWidth: 'auto'
-    });
-  };
-
-  const exportShiftReport = (doc, yPosition) => {
-    const totals = calculateTotals(reports.shifts, ['total_sales', 'discrepancy']);
-
-    // Create summary table instead of paragraphs
-    const summaryData = [
-      ['Total Shift Sales', formatCurrency(totals.total_sales)],
-      ['Total Discrepancy', formatCurrency(totals.discrepancy)],
-      ['Shifts Completed', reports.shifts.length.toString()]
-    ];
-
-    doc.autoTable({
-      startY: yPosition,
-      head: [['Summary Item', 'Value']],
-      body: summaryData,
-      theme: 'grid',
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [41, 128, 185], fontSize: 9 },
-      columnStyles: {
-        0: { cellWidth: 80 },
-        1: { cellWidth: 50, halign: 'right' }
-      },
-      margin: { left: 14, right: 14 },
-      tableWidth: 'auto'
-    });
-
-    // Get the final Y position after the summary table
-    const finalY = doc.lastAutoTable.finalY + 15;
-
-    const tableData = reports.shifts.map(row => [
-      row.cashier,
-      row.shift_date,
-      `${row.start_time} - ${row.end_time}`,
-      formatCurrency(row.opening_balance),
-      formatCurrency(row.closing_balance),
-      formatCurrency(row.total_sales),
-      formatCurrency(row.discrepancy)
-    ]);
-
-    doc.autoTable({
-      startY: finalY,
-      head: [['Cashier', 'Date', 'Shift Time', 'Opening Balance', 'Closing Balance', 'Total Sales', 'Discrepancy']],
-      body: tableData,
-      theme: 'grid',
-      styles: { fontSize: 5 },
-      headStyles: { fillColor: [41, 128, 185], fontSize: 6 },
-      columnStyles: {
-        0: { cellWidth: 25 }, // Cashier
-        1: { cellWidth: 20 }, // Date
-        2: { cellWidth: 25 }, // Shift Time
-        3: { cellWidth: 25, halign: 'right' }, // Opening Balance
-        4: { cellWidth: 25, halign: 'right' }, // Closing Balance
-        5: { cellWidth: 25, halign: 'right' }, // Total Sales
-        6: { cellWidth: 25, halign: 'right' } // Discrepancy
-      },
-      margin: { left: 14, right: 14 },
-      tableWidth: 'auto'
-    });
-  };
-
-  const exportProfitLossReport = (doc, yPosition) => {
-    const data = reports.profitLoss;
-
-    // Create profit & loss table instead of paragraphs
-    const plData = [
-      ['Period', `${data.date_from || dateRange.start} to ${data.date_to || dateRange.end}`],
-      ['Total Revenue', formatCurrency(data.total_revenue || 0)],
-      ['Cost of Goods Sold', formatCurrency(data.cost_of_goods_sold || 0)],
-      ['Gross Profit', formatCurrency(data.gross_profit || 0)],
-      ['Operating Expenses', formatCurrency(data.operating_expenses || 0)],
-      ['Net Profit', formatCurrency(data.net_profit || 0)],
-      ['Profit Margin', `${((data.profit_margin_percentage || 0) * 100).toFixed(2)}%`]
-    ];
-
-    doc.autoTable({
-      startY: yPosition,
-      head: [['Profit & Loss Summary', 'Amount/Value']],
-      body: plData,
-      theme: 'grid',
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [41, 128, 185], fontSize: 9 },
-      columnStyles: {
-        0: { cellWidth: 80 },
-        1: { cellWidth: 50, halign: 'right' }
-      },
-      margin: { left: 14, right: 14 },
-      tableWidth: 'auto'
-    });
-  };
-
-  const exportProductsReport = (doc, yPosition) => {
-    const tableData = reports.products.map(row => [
-      row.date,
-      formatCurrency(row.total_sales),
-      formatCurrency(row.cash_sales),
-      formatCurrency(row.mobile_sales),
-      row.transactions.toString()
-    ]);
-
-    doc.autoTable({
-      startY: yPosition,
-      head: [['Date', 'Total Sales', 'Cash Sales', 'Mobile Sales', 'Transactions']],
-      body: tableData,
-      theme: 'grid',
-      styles: { fontSize: 7 },
-      headStyles: { fillColor: [41, 128, 185], fontSize: 8 },
-      columnStyles: {
-        0: { cellWidth: 25 }, // Date
-        1: { cellWidth: 30, halign: 'right' }, // Total Sales
-        2: { cellWidth: 25, halign: 'right' }, // Cash Sales
-        3: { cellWidth: 25, halign: 'right' }, // Mobile Sales
-        4: { cellWidth: 25, halign: 'center' } // Transactions
-      },
-      margin: { left: 14, right: 14 },
-      tableWidth: 'auto'
-    });
-  };
-
-  const exportSuppliersReport = (doc, yPosition) => {
-    const tableData = reports.suppliers.map(row => [
-      row.product,
-      row.category,
-      row.stock_level.toString(),
-      formatCurrency(row.value)
-    ]);
-
-    doc.autoTable({
-      startY: yPosition,
-      head: [['Product', 'Category', 'Stock Level', 'Value']],
-      body: tableData,
-      theme: 'grid',
-      styles: { fontSize: 7 },
-      headStyles: { fillColor: [41, 128, 185], fontSize: 8 },
-      columnStyles: {
-        0: { cellWidth: 60 }, // Product
-        1: { cellWidth: 40 }, // Category
-        2: { cellWidth: 25, halign: 'center' }, // Stock Level
-        3: { cellWidth: 30, halign: 'right' } // Value
-      },
-      margin: { left: 14, right: 14 },
-      tableWidth: 'auto'
-    });
-  };
-
-  const exportPurchaseOrdersReport = useCallback(() => {
-    try {
-      const profitData = reports.profitAnalysis || {};
-      const purchaseOrders = reports.purchaseOrders || [];
-
-      const doc = new jsPDF();
-      // Add MWAMBA LIQUORS header
-      doc.setFontSize(24);
-      doc.setFont('helvetica', 'bold');
-      doc.text('MWAMBA LIQUORS', 105, 20, { align: 'center' });
-
-      doc.setFontSize(16);
-      doc.setFont('helvetica', 'normal');
-      doc.text('Purchase Orders & Profit Analysis Report', 105, 35, { align: 'center' });
-
-      doc.setFontSize(10);
-      doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 50);
-      doc.text(`Period: ${dateRange.start} to ${dateRange.end}`, 14, 58);
-
-      // Add a line separator
-      doc.setLineWidth(0.5);
-      doc.line(14, 65, 196, 65);
-
-      let yPosition = 75;
-
-      // Purchase Orders Summary
-      doc.setFontSize(14);
-      doc.text('Purchase Orders Summary', 14, yPosition);
-      yPosition += 10;
-
-      doc.setFontSize(10);
-      doc.text(`Total Orders: ${profitData.purchaseOrders?.total || 0}`, 14, yPosition);
-      yPosition += 8;
-      doc.text(`Received Orders: ${profitData.purchaseOrders?.received || 0}`, 14, yPosition);
-      yPosition += 8;
-      doc.text(`Pending Orders: ${profitData.purchaseOrders?.pending || 0}`, 14, yPosition);
-      yPosition += 8;
-      doc.text(`Total Purchase Value: ${formatCurrency(profitData.purchaseOrders?.totalValue || 0)}`, 14, yPosition);
-      yPosition += 15;
-
-      // Sales Performance
-      doc.setFontSize(14);
-      doc.text('Sales Performance', 14, yPosition);
-      yPosition += 10;
-
-      doc.setFontSize(10);
-      doc.text(`Retail Sales: ${formatCurrency(profitData.sales?.retail?.revenue || 0)} (${profitData.sales?.retail?.transactions || 0} transactions)`, 14, yPosition);
-      yPosition += 8;
-      doc.text(`Wholesale Sales: ${formatCurrency(profitData.sales?.wholesale?.revenue || 0)} (${profitData.sales?.wholesale?.transactions || 0} transactions)`, 14, yPosition);
-      yPosition += 8;
-      doc.text(`Combined Sales: ${formatCurrency(profitData.sales?.combined?.revenue || 0)} (${profitData.sales?.combined?.transactions || 0} transactions)`, 14, yPosition);
-      yPosition += 15;
-
-      // Profit Analysis
-      doc.setFontSize(14);
-      doc.text('Profit & Loss Analysis', 14, yPosition);
-      yPosition += 10;
-
-      doc.setFontSize(10);
-      doc.text(`Total Revenue: ${formatCurrency(profitData.profitAnalysis?.totalRevenue || 0)}`, 14, yPosition);
-      yPosition += 8;
-      doc.text(`Cost of Goods Sold: ${formatCurrency(profitData.profitAnalysis?.estimatedCOGS || 0)}`, 14, yPosition);
-      yPosition += 8;
-      doc.text(`Gross Profit: ${formatCurrency(profitData.profitAnalysis?.grossProfit || 0)}`, 14, yPosition);
-      yPosition += 8;
-      doc.text(`Operating Expenses: ${formatCurrency(profitData.profitAnalysis?.operatingExpenses || 0)}`, 14, yPosition);
-      yPosition += 8;
-      doc.text(`Net Profit: ${formatCurrency(profitData.profitAnalysis?.netProfit || 0)}`, 14, yPosition);
-      yPosition += 8;
-      doc.text(`Profit Margin: ${(profitData.profitAnalysis?.profitMargin || 0).toFixed(2)}%`, 14, yPosition);
-      yPosition += 15;
-
-      // Next Purchase Capacity
-      doc.setFontSize(14);
-      doc.text('Next Purchase Capacity', 14, yPosition);
-      yPosition += 10;
-
-      doc.setFontSize(10);
-      doc.text(`Available for Purchases: ${formatCurrency(profitData.nextPurchase?.capacity || 0)}`, 14, yPosition);
-      yPosition += 8;
-      doc.text(`Recommendation: ${profitData.nextPurchase?.recommendation || 'N/A'}`, 14, yPosition);
-      yPosition += 15;
-
-      // Purchase Orders Table
-      if (purchaseOrders.length > 0) {
-        doc.setFontSize(14);
-        doc.text('Purchase Orders Details', 14, yPosition);
-        yPosition += 10;
-
-        const tableData = purchaseOrders.map(order => [
-          order.order_number || order.id,
-          order.supplier_name || 'N/A',
-          order.order_date,
-          order.status,
-          order.items?.length || 0,
-          formatCurrency(order.total_amount || 0)
-        ]);
-
-        doc.autoTable({
-          startY: yPosition,
-          head: [['Order #', 'Supplier', 'Date', 'Status', 'Items', 'Total Value']],
-          body: tableData,
-          theme: 'grid',
-          styles: { fontSize: 6 },
-          headStyles: { fillColor: [41, 128, 185], fontSize: 7 },
-          columnStyles: {
-            0: { cellWidth: 25 }, // Order #
-            1: { cellWidth: 40 }, // Supplier
-            2: { cellWidth: 20 }, // Date
-            3: { cellWidth: 20 }, // Status
-            4: { cellWidth: 15, halign: 'center' }, // Items
-            5: { cellWidth: 30, halign: 'right' } // Total Value
-          },
-          margin: { left: 14, right: 14 },
-          tableWidth: 'auto'
-        });
-      }
-
-      // Add footer with page number and company info
-      const pageCount = doc.internal.getNumberOfPages();
-      for (let i = 1; i <= pageCount; i++) {
-        doc.setPage(i);
-        doc.setFontSize(8);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`Page ${i} of ${pageCount}`, 105, 285, { align: 'center' });
-        doc.text('MWAMBA LIQUORS - Generated by POS System', 105, 290, { align: 'center' });
-      }
-
-      doc.save(`purchase_orders_profit_analysis_${new Date().toISOString().split('T')[0]}.pdf`);
-    } catch (error) {
-      console.error('Error generating purchase orders PDF:', error);
-      alert(`Error generating Purchase Orders PDF: ${error.message || 'Please try again.'}`);
-    }
-  }, [reports, dateRange]);
-
+  // Calculate totals helper
   const calculateTotals = (data, fields) => {
     if (!data || !Array.isArray(data)) return {};
     return fields.reduce((totals, field) => {
@@ -819,16 +127,222 @@ const ReportingPage = () => {
     }, {});
   };
 
+  // Export functions
+  const exportReport = (reportType) => {
+    try {
+      const doc = new jsPDF();
+      
+      // Header
+      doc.setFontSize(20);
+      doc.setFont('helvetica', 'bold');
+      doc.text('MWAMBA LIQUORS', 105, 20, { align: 'center' });
+      
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`${reportType} Report`, 105, 35, { align: 'center' });
+      
+      doc.setFontSize(10);
+      doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 50);
+      doc.text(`Date Range: ${dateRange.start} to ${dateRange.end}`, 14, 58);
+      
+      doc.setLineWidth(0.5);
+      doc.line(14, 65, 196, 65);
+
+      // Add report-specific content
+      if (reportType === 'Sales') {
+        exportSalesContent(doc, 75);
+      } else if (reportType === 'Inventory') {
+        exportInventoryContent(doc, 75);
+      } else if (reportType === 'Profit & Loss') {
+        exportProfitLossContent(doc, 75);
+      }
+
+      // Footer
+      const pageCount = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.text(`Page ${i} of ${pageCount}`, 105, 285, { align: 'center' });
+        doc.text('MWAMBA LIQUORS - POS System', 105, 290, { align: 'center' });
+      }
+
+      doc.save(`${reportType.toLowerCase().replace(' & ', '_')}_report_${dateRange.start}_to_${dateRange.end}.pdf`);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert(`Error generating ${reportType} PDF: ${error.message}`);
+    }
+  };
+
+  const exportSalesContent = (doc, yPosition) => {
+    const totals = calculateTotals(reports.sales, ['total_sales', 'cash_sales', 'card_sales', 'mobile_sales', 'transactions']);
+    
+    doc.setFontSize(12);
+    doc.text('Summary', 14, yPosition);
+    yPosition += 15;
+
+    const summaryData = [
+      ['Total Sales:', formatCurrency(totals.total_sales)],
+      ['Cash Sales:', formatCurrency(totals.cash_sales)],
+      ['Card Sales:', formatCurrency(totals.card_sales)],
+      ['Mobile Sales:', formatCurrency(totals.mobile_sales)],
+      ['Transactions:', totals.transactions.toString()]
+    ];
+
+    doc.autoTable({
+      startY: yPosition,
+      body: summaryData,
+      theme: 'grid',
+      styles: { fontSize: 10 },
+      margin: { left: 14 }
+    });
+  };
+
+  const exportInventoryContent = (doc, yPosition) => {
+    const inventory = Array.isArray(reports.inventory) ? reports.inventory : [];
+    const lowStockCount = inventory.filter(item => toNumber(item.stock_level) < 10).length;
+    const totalValue = inventory.reduce((sum, item) => sum + toNumber(item.value || 0), 0);
+
+    const summaryData = [
+      ['Total Products:', inventory.length.toString()],
+      ['Low Stock Items:', lowStockCount.toString()],
+      ['Total Inventory Value:', formatCurrency(totalValue)]
+    ];
+
+    doc.autoTable({
+      startY: yPosition,
+      body: summaryData,
+      theme: 'grid',
+      styles: { fontSize: 10 },
+      margin: { left: 14 }
+    });
+  };
+
+  const exportProfitLossContent = (doc, yPosition) => {
+    const salesTotals = calculateTotals(reports.sales, ['total_sales']);
+    const revenue = salesTotals.total_sales || 0;
+    const cogs = revenue * 0.7;
+    const grossProfit = revenue - cogs;
+    const expenses = revenue * 0.1;
+    const netProfit = grossProfit - expenses;
+
+    const plData = [
+      ['Total Revenue:', formatCurrency(revenue)],
+      ['Cost of Goods Sold:', formatCurrency(cogs)],
+      ['Gross Profit:', formatCurrency(grossProfit)],
+      ['Operating Expenses:', formatCurrency(expenses)],
+      ['Net Profit:', formatCurrency(netProfit)],
+      ['Profit Margin:', `${((netProfit / revenue) * 100).toFixed(2)}%`]
+    ];
+
+    doc.autoTable({
+      startY: yPosition,
+      body: plData,
+      theme: 'grid',
+      styles: { fontSize: 10 },
+      margin: { left: 14 }
+    });
+  };
+
+  // Render Dashboard
+  const renderDashboard = () => {
+    const salesTotals = calculateTotals(reports.sales, ['total_sales', 'transactions']);
+    const inventory = Array.isArray(reports.inventory) ? reports.inventory : [];
+    const lowStockCount = inventory.filter(item => toNumber(item.stock_level) < 10).length;
+    const revenue = salesTotals.total_sales || 0;
+    const netProfit = revenue * 0.2; // Simplified calculation
+
+    return (
+      <div className="reporting-content">
+        {/* Quick Stats */}
+        <div className="reporting-quick-stats">
+          <div className="reporting-stat-card">
+            <div className="reporting-stat-label">Total Revenue</div>
+            <div className="reporting-stat-value">{formatCurrency(revenue)}</div>
+          </div>
+          <div className="reporting-stat-card">
+            <div className="reporting-stat-label">Net Profit</div>
+            <div className="reporting-stat-value reporting-positive">{formatCurrency(netProfit)}</div>
+          </div>
+          <div className="reporting-stat-card">
+            <div className="reporting-stat-label">Transactions</div>
+            <div className="reporting-stat-value">{salesTotals.transactions}</div>
+          </div>
+          <div className="reporting-stat-card">
+            <div className="reporting-stat-label">Low Stock Items</div>
+            <div className="reporting-stat-value reporting-negative">{lowStockCount}</div>
+          </div>
+        </div>
+
+        {/* Charts Row */}
+        <div className="reporting-charts">
+          <div className="reporting-chart-container">
+            <h4 className="reporting-chart-title">Sales Performance</h4>
+            <div className="reporting-chart-placeholder">
+              Sales Chart - Last 7 Days
+            </div>
+          </div>
+          <div className="reporting-chart-container">
+            <h4 className="reporting-chart-title">Top Products</h4>
+            <div className="reporting-chart-placeholder">
+              Product Performance Chart
+            </div>
+          </div>
+        </div>
+
+        {/* Recent Sales */}
+        <div className="reporting-main-section">
+          <div className="reporting-section-header">
+            <h3 className="reporting-section-title">Recent Sales</h3>
+            <div className="reporting-section-actions">
+              <button className="reporting-btn reporting-btn-primary" onClick={() => exportReport('Sales')}>
+                Export Sales Report
+              </button>
+            </div>
+          </div>
+          <div className="reporting-table-container">
+            <table className="reporting-data-table">
+              <thead className="reporting-table-header">
+                <tr>
+                  <th className="reporting-table-head">Date</th>
+                  <th className="reporting-table-head">Total Sales</th>
+                  <th className="reporting-table-head">Cash</th>
+                  <th className="reporting-table-head">Card</th>
+                  <th className="reporting-table-head">Mobile</th>
+                  <th className="reporting-table-head">Transactions</th>
+                </tr>
+              </thead>
+              <tbody className="reporting-table-body">
+                {reports.sales.slice(0, 5).map((sale, index) => (
+                  <tr key={index} className="reporting-table-row">
+                    <td className="reporting-table-cell">{sale.date}</td>
+                    <td className="reporting-table-cell">{formatCurrency(sale.total_sales)}</td>
+                    <td className="reporting-table-cell">{formatCurrency(sale.cash_sales)}</td>
+                    <td className="reporting-table-cell">{formatCurrency(sale.card_sales)}</td>
+                    <td className="reporting-table-cell">{formatCurrency(sale.mobile_sales)}</td>
+                    <td className="reporting-table-cell">{sale.transactions}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Render Sales Report
   const renderSalesReport = () => {
     const totals = calculateTotals(reports.sales, ['total_sales', 'cash_sales', 'card_sales', 'mobile_sales', 'transactions']);
 
     return (
-      <div className="reporting-section">
-        <div className="reporting-header">
-          <h3 className="reporting-title">Sales Report</h3>
-          <button className="reporting-export-btn reporting-export-primary" onClick={() => exportReport('Sales')}>
-            Export PDF
-          </button>
+      <div className="reporting-main-section">
+        <div className="reporting-section-header">
+          <h3 className="reporting-section-title">Sales Report</h3>
+          <div className="reporting-section-actions">
+            <button className="reporting-btn reporting-btn-primary" onClick={() => exportReport('Sales')}>
+              Export PDF
+            </button>
+          </div>
         </div>
 
         <div className="reporting-metrics">
@@ -845,11 +359,7 @@ const ReportingPage = () => {
             <p className="reporting-metric-value">{formatCurrency(totals.card_sales)}</p>
           </div>
           <div className="reporting-metric-card">
-            <h4 className="reporting-metric-label">Mobile Sales</h4>
-            <p className="reporting-metric-value">{formatCurrency(totals.mobile_sales)}</p>
-          </div>
-          <div className="reporting-metric-card">
-            <h4 className="reporting-metric-label">Total Transactions</h4>
+            <h4 className="reporting-metric-label">Transactions</h4>
             <p className="reporting-metric-value">{totals.transactions}</p>
           </div>
         </div>
@@ -867,14 +377,14 @@ const ReportingPage = () => {
               </tr>
             </thead>
             <tbody className="reporting-table-body">
-              {reports.sales.map((row, index) => (
+              {reports.sales.map((sale, index) => (
                 <tr key={index} className="reporting-table-row">
-                  <td className="reporting-table-cell">{row.date}</td>
-                  <td className="reporting-table-cell">{formatCurrency(row.total_sales)}</td>
-                  <td className="reporting-table-cell">{formatCurrency(row.cash_sales)}</td>
-                  <td className="reporting-table-cell">{formatCurrency(row.card_sales)}</td>
-                  <td className="reporting-table-cell">{formatCurrency(row.mobile_sales)}</td>
-                  <td className="reporting-table-cell">{row.transactions}</td>
+                  <td className="reporting-table-cell">{sale.date}</td>
+                  <td className="reporting-table-cell">{formatCurrency(sale.total_sales)}</td>
+                  <td className="reporting-table-cell">{formatCurrency(sale.cash_sales)}</td>
+                  <td className="reporting-table-cell">{formatCurrency(sale.card_sales)}</td>
+                  <td className="reporting-table-cell">{formatCurrency(sale.mobile_sales)}</td>
+                  <td className="reporting-table-cell">{sale.transactions}</td>
                 </tr>
               ))}
               <tr className="reporting-total-row">
@@ -892,30 +402,35 @@ const ReportingPage = () => {
     );
   };
 
+  // Render Inventory Report
   const renderInventoryReport = () => {
-    const totals = calculateTotals(reports.inventory, ['stock_level', 'sold_today', 'value']);
+    const inventory = Array.isArray(reports.inventory) ? reports.inventory : [];
+    const lowStockItems = inventory.filter(item => toNumber(item.stock_level) < 10);
+    const totalValue = inventory.reduce((sum, item) => sum + toNumber(item.value || 0), 0);
 
     return (
-      <div className="reporting-section">
-        <div className="reporting-header">
-          <h3 className="reporting-title">Inventory Report</h3>
-          <button className="reporting-export-btn reporting-export-primary" onClick={() => exportReport('Inventory')}>
-            Export PDF
-          </button>
+      <div className="reporting-main-section">
+        <div className="reporting-section-header">
+          <h3 className="reporting-section-title">Inventory Report</h3>
+          <div className="reporting-section-actions">
+            <button className="reporting-btn reporting-btn-primary" onClick={() => exportReport('Inventory')}>
+              Export PDF
+            </button>
+          </div>
         </div>
 
         <div className="reporting-metrics">
           <div className="reporting-metric-card">
-            <h4 className="reporting-metric-label">Total Stock Value</h4>
-            <p className="reporting-metric-value">{formatCurrency(totals.value)}</p>
-          </div>
-          <div className="reporting-metric-card">
-            <h4 className="reporting-metric-label">Total Items Sold Today</h4>
-            <p className="reporting-metric-value">{totals.sold_today}</p>
+            <h4 className="reporting-metric-label">Total Products</h4>
+            <p className="reporting-metric-value">{inventory.length}</p>
           </div>
           <div className="reporting-metric-card">
             <h4 className="reporting-metric-label">Low Stock Items</h4>
-            <p className="reporting-metric-value">{reports.inventory.filter(item => item.stock_level < 50).length}</p>
+            <p className="reporting-metric-value reporting-negative">{lowStockItems.length}</p>
+          </div>
+          <div className="reporting-metric-card">
+            <h4 className="reporting-metric-label">Total Value</h4>
+            <p className="reporting-metric-value">{formatCurrency(totalValue)}</p>
           </div>
         </div>
 
@@ -926,136 +441,22 @@ const ReportingPage = () => {
                 <th className="reporting-table-head">Product</th>
                 <th className="reporting-table-head">Category</th>
                 <th className="reporting-table-head">Stock Level</th>
-                <th className="reporting-table-head">Sold Today</th>
+                <th className="reporting-table-head">Status</th>
                 <th className="reporting-table-head">Value</th>
               </tr>
             </thead>
             <tbody className="reporting-table-body">
-              {reports.inventory.map((row, index) => (
-                <tr key={index} className={`reporting-table-row ${row.stock_level < 50 ? 'reporting-low-stock' : ''}`}>
-                  <td className="reporting-table-cell">{row.product}</td>
-                  <td className="reporting-table-cell">{row.category}</td>
-                  <td className="reporting-table-cell">{row.stock_level}</td>
-                  <td className="reporting-table-cell">{row.sold_today}</td>
-                  <td className="reporting-table-cell">{formatCurrency(row.value)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    );
-  };
-
-  const renderCustomerReport = () => {
-    const totals = calculateTotals(reports.customers, ['total_purchases', 'loyalty_points']);
-
-    return (
-      <div className="reporting-section">
-        <div className="reporting-header">
-          <h3 className="reporting-title">Customer Report</h3>
-          <button className="reporting-export-btn reporting-export-primary" onClick={() => exportReport('Customer')}>
-            Export PDF
-          </button>
-        </div>
-
-        <div className="reporting-metrics">
-          <div className="reporting-metric-card">
-            <h4 className="reporting-metric-label">Total Customer Value</h4>
-            <p className="reporting-metric-value">{formatCurrency(totals.total_purchases)}</p>
-          </div>
-          <div className="reporting-metric-card">
-            <h4 className="reporting-metric-label">Active Customers</h4>
-            <p className="reporting-metric-value">{reports.customers.length}</p>
-          </div>
-          <div className="reporting-metric-card">
-            <h4 className="reporting-metric-label">Avg Customer Value</h4>
-            <p className="reporting-metric-value">{formatCurrency(totals.total_purchases / reports.customers.length)}</p>
-          </div>
-        </div>
-
-        <div className="reporting-table-container">
-          <table className="reporting-data-table">
-            <thead className="reporting-table-header">
-              <tr>
-                <th className="reporting-table-head">Customer Name</th>
-                <th className="reporting-table-head">Phone</th>
-                <th className="reporting-table-head">Total Purchases</th>
-                <th className="reporting-table-head">Last Visit</th>
-                <th className="reporting-table-head">Loyalty Points</th>
-              </tr>
-            </thead>
-            <tbody className="reporting-table-body">
-              {reports.customers.map((row, index) => (
-                <tr key={index} className="reporting-table-row">
-                  <td className="reporting-table-cell">{row.name}</td>
-                  <td className="reporting-table-cell">{row.phone}</td>
-                  <td className="reporting-table-cell">{formatCurrency(row.total_purchases)}</td>
-                  <td className="reporting-table-cell">{row.last_visit}</td>
-                  <td className="reporting-table-cell">{row.loyalty_points}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    );
-  };
-
-  const renderShiftReport = () => {
-    const totals = calculateTotals(reports.shifts, ['total_sales', 'discrepancy']);
-
-    return (
-      <div className="reporting-section">
-        <div className="reporting-header">
-          <h3 className="reporting-title">Shift Report</h3>
-          <button className="reporting-export-btn reporting-export-primary" onClick={() => exportReport('Shift')}>
-            Export PDF
-          </button>
-        </div>
-
-        <div className="reporting-metrics">
-          <div className="reporting-metric-card">
-            <h4 className="reporting-metric-label">Total Shift Sales</h4>
-            <p className="reporting-metric-value">{formatCurrency(totals.total_sales)}</p>
-          </div>
-          <div className="reporting-metric-card">
-            <h4 className="reporting-metric-label">Total Discrepancy</h4>
-            <p className={`reporting-metric-value ${totals.discrepancy >= 0 ? 'reporting-positive' : 'reporting-negative'}`}>
-              {formatCurrency(totals.discrepancy)}
-            </p>
-          </div>
-          <div className="reporting-metric-card">
-            <h4 className="reporting-metric-label">Shifts Completed</h4>
-            <p className="reporting-metric-value">{reports.shifts.length}</p>
-          </div>
-        </div>
-
-        <div className="reporting-table-container">
-          <table className="reporting-data-table">
-            <thead className="reporting-table-header">
-              <tr>
-                <th className="reporting-table-head">Cashier</th>
-                <th className="reporting-table-head">Date</th>
-                <th className="reporting-table-head">Shift Time</th>
-                <th className="reporting-table-head">Opening Balance</th>
-                <th className="reporting-table-head">Closing Balance</th>
-                <th className="reporting-table-head">Total Sales</th>
-                <th className="reporting-table-head">Discrepancy</th>
-              </tr>
-            </thead>
-            <tbody className="reporting-table-body">
-              {reports.shifts.map((row, index) => (
-                <tr key={index} className="reporting-table-row">
-                  <td className="reporting-table-cell">{row.cashier}</td>
-                  <td className="reporting-table-cell">{row.shift_date}</td>
-                  <td className="reporting-table-cell">{row.start_time} - {row.end_time}</td>
-                  <td className="reporting-table-cell">{formatCurrency(row.opening_balance)}</td>
-                  <td className="reporting-table-cell">{formatCurrency(row.closing_balance)}</td>
-                  <td className="reporting-table-cell">{formatCurrency(row.total_sales)}</td>
-                  <td className={`reporting-table-cell ${row.discrepancy >= 0 ? 'reporting-positive' : 'reporting-negative'}`}>
-                    {formatCurrency(row.discrepancy)}
+              {inventory.map((item, index) => (
+                <tr key={index} className={`reporting-table-row ${toNumber(item.stock_level) < 10 ? 'reporting-low-stock' : ''}`}>
+                  <td className="reporting-table-cell">{item.product}</td>
+                  <td className="reporting-table-cell">{item.category}</td>
+                  <td className="reporting-table-cell">{item.stock_level}</td>
+                  <td className="reporting-table-cell">
+                    <span className={`status-badge ${toNumber(item.stock_level) < 5 ? 'cancelled' : toNumber(item.stock_level) < 10 ? 'pending' : 'completed'}`}>
+                      {toNumber(item.stock_level) < 5 ? 'Critical' : toNumber(item.stock_level) < 10 ? 'Low' : 'Good'}
+                    </span>
                   </td>
+                  <td className="reporting-table-cell">{formatCurrency(item.value)}</td>
                 </tr>
               ))}
             </tbody>
@@ -1065,100 +466,44 @@ const ReportingPage = () => {
     );
   };
 
+  // Render Profit & Loss Report
   const renderProfitLossReport = () => {
-    const data = reports.profitLoss;
+    const salesTotals = calculateTotals(reports.sales, ['total_sales']);
+    const revenue = salesTotals.total_sales || 0;
+    const cogs = revenue * 0.7;
+    const grossProfit = revenue - cogs;
+    const expenses = revenue * 0.1;
+    const netProfit = grossProfit - expenses;
 
     return (
-      <div className="reporting-section">
-        <div className="reporting-header">
-          <h3 className="reporting-title">Profit & Loss Report</h3>
-          <button className="reporting-export-btn reporting-export-primary" onClick={() => exportReport('ProfitLoss')}>
-            Export PDF
-          </button>
+      <div className="reporting-main-section">
+        <div className="reporting-section-header">
+          <h3 className="reporting-section-title">Profit & Loss Report</h3>
+          <div className="reporting-section-actions">
+            <button className="reporting-btn reporting-btn-primary" onClick={() => exportReport('Profit & Loss')}>
+              Export PDF
+            </button>
+          </div>
         </div>
 
         <div className="reporting-metrics">
           <div className="reporting-metric-card">
             <h4 className="reporting-metric-label">Total Revenue</h4>
-            <p className="reporting-metric-value">{formatCurrency(data.total_revenue || 0)}</p>
+            <p className="reporting-metric-value">{formatCurrency(revenue)}</p>
           </div>
           <div className="reporting-metric-card">
             <h4 className="reporting-metric-label">Gross Profit</h4>
-            <p className="reporting-metric-value">{formatCurrency(data.gross_profit || 0)}</p>
+            <p className="reporting-metric-value">{formatCurrency(grossProfit)}</p>
           </div>
           <div className="reporting-metric-card">
             <h4 className="reporting-metric-label">Net Profit</h4>
-            <p className={`reporting-metric-value ${(data.net_profit || 0) >= 0 ? 'reporting-positive' : 'reporting-negative'}`}>
-              {formatCurrency(data.net_profit || 0)}
+            <p className={`reporting-metric-value ${netProfit >= 0 ? 'reporting-positive' : 'reporting-negative'}`}>
+              {formatCurrency(netProfit)}
             </p>
           </div>
           <div className="reporting-metric-card">
             <h4 className="reporting-metric-label">Profit Margin</h4>
-            <p className="reporting-metric-value">{((data.profit_margin_percentage || 0) * 100).toFixed(2)}%</p>
-          </div>
-        </div>
-
-        <div className="reporting-details">
-          <div className="reporting-detail-section">
-            <h4 className="reporting-detail-title">Revenue & Costs</h4>
-            <div className="reporting-detail-grid">
-              <div className="reporting-detail-item">
-                <span className="reporting-detail-label">Total Revenue:</span>
-                <span className="reporting-detail-value">{formatCurrency(data.total_revenue || 0)}</span>
-              </div>
-              <div className="reporting-detail-item">
-                <span className="reporting-detail-label">Cost of Goods Sold:</span>
-                <span className="reporting-detail-value">{formatCurrency(data.cost_of_goods_sold || 0)}</span>
-              </div>
-              <div className="reporting-detail-item">
-                <span className="reporting-detail-label">Gross Profit:</span>
-                <span className="reporting-detail-value">{formatCurrency(data.gross_profit || 0)}</span>
-              </div>
-              <div className="reporting-detail-item">
-                <span className="reporting-detail-label">Operating Expenses:</span>
-                <span className="reporting-detail-value">{formatCurrency(data.operating_expenses || 0)}</span>
-              </div>
-              <div className="reporting-detail-item">
-                <span className="reporting-detail-label">Net Profit:</span>
-                <span className={`reporting-detail-value ${(data.net_profit || 0) >= 0 ? 'reporting-positive' : 'reporting-negative'}`}>
-                  {formatCurrency(data.net_profit || 0)}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const renderProductsReport = () => {
-    const totals = calculateTotals(reports.products, ['total_sales', 'cash_sales', 'mobile_sales', 'transactions']);
-
-    return (
-      <div className="reporting-section">
-        <div className="reporting-header">
-          <h3 className="reporting-title">Product Performance Report</h3>
-          <button className="reporting-export-btn reporting-export-primary" onClick={() => exportReport('Products')}>
-            Export PDF
-          </button>
-        </div>
-
-        <div className="reporting-metrics">
-          <div className="reporting-metric-card">
-            <h4 className="reporting-metric-label">Total Sales</h4>
-            <p className="reporting-metric-value">{formatCurrency(totals.total_sales)}</p>
-          </div>
-          <div className="reporting-metric-card">
-            <h4 className="reporting-metric-label">Cash Sales</h4>
-            <p className="reporting-metric-value">{formatCurrency(totals.cash_sales)}</p>
-          </div>
-          <div className="reporting-metric-card">
-            <h4 className="reporting-metric-label">Mobile Sales</h4>
-            <p className="reporting-metric-value">{formatCurrency(totals.mobile_sales)}</p>
-          </div>
-          <div className="reporting-metric-card">
-            <h4 className="reporting-metric-label">Total Transactions</h4>
-            <p className="reporting-metric-value">{totals.transactions}</p>
+            <p className="reporting-metric-value">{((netProfit / revenue) * 100).toFixed(2)}%</p>
           </div>
         </div>
 
@@ -1166,23 +511,37 @@ const ReportingPage = () => {
           <table className="reporting-data-table">
             <thead className="reporting-table-header">
               <tr>
-                <th className="reporting-table-head">Date</th>
-                <th className="reporting-table-head">Total Sales</th>
-                <th className="reporting-table-head">Cash</th>
-                <th className="reporting-table-head">Mobile</th>
-                <th className="reporting-table-head">Transactions</th>
+                <th className="reporting-table-head">Item</th>
+                <th className="reporting-table-head">Amount</th>
+                <th className="reporting-table-head">Percentage</th>
               </tr>
             </thead>
             <tbody className="reporting-table-body">
-              {reports.products.map((row, index) => (
-                <tr key={index} className="reporting-table-row">
-                  <td className="reporting-table-cell">{row.date}</td>
-                  <td className="reporting-table-cell">{formatCurrency(row.total_sales)}</td>
-                  <td className="reporting-table-cell">{formatCurrency(row.cash_sales)}</td>
-                  <td className="reporting-table-cell">{formatCurrency(row.mobile_sales)}</td>
-                  <td className="reporting-table-cell">{row.transactions}</td>
-                </tr>
-              ))}
+              <tr className="reporting-table-row">
+                <td className="reporting-table-cell">Total Revenue</td>
+                <td className="reporting-table-cell">{formatCurrency(revenue)}</td>
+                <td className="reporting-table-cell">100%</td>
+              </tr>
+              <tr className="reporting-table-row">
+                <td className="reporting-table-cell">Cost of Goods Sold</td>
+                <td className="reporting-table-cell">{formatCurrency(cogs)}</td>
+                <td className="reporting-table-cell">70%</td>
+              </tr>
+              <tr className="reporting-table-row">
+                <td className="reporting-table-cell">Gross Profit</td>
+                <td className="reporting-table-cell">{formatCurrency(grossProfit)}</td>
+                <td className="reporting-table-cell">30%</td>
+              </tr>
+              <tr className="reporting-table-row">
+                <td className="reporting-table-cell">Operating Expenses</td>
+                <td className="reporting-table-cell">{formatCurrency(expenses)}</td>
+                <td className="reporting-table-cell">10%</td>
+              </tr>
+              <tr className="reporting-total-row">
+                <td className="reporting-table-cell"><strong>Net Profit</strong></td>
+                <td className="reporting-table-cell"><strong>{formatCurrency(netProfit)}</strong></td>
+                <td className="reporting-table-cell"><strong>{((netProfit / revenue) * 100).toFixed(2)}%</strong></td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -1190,465 +549,88 @@ const ReportingPage = () => {
     );
   };
 
-  const renderSuppliersReport = () => {
-    const totals = calculateTotals(reports.suppliers, ['stock_level', 'value']);
+  // Render Product Performance
+  const renderProductPerformance = () => {
+    const productData = Array.isArray(reports.productPerformance) ? reports.productPerformance : [];
 
     return (
-      <div className="reporting-section">
-        <div className="reporting-header">
-          <h3 className="reporting-title">Supplier Performance Report</h3>
-          <button className="reporting-export-btn reporting-export-primary" onClick={() => exportReport('Suppliers')}>
-            Export PDF
-          </button>
-        </div>
-
-        <div className="reporting-metrics">
-          <div className="reporting-metric-card">
-            <h4 className="reporting-metric-label">Total Stock Value</h4>
-            <p className="reporting-metric-value">{formatCurrency(totals.value)}</p>
-          </div>
-          <div className="reporting-metric-card">
-            <h4 className="reporting-metric-label">Total Items</h4>
-            <p className="reporting-metric-value">{totals.stock_level}</p>
-          </div>
-          <div className="reporting-metric-card">
-            <h4 className="reporting-metric-label">Active Products</h4>
-            <p className="reporting-metric-value">{reports.suppliers.length}</p>
-          </div>
-        </div>
-
-        <div className="reporting-table-container">
-          <table className="reporting-data-table">
-            <thead className="reporting-table-header">
-              <tr>
-                <th className="reporting-table-head">Product</th>
-                <th className="reporting-table-head">Category</th>
-                <th className="reporting-table-head">Stock Level</th>
-                <th className="reporting-table-head">Value</th>
-              </tr>
-            </thead>
-            <tbody className="reporting-table-body">
-              {reports.suppliers.map((row, index) => (
-                <tr key={index} className="reporting-table-row">
-                  <td className="reporting-table-cell">{row.product}</td>
-                  <td className="reporting-table-cell">{row.category}</td>
-                  <td className="reporting-table-cell">{row.stock_level}</td>
-                  <td className="reporting-table-cell">{formatCurrency(row.value)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    );
-  };
-
-  const renderDailyReport = () => {
-    const today = new Date().toISOString().split('T')[0];
-    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-
-    // Get today's data from today's summary
-    const todaySummary = reports.today_summary || {};
-    const todaySales = reports.sales?.find(s => s.date === today) || {};
-    const yesterdaySales = reports.sales?.find(s => s.date === yesterday) || {};
-
-    const salesGrowth = yesterdaySales.total_sales ?
-      ((todaySales.total_sales - yesterdaySales.total_sales) / yesterdaySales.total_sales * 100) : 0;
-
-    return (
-      <div className="reporting-section">
-        <div className="reporting-header">
-          <h3 className="reporting-title">Daily Business Summary</h3>
-          <div className="reporting-header-actions">
-            <button className="reporting-export-btn reporting-export-primary" onClick={() => exportDailyReport()}>
-              Export Daily Report
-            </button>
-            <button className="reporting-export-btn reporting-export-secondary" onClick={() => {
-              // Add date selector for specific day reports
-              const selectedDate = prompt('Enter date (YYYY-MM-DD):', today);
-              if (selectedDate) {
-                // This would trigger API calls for specific date
-                alert(`Loading report for ${selectedDate}`);
-              }
-            }}>
-              Select Date
+      <div className="reporting-main-section">
+        <div className="reporting-section-header">
+          <h3 className="reporting-section-title">Top Products</h3>
+          <div className="reporting-section-actions">
+            <button className="reporting-btn reporting-btn-primary" onClick={() => exportReport('Product Performance')}>
+              Export PDF
             </button>
           </div>
         </div>
 
-        {/* Today's Key Metrics */}
-        <div className="reporting-metrics">
-          <div className="reporting-metric-card">
-            <h4 className="reporting-metric-label">Today's Sales</h4>
-            <p className="reporting-metric-value">{formatCurrency(todaySummary.sales_today || todaySales.total_sales || 0)}</p>
-            <small className={salesGrowth >= 0 ? 'reporting-positive' : 'reporting-negative'}>
-              {salesGrowth >= 0 ? '+' : ''}{salesGrowth.toFixed(1)}% vs yesterday
-            </small>
-          </div>
-          <div className="reporting-metric-card">
-            <h4 className="reporting-metric-label">Transactions Today</h4>
-            <p className="reporting-metric-value">{todaySummary.transactions_today || todaySales.transactions || 0}</p>
-          </div>
-          <div className="reporting-metric-card">
-            <h4 className="reporting-metric-label">Today's Profit</h4>
-            <p className="reporting-metric-value reporting-positive">{formatCurrency(todaySummary.profit_today || 0)}</p>
-          </div>
-          <div className="reporting-metric-card">
-            <h4 className="reporting-metric-label">Products Sold Today</h4>
-            <p className="reporting-metric-value">{todaySummary.products_sold_today || 0}</p>
-          </div>
-          <div className="reporting-metric-card">
-            <h4 className="reporting-metric-label">Cash Sales</h4>
-            <p className="reporting-metric-value">{formatCurrency(todaySales.cash_sales || 0)}</p>
-          </div>
-          <div className="reporting-metric-card">
-            <h4 className="reporting-metric-label">Mobile Sales</h4>
-            <p className="reporting-metric-value">{formatCurrency(todaySales.mobile_sales || 0)}</p>
-          </div>
-        </div>
-
-        {/* Products Sold Today */}
-        <div className="reporting-subsection">
-          <h4>Products Sold Today</h4>
-          <div className="reporting-table-container">
-            <table className="reporting-data-table">
-              <thead className="reporting-table-header">
-                <tr>
-                  <th className="reporting-table-head">Product</th>
-                  <th className="reporting-table-head">SKU</th>
-                  <th className="reporting-table-head">Quantity Sold</th>
-                  <th className="reporting-table-head">Revenue</th>
-                </tr>
-              </thead>
-              <tbody className="reporting-table-body">
-                {reports.products_today?.length > 0 ? (
-                  reports.products_today.map((product, index) => (
-                    <tr key={index} className="reporting-table-row">
-                      <td className="reporting-table-cell">{product.product_name}</td>
-                      <td className="reporting-table-cell">{product.sku}</td>
-                      <td className="reporting-table-cell">{product.quantity_sold}</td>
-                      <td className="reporting-table-cell">{formatCurrency(product.revenue)}</td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr className="reporting-table-row">
-                    <td colSpan="4" className="reporting-table-cell reporting-no-data">
-                      No products sold today or data not available
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Quick Inventory Status */}
-        <div className="reporting-subsection">
-          <h4>Inventory Alert</h4>
-          <div className="reporting-metrics">
-            <div className="reporting-metric-card">
-              <h4 className="reporting-metric-label">Low Stock Items</h4>
-              <p className="reporting-metric-value reporting-negative">
-                {todaySummary.inventory_alerts?.low_stock || reports.inventory?.filter(item => item.stock_level < 10).length || 0}
-              </p>
-            </div>
-            <div className="reporting-metric-card">
-              <h4 className="reporting-metric-label">Out of Stock</h4>
-              <p className="reporting-metric-value reporting-negative">
-                {todaySummary.inventory_alerts?.out_of_stock || reports.inventory?.filter(item => item.stock_level === 0).length || 0}
-              </p>
-            </div>
-            <div className="reporting-metric-card">
-              <h4 className="reporting-metric-label">Items Sold Today</h4>
-              <p className="reporting-metric-value">
-                {todaySummary.stock_movements?.sold_today || reports.inventory?.reduce((sum, item) => sum + (item.sold_today || 0), 0) || 0}
-              </p>
-            </div>
-            <div className="reporting-metric-card">
-              <h4 className="reporting-metric-label">Items Received Today</h4>
-              <p className="reporting-metric-value">
-                {todaySummary.stock_movements?.received_today || reports.inventory?.reduce((sum, item) => sum + (item.received_today || 0), 0) || 0}
-              </p>
-            </div>
-            <div className="reporting-metric-card">
-              <h4 className="reporting-metric-label">Total Inventory Value</h4>
-              <p className="reporting-metric-value">
-                {formatCurrency(reports.inventory?.reduce((sum, item) => sum + (item.value || 0), 0) || 0)}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Recent Activity */}
-        <div className="reporting-subsection">
-          <h4>Today's Activity</h4>
-          <div className="reporting-table-container">
-            <table className="reporting-data-table">
-              <thead className="reporting-table-header">
-                <tr>
-                  <th className="reporting-table-head">Time</th>
-                  <th className="reporting-table-head">Activity</th>
-                  <th className="reporting-table-head">Details</th>
-                  <th className="reporting-table-head">Amount</th>
-                </tr>
-              </thead>
-              <tbody className="reporting-table-body">
-                <tr className="reporting-table-row">
-                  <td className="reporting-table-cell">{new Date().toLocaleTimeString()}</td>
-                  <td className="reporting-table-cell">Daily Report Generated</td>
-                  <td className="reporting-table-cell">Business summary for {today}</td>
-                  <td className="reporting-table-cell">{formatCurrency(todaySummary.sales_today || todaySales.total_sales || 0)}</td>
-                </tr>
-                {reports.products_today?.slice(0, 3).map((product, index) => (
-                  <tr key={`product-${index}`} className="reporting-table-row">
-                    <td className="reporting-table-cell">{new Date().toLocaleTimeString()}</td>
-                    <td className="reporting-table-cell">Product Sale</td>
-                    <td className="reporting-table-cell">{product.product_name} ({product.quantity_sold} units)</td>
-                    <td className="reporting-table-cell">{formatCurrency(product.revenue)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const exportDailyReport = () => {
-    try {
-      const today = new Date().toISOString().split('T')[0];
-      const doc = new jsPDF();
-
-      // Add MWAMBA LIQUORS header
-      doc.setFontSize(24);
-      doc.setFont('helvetica', 'bold');
-      doc.text('MWAMBA LIQUORS', 105, 20, { align: 'center' });
-
-      doc.setFontSize(18);
-      doc.setFont('helvetica', 'normal');
-      doc.text('Daily Business Report', 105, 35, { align: 'center' });
-
-      doc.setFontSize(12);
-      doc.text(`Date: ${new Date().toLocaleDateString()}`, 105, 45, { align: 'center' });
-
-      // Add a line separator
-      doc.setLineWidth(0.5);
-      doc.line(14, 55, 196, 55);
-
-      let yPosition = 70;
-
-      // Today's Summary
-      doc.setFontSize(14);
-      doc.text('Today\'s Summary', 14, yPosition);
-      yPosition += 10;
-
-      const todaySales = reports.sales?.find(s => s.date === today) || {};
-
-      doc.setFontSize(10);
-      doc.text(`Total Sales: ${formatCurrency(todaySales.total_sales || 0)}`, 14, yPosition);
-      yPosition += 8;
-      doc.text(`Cash Sales: ${formatCurrency(todaySales.cash_sales || 0)}`, 14, yPosition);
-      yPosition += 8;
-      doc.text(`Card Sales: ${formatCurrency(todaySales.card_sales || 0)}`, 14, yPosition);
-      yPosition += 8;
-      doc.text(`Mobile Sales: ${formatCurrency(todaySales.mobile_sales || 0)}`, 14, yPosition);
-      yPosition += 8;
-      doc.text(`Transactions: ${todaySales.transactions || 0}`, 14, yPosition);
-      yPosition += 15;
-
-      // Inventory Status
-      doc.setFontSize(14);
-      doc.text('Inventory Status', 14, yPosition);
-      yPosition += 10;
-
-      const lowStock = reports.inventory?.filter(item => item.stock_level < 10).length || 0;
-      const outOfStock = reports.inventory?.filter(item => item.stock_level === 0).length || 0;
-      const totalValue = reports.inventory?.reduce((sum, item) => sum + (item.value || 0), 0) || 0;
-
-      doc.setFontSize(10);
-      doc.text(`Low Stock Items (< 10): ${lowStock}`, 14, yPosition);
-      yPosition += 8;
-      doc.text(`Out of Stock Items: ${outOfStock}`, 14, yPosition);
-      yPosition += 8;
-      doc.text(`Total Inventory Value: ${formatCurrency(totalValue)}`, 14, yPosition);
-      yPosition += 15;
-
-      // Top Products Today (placeholder - would need actual data)
-      doc.setFontSize(14);
-      doc.text('Top Performing Products Today', 14, yPosition);
-      yPosition += 10;
-
-      doc.setFontSize(10);
-      doc.text('Note: Detailed product performance data would be shown here with actual sales data.', 14, yPosition);
-
-      // Add footer
-      const pageCount = doc.internal.getNumberOfPages();
-      for (let i = 1; i <= pageCount; i++) {
-        doc.setPage(i);
-        doc.setFontSize(8);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`Page ${i} of ${pageCount}`, 105, 285, { align: 'center' });
-        doc.text('MWAMBA LIQUORS - Daily Business Report', 105, 290, { align: 'center' });
-      }
-
-      doc.save(`daily_report_${today}.pdf`);
-    } catch (error) {
-      console.error('Error generating daily report PDF:', error);
-      alert(`Error generating Daily Report PDF: ${error.message || 'Please try again.'}`);
-    }
-  };
-
-  const renderPurchaseOrdersReport = () => {
-    const profitData = reports.profitAnalysis || {};
-    const purchaseOrders = reports.purchaseOrders || [];
-
-    return (
-      <div className="reporting-section">
-        <div className="reporting-header">
-          <h3 className="reporting-title">Purchase Orders & Profit Analysis</h3>
-          <button className="reporting-export-btn reporting-export-primary" onClick={() => exportPurchaseOrdersReport()}>
-            Export PDF
-          </button>
-        </div>
-
-        {/* Purchase Orders Summary */}
-        <div className="reporting-metrics">
-          <div className="reporting-metric-card">
-            <h4 className="reporting-metric-label">Total Purchase Orders</h4>
-            <p className="reporting-metric-value">{profitData.purchaseOrders?.total || 0}</p>
-          </div>
-          <div className="reporting-metric-card">
-            <h4 className="reporting-metric-label">Received Orders</h4>
-            <p className="reporting-metric-value">{profitData.purchaseOrders?.received || 0}</p>
-          </div>
-          <div className="reporting-metric-card">
-            <h4 className="reporting-metric-label">Pending Orders</h4>
-            <p className="reporting-metric-value">{profitData.purchaseOrders?.pending || 0}</p>
-          </div>
-          <div className="reporting-metric-card">
-            <h4 className="reporting-metric-label">Total Purchase Value</h4>
-            <p className="reporting-metric-value">{formatCurrency(profitData.purchaseOrders?.totalValue || 0)}</p>
-          </div>
-        </div>
-
-        {/* Sales Breakdown */}
-        <div className="reporting-subsection">
-          <h4>Sales Performance</h4>
-          <div className="reporting-metrics">
-            <div className="reporting-metric-card">
-              <h4 className="reporting-metric-label">Retail Sales</h4>
-              <p className="reporting-metric-value">{formatCurrency(profitData.sales?.retail?.revenue || 0)}</p>
-              <small>{profitData.sales?.retail?.transactions || 0} transactions</small>
-            </div>
-            <div className="reporting-metric-card">
-              <h4 className="reporting-metric-label">Wholesale Sales</h4>
-              <p className="reporting-metric-value">{formatCurrency(profitData.sales?.wholesale?.revenue || 0)}</p>
-              <small>{profitData.sales?.wholesale?.transactions || 0} transactions</small>
-            </div>
-            <div className="reporting-metric-card">
-              <h4 className="reporting-metric-label">Combined Sales</h4>
-              <p className="reporting-metric-value">{formatCurrency(profitData.sales?.combined?.revenue || 0)}</p>
-              <small>{profitData.sales?.combined?.transactions || 0} transactions</small>
-            </div>
-          </div>
-        </div>
-
-        {/* Profit Analysis */}
-        <div className="reporting-subsection">
-          <h4>Profit & Loss Analysis</h4>
-          <div className="reporting-metrics">
-            <div className="reporting-metric-card">
-              <h4 className="reporting-metric-label">Total Revenue</h4>
-              <p className="reporting-metric-value">{formatCurrency(profitData.profitAnalysis?.totalRevenue || 0)}</p>
-            </div>
-            <div className="reporting-metric-card">
-              <h4 className="reporting-metric-label">Cost of Goods Sold</h4>
-              <p className="reporting-metric-value">{formatCurrency(profitData.profitAnalysis?.estimatedCOGS || 0)}</p>
-            </div>
-            <div className="reporting-metric-card">
-              <h4 className="reporting-metric-label">Gross Profit</h4>
-              <p className={`reporting-metric-value ${profitData.profitAnalysis?.grossProfit >= 0 ? 'reporting-positive' : 'reporting-negative'}`}>
-                {formatCurrency(profitData.profitAnalysis?.grossProfit || 0)}
-              </p>
-            </div>
-            <div className="reporting-metric-card">
-              <h4 className="reporting-metric-label">Net Profit</h4>
-              <p className={`reporting-metric-value ${profitData.profitAnalysis?.netProfit >= 0 ? 'reporting-positive' : 'reporting-negative'}`}>
-                {formatCurrency(profitData.profitAnalysis?.netProfit || 0)}
-              </p>
-            </div>
-            <div className="reporting-metric-card">
-              <h4 className="reporting-metric-label">Profit Margin</h4>
-              <p className="reporting-metric-value">{(profitData.profitAnalysis?.profitMargin || 0).toFixed(2)}%</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Next Purchase Capacity */}
-        <div className="reporting-subsection">
-          <h4>Next Purchase Capacity</h4>
-          <div className="reporting-metrics">
-            <div className="reporting-metric-card">
-              <h4 className="reporting-metric-label">Available for Purchases</h4>
-              <p className="reporting-metric-value">{formatCurrency(profitData.nextPurchase?.capacity || 0)}</p>
-              <small>{profitData.nextPurchase?.percentageOfProfit || 0}% of net profits</small>
-            </div>
-            <div className="reporting-metric-card">
-              <h4 className="reporting-metric-label">Recommendation</h4>
-              <p className="reporting-metric-value">{profitData.nextPurchase?.recommendation || 'N/A'}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Inventory Summary */}
-        <div className="reporting-subsection">
-          <h4>Current Inventory Status</h4>
-          <div className="reporting-metrics">
-            <div className="reporting-metric-card">
-              <h4 className="reporting-metric-label">Total Products</h4>
-              <p className="reporting-metric-value">{profitData.inventory?.totalProducts || 0}</p>
-            </div>
-            <div className="reporting-metric-card">
-              <h4 className="reporting-metric-label">Inventory Value</h4>
-              <p className="reporting-metric-value">{formatCurrency(profitData.inventory?.totalValue || 0)}</p>
-            </div>
-            <div className="reporting-metric-card">
-              <h4 className="reporting-metric-label">Low Stock Items</h4>
-              <p className="reporting-metric-value">{profitData.inventory?.lowStockItems || 0}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Purchase Orders Table */}
-        <div className="reporting-table-container">
-          <h4>Purchase Orders Details</h4>
-          <table className="reporting-data-table">
+        <div className="reporting-table-container" style={{ overflowX: 'auto', maxWidth: '100%' }}>
+          <table className="reporting-data-table" style={{ minWidth: '1200px', fontSize: '12px' }}>
             <thead className="reporting-table-header">
               <tr>
-                <th className="reporting-table-head">Order #</th>
-                <th className="reporting-table-head">Supplier</th>
-                <th className="reporting-table-head">Date</th>
-                <th className="reporting-table-head">Status</th>
-                <th className="reporting-table-head">Items</th>
-                <th className="reporting-table-head">Total Value</th>
+                <th className="reporting-table-head" style={{ minWidth: '150px' }}>Product Name</th>
+                <th className="reporting-table-head" style={{ minWidth: '80px' }}>SKU</th>
+                <th className="reporting-table-head" style={{ minWidth: '70px' }}>BP</th>
+                <th className="reporting-table-head" style={{ minWidth: '70px' }}>Retail SP</th>
+                <th className="reporting-table-head" style={{ minWidth: '80px' }}>Wholesale SP</th>
+                <th className="reporting-table-head" style={{ minWidth: '70px' }}>Retail Qty</th>
+                <th className="reporting-table-head" style={{ minWidth: '80px' }}>Wholesale Qty</th>
+                <th className="reporting-table-head" style={{ minWidth: '70px' }}>Total Qty</th>
+                <th className="reporting-table-head" style={{ minWidth: '90px' }}>Retail Revenue</th>
+                <th className="reporting-table-head" style={{ minWidth: '100px' }}>Wholesale Revenue</th>
+                <th className="reporting-table-head" style={{ minWidth: '90px' }}>Total Revenue</th>
+                <th className="reporting-table-head" style={{ minWidth: '80px' }}>Retail Profit</th>
+                <th className="reporting-table-head" style={{ minWidth: '90px' }}>Wholesale Profit</th>
+                <th className="reporting-table-head" style={{ minWidth: '80px' }}>Total Profit</th>
               </tr>
             </thead>
             <tbody className="reporting-table-body">
-              {purchaseOrders.map((order, index) => (
-                <tr key={index} className="reporting-table-row">
-                  <td className="reporting-table-cell">{order.order_number || order.id}</td>
-                  <td className="reporting-table-cell">{order.supplier_name || 'N/A'}</td>
-                  <td className="reporting-table-cell">{order.order_date}</td>
-                  <td className="reporting-table-cell">
-                    <span className={`status-badge ${order.status?.toLowerCase()}`}>
-                      {order.status}
-                    </span>
+              {productData.length === 0 ? (
+                <tr>
+                  <td colSpan="14" className="reporting-table-cell" style={{ textAlign: 'center' }}>
+                    No product performance data available for the selected date range.
                   </td>
-                  <td className="reporting-table-cell">{order.items?.length || 0}</td>
-                  <td className="reporting-table-cell">{formatCurrency(order.total_amount || 0)}</td>
                 </tr>
-              ))}
+              ) : (
+                <>
+                  {productData.filter(item => item.product_name !== 'TOTAL').map((product, index) => (
+                    <tr key={index} className="reporting-table-row">
+                      <td className="reporting-table-cell" style={{ fontWeight: '500' }}>{product.product_name}</td>
+                      <td className="reporting-table-cell" style={{ fontSize: '11px' }}>{product.sku}</td>
+                      <td className="reporting-table-cell" style={{ fontSize: '11px' }}>{formatCurrency(product.buying_price)}</td>
+                      <td className="reporting-table-cell" style={{ fontSize: '11px' }}>{formatCurrency(product.retail_price)}</td>
+                      <td className="reporting-table-cell" style={{ fontSize: '11px' }}>{formatCurrency(product.wholesale_price)}</td>
+                      <td className="reporting-table-cell" style={{ textAlign: 'center' }}>{product.retail_quantity}</td>
+                      <td className="reporting-table-cell" style={{ textAlign: 'center' }}>{product.wholesale_quantity}</td>
+                      <td className="reporting-table-cell" style={{ textAlign: 'center', fontWeight: '600' }}>{product.total_quantity}</td>
+                      <td className="reporting-table-cell" style={{ fontSize: '11px' }}>{formatCurrency(product.retail_revenue)}</td>
+                      <td className="reporting-table-cell" style={{ fontSize: '11px' }}>{formatCurrency(product.wholesale_revenue)}</td>
+                      <td className="reporting-table-cell" style={{ fontSize: '11px', fontWeight: '600' }}>{formatCurrency(product.total_revenue)}</td>
+                      <td className="reporting-table-cell reporting-positive" style={{ fontSize: '11px' }}>{formatCurrency(product.retail_profit)}</td>
+                      <td className="reporting-table-cell reporting-positive" style={{ fontSize: '11px' }}>{formatCurrency(product.wholesale_profit)}</td>
+                      <td className="reporting-table-cell reporting-positive" style={{ fontSize: '11px', fontWeight: '600' }}>{formatCurrency(product.total_profit)}</td>
+                    </tr>
+                  ))}
+                  {productData.filter(item => item.product_name === 'TOTAL').map((total, index) => (
+                    <tr key={`total-${index}`} className="reporting-total-row">
+                      <td className="reporting-table-cell"><strong>{total.product_name}</strong></td>
+                      <td className="reporting-table-cell"></td>
+                      <td className="reporting-table-cell"></td>
+                      <td className="reporting-table-cell"></td>
+                      <td className="reporting-table-cell"></td>
+                      <td className="reporting-table-cell" style={{ textAlign: 'center' }}><strong>{total.retail_quantity}</strong></td>
+                      <td className="reporting-table-cell" style={{ textAlign: 'center' }}><strong>{total.wholesale_quantity}</strong></td>
+                      <td className="reporting-table-cell" style={{ textAlign: 'center' }}><strong>{total.total_quantity}</strong></td>
+                      <td className="reporting-table-cell"><strong>{formatCurrency(total.retail_revenue)}</strong></td>
+                      <td className="reporting-table-cell"><strong>{formatCurrency(total.wholesale_revenue)}</strong></td>
+                      <td className="reporting-table-cell"><strong>{formatCurrency(total.total_revenue)}</strong></td>
+                      <td className="reporting-table-cell reporting-positive"><strong>{formatCurrency(total.retail_profit)}</strong></td>
+                      <td className="reporting-table-cell reporting-positive"><strong>{formatCurrency(total.wholesale_profit)}</strong></td>
+                      <td className="reporting-table-cell reporting-positive"><strong>{formatCurrency(total.total_profit)}</strong></td>
+                    </tr>
+                  ))}
+                </>
+              )}
             </tbody>
           </table>
         </div>
@@ -1659,7 +641,7 @@ const ReportingPage = () => {
   return (
     <div className="reporting-page">
       <div className="reporting-page-header">
-        <h1 className="reporting-page-title">Reports & Analytics</h1>
+        <h1 className="reporting-page-title">Business Intelligence Dashboard</h1>
         <div className="reporting-filters">
           <div className="reporting-filter-group">
             <label className="reporting-filter-label">Start Date:</label>
@@ -1679,99 +661,70 @@ const ReportingPage = () => {
               onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
             />
           </div>
-          <button className="reporting-generate-btn reporting-export-secondary" onClick={generateReports}>
-            {loading ? 'Generating...' : 'Generate Reports'}
+          <button 
+            className="reporting-btn reporting-btn-secondary" 
+            onClick={generateReports}
+            disabled={loading}
+          >
+            {loading ? 'Refreshing...' : 'Refresh Data'}
           </button>
         </div>
       </div>
 
       <div className="reporting-tabs">
         <button
-          className={`reporting-tab ${activeTab === 'daily' ? 'reporting-tab-active' : ''}`}
-          onClick={() => setActiveTab('daily')}
+          className={`reporting-tab ${activeTab === 'dashboard' ? 'reporting-tab-active' : ''}`}
+          onClick={() => setActiveTab('dashboard')}
         >
-          Daily Reports
+          📊 Dashboard
         </button>
         <button
           className={`reporting-tab ${activeTab === 'sales' ? 'reporting-tab-active' : ''}`}
           onClick={() => setActiveTab('sales')}
         >
-          Sales Reports
+          💰 Sales Report
         </button>
         <button
           className={`reporting-tab ${activeTab === 'inventory' ? 'reporting-tab-active' : ''}`}
           onClick={() => setActiveTab('inventory')}
         >
-          Inventory Reports
+          📦 Inventory
         </button>
         <button
-          className={`reporting-tab ${activeTab === 'customers' ? 'reporting-tab-active' : ''}`}
-          onClick={() => setActiveTab('customers')}
+          className={`reporting-tab ${activeTab === 'profit' ? 'reporting-tab-active' : ''}`}
+          onClick={() => setActiveTab('profit')}
         >
-          Customer Reports
-        </button>
-        <button
-          className={`reporting-tab ${activeTab === 'shifts' ? 'reporting-tab-active' : ''}`}
-          onClick={() => setActiveTab('shifts')}
-        >
-          Shift Reports
-        </button>
-        <button
-          className={`reporting-tab ${activeTab === 'profitLoss' ? 'reporting-tab-active' : ''}`}
-          onClick={() => setActiveTab('profitLoss')}
-        >
-          Profit & Loss
+          📈 Profit & Loss
         </button>
         <button
           className={`reporting-tab ${activeTab === 'products' ? 'reporting-tab-active' : ''}`}
           onClick={() => setActiveTab('products')}
         >
-          Product Performance
-        </button>
-        <button
-          className={`reporting-tab ${activeTab === 'suppliers' ? 'reporting-tab-active' : ''}`}
-          onClick={() => setActiveTab('suppliers')}
-        >
-          Supplier Performance
-        </button>
-        <button
-          className={`reporting-tab ${activeTab === 'purchaseOrders' ? 'reporting-tab-active' : ''}`}
-          onClick={() => setActiveTab('purchaseOrders')}
-        >
-          Purchase Orders & Profit Analysis
+          🏆 Top Products
         </button>
       </div>
 
-      <div className="reporting-content">
-        {loading ? (
-          <div className="reporting-loading">Generating reports...</div>
-        ) : error ? (
-          <div className="reporting-error">
-            <h3 className="reporting-error-title">Error Loading Reports</h3>
-            <p className="reporting-error-message">{error}</p>
-            <div className="reporting-error-actions">
-              <button className="reporting-export-btn reporting-export-primary" onClick={() => {
-                setError('');
-                generateReports();
-              }}>
-                Retry
-              </button>
-            </div>
+      {loading ? (
+        <div className="reporting-loading">Loading reports...</div>
+      ) : error ? (
+        <div className="reporting-error">
+          <h3 className="reporting-error-title">Error Loading Reports</h3>
+          <p className="reporting-error-message">{error}</p>
+          <div className="reporting-error-actions">
+            <button className="reporting-btn reporting-btn-primary" onClick={generateReports}>
+              Try Again
+            </button>
           </div>
-        ) : (
-          <>
-            {activeTab === 'daily' && renderDailyReport()}
-            {activeTab === 'sales' && renderSalesReport()}
-            {activeTab === 'inventory' && renderInventoryReport()}
-            {activeTab === 'customers' && renderCustomerReport()}
-            {activeTab === 'shifts' && renderShiftReport()}
-            {activeTab === 'profitLoss' && renderProfitLossReport()}
-            {activeTab === 'products' && renderProductsReport()}
-            {activeTab === 'suppliers' && renderSuppliersReport()}
-            {activeTab === 'purchaseOrders' && renderPurchaseOrdersReport()}
-          </>
-        )}
-      </div>
+        </div>
+      ) : (
+        <>
+          {activeTab === 'dashboard' && renderDashboard()}
+          {activeTab === 'sales' && renderSalesReport()}
+          {activeTab === 'inventory' && renderInventoryReport()}
+          {activeTab === 'profit' && renderProfitLossReport()}
+          {activeTab === 'products' && renderProductPerformance()}
+        </>
+      )}
     </div>
   );
 };

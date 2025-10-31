@@ -1,6 +1,6 @@
 // api.js
-const API_BASE_URL = 'https://pos-iota-five.vercel.app';
-// const API_BASE_URL = 'http://127.0.0.1:8001';
+// const API_BASE_URL = 'https://pos-iota-five.vercel.app';
+const API_BASE_URL = 'http://127.0.0.1:8001';
 
 
 // Utility function to safely convert values to numbers
@@ -330,7 +330,7 @@ export const salesAPI = {
       throw error;
     }
   },
-  getSalesSummary: () => apiRequest('/api/reports/sales-summary/'),
+  getSalesSummary: (params = {}) => apiRequest('/api/reports/sales-summary/', 'GET', null, {}, false, params),
 };
 
 export const cartsAPI = {
@@ -484,11 +484,12 @@ export const shiftsAPI = {
 
 export const reportsAPI = {
   // Summary endpoints for dashboard and reports
-  getSalesSummary: () => apiRequest('/api/reports/sales-summary/'),
+  getSalesSummary: (params = {}) => apiRequest('/api/reports/sales-summary/', 'GET', null, {}, false, params),
   getInventorySummary: () => apiRequest('/api/reports/inventory-summary/'),
   getCustomerSummary: () => apiRequest('/api/reports/customer-summary/'),
   getShiftSummary: () => apiRequest('/api/reports/shift-summary/?report=detailed'),
   getTodaySummary: () => apiRequest('/api/reports/sales-summary/?today_summary=true'),
+  getProfitLossSummary: (params = {}) => apiRequest('/api/reports/profitloss-summary/', 'GET', null, {}, false, params),
 
   // Report data endpoints (using summary data for now)
   generateSalesReport: (data, queryParams) => apiRequest('/api/reports/sales-summary/', 'GET', null, {}, false, queryParams),

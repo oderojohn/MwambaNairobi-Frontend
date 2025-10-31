@@ -245,6 +245,8 @@ const ReceiptModal = ({
                 <h2>MWAMBA LIQUOR STORES</h2>
                 <p>RONGO</p>
                 <p>Tel: +254 745 119 135</p>
+                <p>Paybill: 522533</p>
+                <p>Account: 8015580</p>
               </div>
             </div>
 
@@ -390,6 +392,8 @@ const ReceiptModal = ({
                   <h2>MWAMBA LIQUOR STORES</h2>
                   <p>RONGO</p>
                   <p>Tel: +254 745 119 135</p>
+                  <p>Paybill: 522533</p>
+                  <p>Account: 8015580</p>
                 </div>
               </div>
 
