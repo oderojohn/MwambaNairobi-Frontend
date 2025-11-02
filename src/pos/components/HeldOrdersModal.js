@@ -1,6 +1,6 @@
 import React from 'react';
 import { formatCurrency } from '../../services/ApiService/api';
-
+import '../heldorders.css';
 const HeldOrdersModal = ({ isOpen, onClose, heldOrders, onLoadHeldOrder }) => {
   if (!isOpen) return null;
 
@@ -9,21 +9,25 @@ const HeldOrdersModal = ({ isOpen, onClose, heldOrders, onLoadHeldOrder }) => {
   };
 
   return (
-    <div className="modal active">
-      <div className="modal-content">
-        <div className="modal-header">
-          <h3>Held Orders</h3>
-          <span className="close" onClick={onClose}>&times;</span>
+    <div className="held-orders-modal active">
+      <div className="held-orders-modal-content">
+        <div className="held-orders-modal-header">
+          <h3>
+            <i className="fas fa-pause-circle"></i>
+            Held Orders
+          </h3>
+          <span className="held-orders-close" onClick={onClose}>&times;</span>
         </div>
-        <div className="modal-body">
+        <div className="held-orders-modal-body">
           {heldOrders.length === 0 ? (
-            <div className="empty-state">
-              <i className="fas fa-clock fa-3x text-muted"></i>
-              <p>No held orders found</p>
+            <div className="held-orders-empty-state">
+              <i className="fas fa-clock held-orders-empty-icon"></i>
+              <h4>No Held Orders</h4>
+              <p>There are no orders currently on hold</p>
             </div>
           ) : (
-            <div className="table-responsive">
-              <table className="table table-striped">
+            <div className="held-orders-table-container">
+              <table className="held-orders-table">
                 <thead>
                   <tr>
                     <th>Order #</th>
@@ -36,40 +40,47 @@ const HeldOrdersModal = ({ isOpen, onClose, heldOrders, onLoadHeldOrder }) => {
                 </thead>
                 <tbody>
                   {heldOrders.map((order) => (
-                    <tr key={order.id}>
-                      <td>
+                    <tr key={order.id} className="held-order-row">
+                      <td className="held-order-id">
                         <strong>#{order.id}</strong>
                       </td>
-                      <td>
+                      <td className="held-order-date">
                         {new Date(order.created_at).toLocaleString()}
                       </td>
-                      <td>
-                        {order.customer_name || 'Walk-in'}
+                      <td className="held-order-customer">
+                        <span className={`customer-tag ${!order.customer_name ? 'walk-in-customer' : ''}`}>
+                          <i className="fas fa-user"></i>
+                          {order.customer_name || 'Walk-in'}
+                        </span>
                       </td>
-                      <td>
-                        <div className="items-summary">
+                      <td className="held-order-items">
+                        <div className="held-items-summary">
                           {order.items?.slice(0, 2).map((item, index) => (
-                            <div key={index} className="item-summary">
-                              <span className="item-name">{item.product_name || `Product ${item.product}`}</span>
-                              <span className="item-qty">x{item.quantity}</span>
+                            <div key={index} className="held-item-summary">
+                              <span className="held-item-name">
+                                {item.product_name || `Product ${item.product}`}
+                              </span>
+                              <span className="held-item-quantity">
+                                x{item.quantity}
+                              </span>
                             </div>
                           ))}
                           {order.items?.length > 2 && (
-                            <div className="more-items">
+                            <div className="held-more-items">
                               +{order.items.length - 2} more items
                             </div>
                           )}
                         </div>
                       </td>
-                      <td>
-                        <strong className="total-amount">
+                      <td className="held-order-total">
+                        <strong className="held-total-amount">
                           {formatCurrency(order.items?.reduce((sum, item) =>
                             sum + (item.unit_price * item.quantity), 0) || 0)}
                         </strong>
                       </td>
-                      <td>
+                      <td className="held-order-actions">
                         <button
-                          className="btn btn-primary btn-sm"
+                          className="held-order-load-btn"
                           onClick={() => handleLoadOrder(order)}
                         >
                           <i className="fas fa-shopping-cart"></i>
@@ -83,8 +94,9 @@ const HeldOrdersModal = ({ isOpen, onClose, heldOrders, onLoadHeldOrder }) => {
             </div>
           )}
         </div>
-        <div className="modal-footer">
-          <button className="btn btn-secondary" onClick={onClose}>
+        <div className="held-orders-modal-footer">
+          <button className="held-orders-close-btn" onClick={onClose}>
+            <i className="fas fa-times"></i>
             Close
           </button>
         </div>

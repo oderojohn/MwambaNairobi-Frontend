@@ -1,0 +1,87 @@
+/* ReceiptModal.css - Unique styles for ReceiptModal component */
+
+.receipt-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  opacity: 1;
+  visibility: visible;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(4px);
+}
+
+.receipt-modal-content {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  width: 90%;
+  max-width: 450px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  transform: translateY(-20px);
+  transition: transform 0.3s ease;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+}
+
+.receipt-modal-overlay .receipt-modal-content {
+  transform: translateY(0);
+}
+
+.receipt-modal-body {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+  background: #ffffff;
+}
+
+.receipt-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 20px 24px;
+  border-top: 1px solid #f1f5f9;
+  background: #f8fafc;
+}
+
+.receipt-modal-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  line-height: 1;
+  min-height: 44px;
+}
+
+.receipt-modal-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.receipt-modal-btn-secondary {
+  background: #6b7280;
+  color: white;
+}
+
+.receipt-modal-btn-secondary:hover:not(:disabled) {
+  background: #4b5563;
+  transform: translateY(-1px);
+}

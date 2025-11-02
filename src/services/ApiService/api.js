@@ -1,6 +1,6 @@
 // api.js
-const API_BASE_URL = 'https://pos-iota-five.vercel.app';
-// const API_BASE_URL = 'http://127.0.0.1:8001';
+// const API_BASE_URL = 'https://pos-iota-five.vercel.app';
+const API_BASE_URL = 'http://127.0.0.1:8001';
 
 
 // Utility function to safely convert values to numbers
@@ -305,7 +305,11 @@ export const purchaseOrdersAPI = {
 };
 
 export const salesAPI = {
-  getSales: () => apiRequest('/api/sales/'),
+  getSales: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    const url = queryString ? `/api/sales/?${queryString}` : '/api/sales/';
+    return apiRequest(url);
+  },
   createSale: async (sale) => {
     try {
       console.log('Creating sale with data:', sale);
@@ -317,6 +321,7 @@ export const salesAPI = {
   },
   updateSale: (id, sale) => apiRequest(`/api/sales/${id}/`, 'PUT', sale),
   deleteSale: (id) => apiRequest(`/api/sales/${id}/`, 'DELETE'),
+  voidSale: (id, data) => apiRequest(`/api/sales/${id}/void_sale/`, 'POST', data),
   getHeldOrders: () => apiRequest('/api/sales/held_orders/'),
   completeHeldOrder: (id, data) => apiRequest(`/api/sales/${id}/complete_held_order/`, 'POST', data),
   voidHeldOrder: async (id, data) => {
@@ -331,6 +336,7 @@ export const salesAPI = {
     }
   },
   getSalesSummary: (params = {}) => apiRequest('/api/reports/sales-summary/', 'GET', null, {}, false, params),
+  getSaleChitDetails: (saleId) => apiRequest('/api/reports/sales-summary/', 'GET', null, {}, false, { sale_id: saleId }),
 };
 
 export const cartsAPI = {
@@ -478,6 +484,7 @@ export const shiftsAPI = {
   getCurrentShift: () => apiRequest('/api/shifts/current/'),
   startShift: (data) => apiRequest('/api/shifts/start/', 'POST', data),
   endShift: (data) => apiRequest('/api/shifts/end/', 'POST', data),
+  getAllShifts: (params = {}) => apiRequest('/api/shifts/all/', 'GET', null, {}, false, params),
   getShiftsSummary: () => apiRequest('/api/shifts/summary/'),
   getShiftSummary: () => apiRequest('/api/reports/shift-summary/'),
 };

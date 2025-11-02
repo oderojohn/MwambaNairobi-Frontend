@@ -20,6 +20,7 @@ import UserManagementPage from './manager/user/user';
 import PosApp from './pos/App';
 import ReportingPage from './Inventory/inventorypages/ReportingPage';
 import SettingsPage from './Inventory/inventorypages/settings/SettingsPage';
+import PosAdminPage from './Inventory/inventorypages/PosAdminPage';
 import "./assets/main.css";
 const AppRoutes = () => {
   const { isAuthenticated, loading, role, logout } = useContext(AuthContext);
@@ -70,6 +71,7 @@ const AppRoutes = () => {
         <Route path="dashboard" element={<InventoryDashboard />} />
         <Route path="reporting" element={<ReportingPage />} />
         <Route path="users" element={<UserManagementPage />} />
+        <Route path="pos-admin" element={<PosAdminPage />} />
         <Route path="settings/*" element={<SettingsPage />} />
       </Route>
       <Route

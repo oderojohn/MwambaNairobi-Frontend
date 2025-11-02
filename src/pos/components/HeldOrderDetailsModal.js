@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { formatCurrency } from '../../services/ApiService/api';
 import { salesAPI } from '../../services/ApiService/api';
+import './HeldOrderDetailsModal.css';
 
 const HeldOrderDetailsModal = ({ isOpen, onClose, onProceedToPayment, heldOrder, products, onOrderVoided }) => {
   const [showVoidModal, setShowVoidModal] = useState(false);
@@ -45,8 +46,8 @@ const HeldOrderDetailsModal = ({ isOpen, onClose, onProceedToPayment, heldOrder,
   };
 
   const mainModal = (
-    <div className="modal active">
-      <div className="modal-content">
+    <div className="held-order-modal-overlay">
+      <div className="held-order-modal-content">
         <div className="modal-header">
           <h3>
             <i className="fas fa-receipt"></i>
@@ -55,7 +56,7 @@ const HeldOrderDetailsModal = ({ isOpen, onClose, onProceedToPayment, heldOrder,
           <span className="close" onClick={onClose}>&times;</span>
         </div>
 
-        <div className="modal-body">
+        <div className="held-order-modal-body">
           <div className="order-info-cards">
             <div className="info-card">
               <div className="info-card__icon">
@@ -102,8 +103,8 @@ const HeldOrderDetailsModal = ({ isOpen, onClose, onProceedToPayment, heldOrder,
               </h4>
             </div>
             
-            <div className="table-responsive">
-              <table className="table table-striped">
+            <div className="held-order-modal-table-responsive">
+              <table className="held-order-modal-table">
                 <thead>
                   <tr>
                     <th>#</th>
@@ -129,16 +130,16 @@ const HeldOrderDetailsModal = ({ isOpen, onClose, onProceedToPayment, heldOrder,
           </div>
         </div>
 
-        <div className="modal-footer">
-          <button className="btn btn-danger" onClick={() => setShowVoidModal(true)}>
+        <div className="held-order-modal-footer">
+          <button className="held-order-modal-btn held-order-modal-btn-danger" onClick={() => setShowVoidModal(true)}>
             <i className="fas fa-ban"></i>
             Void Order
           </button>
-          <button className="btn btn-secondary" onClick={onClose}>
+          <button className="held-order-modal-btn held-order-modal-btn-secondary" onClick={onClose}>
             <i className="fas fa-times"></i>
             Cancel
           </button>
-          <button className="btn btn-primary" onClick={() => onProceedToPayment(heldOrder)}>
+          <button className="held-order-modal-btn held-order-modal-btn-primary" onClick={() => onProceedToPayment(heldOrder)}>
             <i className="fas fa-credit-card"></i>
             Proceed to Payment
           </button>
@@ -148,8 +149,8 @@ const HeldOrderDetailsModal = ({ isOpen, onClose, onProceedToPayment, heldOrder,
   );
 
   const renderVoidModal = () => (
-    <div className="modal active" style={{ zIndex: 1100 }}>
-      <div className="modal-content">
+    <div className="held-order-modal-overlay" style={{ zIndex: 1100 }}>
+      <div className="held-order-modal-content">
         <div className="modal-header">
           <h3>
             <i className="fas fa-exclamation-triangle"></i>
@@ -158,7 +159,7 @@ const HeldOrderDetailsModal = ({ isOpen, onClose, onProceedToPayment, heldOrder,
           <span className="close" onClick={() => setShowVoidModal(false)}>&times;</span>
         </div>
 
-        <div className="modal-body">
+        <div className="held-order-modal-body">
           <div className="alert alert-warning">
             <i className="fas fa-exclamation-circle"></i>
             <div>
@@ -185,9 +186,9 @@ const HeldOrderDetailsModal = ({ isOpen, onClose, onProceedToPayment, heldOrder,
           </div>
         </div>
 
-        <div className="modal-footer">
+        <div className="held-order-modal-footer">
           <button
-            className="btn btn-secondary"
+            className="held-order-modal-btn held-order-modal-btn-secondary"
             onClick={() => setShowVoidModal(false)}
             disabled={isVoiding}
           >
@@ -195,7 +196,7 @@ const HeldOrderDetailsModal = ({ isOpen, onClose, onProceedToPayment, heldOrder,
             Go Back
           </button>
           <button
-            className="btn btn-danger"
+            className="held-order-modal-btn held-order-modal-btn-danger"
             onClick={handleVoidOrder}
             disabled={isVoiding || !voidReason.trim()}
           >

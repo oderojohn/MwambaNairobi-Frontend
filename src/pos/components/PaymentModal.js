@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { toNumber, formatCurrency } from '../../services/ApiService/api';
+import './PaymentModal.css';
 
 const PaymentModal = ({ isOpen, onClose, onProcessPayment, totalAmount, selectedCustomer, mode, initialMethod = 'cash' }) => {
   console.log('PaymentModal render - isOpen:', isOpen, 'totalAmount:', totalAmount, 'type:', typeof totalAmount);
@@ -84,126 +85,94 @@ const PaymentModal = ({ isOpen, onClose, onProcessPayment, totalAmount, selected
   };
 
   return (
-    <div className="modal active">
-      <div className="modal-content">
+    <div className="payment-modal-overlay">
+      <div className="payment-modal-content">
         <div className="modal-header">
           <h3>Process Payment</h3>
           <span className="close" onClick={onClose}>&times;</span>
         </div>
-        <div className="modal-body">
-          <div className="total-line total-final" style={{ marginBottom: '20px' }}>
-            <span>Total Amount:</span>
-            <span>{formatCurrency(totalAmount)}</span>
-          </div>
+        <div className="payment-modal-body">
+           <div className="payment-modal-total-line">
+             <span>Total Amount:</span>
+             <span>{formatCurrency(totalAmount)}</span>
+           </div>
 
-          <div className="payment-options" style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
-            <button
-              type="button"
-              className={`payment-option ${paymentMethod === 'cash' ? 'active' : ''}`}
-              onClick={() => setPaymentMethod('cash')}
-              style={{
-                backgroundColor: paymentMethod === 'cash' ? '#2563eb' : '#ffffff',
-                color: paymentMethod === 'cash' ? '#ffffff' : '#374151',
-                border: '2px solid #e5e7eb',
-                borderRadius: '8px',
-                padding: '12px 16px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '600',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '8px',
-                minWidth: '100px',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              <i className="fas fa-money-bill-wave"></i>
-              <div>Cash</div>
-            </button>
-            <button
-              type="button"
-              className={`payment-option ${paymentMethod === 'mpesa' ? 'active' : ''}`}
-              onClick={() => setPaymentMethod('mpesa')}
-              style={{
-                backgroundColor: paymentMethod === 'mpesa' ? '#2563eb' : '#ffffff',
-                color: paymentMethod === 'mpesa' ? '#ffffff' : '#374151',
-                border: '2px solid #e5e7eb',
-                borderRadius: '8px',
-                padding: '12px 16px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '600',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '8px',
-                minWidth: '100px',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              <i className="fas fa-mobile-alt"></i>
-              <div>M-Pesa</div>
-            </button>
-          </div>
+           <div className="payment-modal-options">
+             <button
+               type="button"
+               className={`payment-modal-option-btn ${paymentMethod === 'cash' ? 'active' : ''}`}
+               onClick={() => setPaymentMethod('cash')}
+             >
+               <i className="fas fa-money-bill-wave"></i>
+               <div>Cash</div>
+             </button>
+             <button
+               type="button"
+               className={`payment-modal-option-btn ${paymentMethod === 'mpesa' ? 'active' : ''}`}
+               onClick={() => setPaymentMethod('mpesa')}
+             >
+               <i className="fas fa-mobile-alt"></i>
+               <div>M-Pesa</div>
+             </button>
+           </div>
 
-          {paymentMethod === 'cash' && (
-            <div className="form-group">
-              <label>Amount Received:</label>
-              <input
-                type="number"
-                value={cashAmount}
-                onChange={(e) => calculateChange(e.target.value)}
-                placeholder="Enter amount received"
-              />
-              {change > 0 && (
-                <div style={{ marginTop: '10px', color: 'green', fontWeight: 'bold' }}>
-                  Change: {formatCurrency(change)}
-                </div>
-              )}
-            </div>
-          )}
+           {paymentMethod === 'cash' && (
+             <div className="payment-modal-form-group">
+               <label>Amount Received:</label>
+               <input
+                 type="number"
+                 value={cashAmount}
+                 onChange={(e) => calculateChange(e.target.value)}
+                 placeholder="Enter amount received"
+               />
+               {change > 0 && (
+                 <div className="payment-modal-cash-change">
+                   Change: {formatCurrency(change)}
+                 </div>
+               )}
+             </div>
+           )}
 
-          {paymentMethod === 'mpesa' && (
-            <div className="form-group">
-              <label>M-Pesa Phone Number:</label>
-              <input
-                type="tel"
-                value={mpesaNumber}
-                onChange={(e) => setMpesaNumber(e.target.value)}
-                placeholder="Enter phone number"
-              />
-            </div>
-          )}
+           {paymentMethod === 'mpesa' && (
+             <div className="payment-modal-form-group">
+               <label>M-Pesa Phone Number:</label>
+               <input
+                 type="tel"
+                 value={mpesaNumber}
+                 onChange={(e) => setMpesaNumber(e.target.value)}
+                 placeholder="Enter phone number"
+               />
+             </div>
+           )}
 
 
-           {/* Split payment removed */}
+            {/* Split payment removed */}
 
-           {/* Credit and installment sections removed */}
+            {/* Credit and installment sections removed */}
 
-          <div className="form-group">
-            <label>Transaction ID (Optional):</label>
-            <input
-              type="text"
-              value={transactionId}
-              onChange={(e) => setTransactionId(e.target.value)}
-              placeholder="Enter transaction/reference ID"
-            />
-          </div>
+           <div className="payment-modal-form-group">
+             <label>Transaction ID (Optional):</label>
+             <input
+               type="text"
+               value={transactionId}
+               onChange={(e) => setTransactionId(e.target.value)}
+               placeholder="Enter transaction/reference ID"
+             />
+           </div>
 
-          <div className="modal-footer">
-            <button className="btn btn-warning" onClick={onClose} disabled={isProcessing}>
-              Cancel
-            </button>
-            <button
-              className="btn btn-success"
-              onClick={handlePayment}
-              disabled={isProcessing}
-            >
-              {isProcessing ? 'Processing...' : 'Confirm Payment'}
-            </button>
-          </div>
-        </div>
+           <div className="payment-modal-footer">
+             <button className="payment-modal-btn payment-modal-btn-warning" onClick={onClose} disabled={isProcessing}>
+               Cancel
+             </button>
+             <button
+               className="payment-modal-btn payment-modal-btn-success"
+               onClick={handlePayment}
+               disabled={isProcessing}
+             >
+               {isProcessing ? 'Processing...' : 'Confirm Payment'}
+             </button>
+           </div>
+         </div>
       </div>
     </div>
   );

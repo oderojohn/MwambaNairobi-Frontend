@@ -1,0 +1,448 @@
+/* HeldOrdersModal.css - Unique Styling */
+.held-orders-modal {
+  display: none;
+  position: fixed;
+  z-index: 10050;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+}
+
+.held-orders-modal.active {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: heldOrdersFadeIn 0.3s ease;
+}
+
+@keyframes heldOrdersFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.held-orders-modal-content {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  width: 90%;
+  max-width: 1000px;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: heldOrdersSlideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+@keyframes heldOrdersSlideUp {
+  from { transform: translateY(30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.held-orders-modal-header {
+  padding: 24px 32px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.5);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(135deg, rgba(248, 250, 252, 0.8) 0%, rgba(241, 245, 249, 0.8) 100%);
+}
+
+.held-orders-modal-header h3 {
+  margin: 0;
+  color: #1e293b;
+  font-size: 22px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.held-orders-modal-header h3 i {
+  color: #f59e0b;
+}
+
+.held-orders-close {
+  font-size: 28px;
+  font-weight: 300;
+  color: #64748b;
+  cursor: pointer;
+  line-height: 1;
+  transition: all 0.3s ease;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.held-orders-close:hover {
+  color: #1e293b;
+  background: rgba(100, 116, 139, 0.1);
+  transform: rotate(90deg);
+}
+
+.held-orders-modal-body {
+  padding: 32px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* Empty State */
+.held-orders-empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #64748b;
+}
+
+.held-orders-empty-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+  display: block;
+  opacity: 0.5;
+  color: #f59e0b;
+}
+
+.held-orders-empty-state h4 {
+  margin: 0 0 12px 0;
+  color: #475569;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.held-orders-empty-state p {
+  margin: 0;
+  font-size: 14px;
+}
+
+/* Table Container */
+.held-orders-table-container {
+  overflow-x: auto;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.held-orders-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 14px;
+  background: white;
+}
+
+.held-orders-table thead th {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  padding: 18px 16px;
+  text-align: left;
+  font-weight: 700;
+  color: #1e293b;
+  border-bottom: 2px solid #f59e0b;
+  white-space: nowrap;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: sticky;
+  top: 0;
+}
+
+.held-orders-table tbody td {
+  padding: 16px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+  transition: all 0.3s ease;
+}
+
+/* Table Rows */
+.held-order-row {
+  transition: all 0.3s ease;
+}
+
+.held-order-row:hover {
+  background: linear-gradient(90deg, #fff7ed 0%, #ffffff 100%);
+  transform: scale(1.002);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.1);
+}
+
+.held-order-row:hover td {
+  border-color: #f59e0b;
+  color: #1e293b;
+}
+
+.held-order-row:last-child td {
+  border-bottom: none;
+}
+
+/* Specific Column Styling */
+.held-order-id {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.held-order-date {
+  color: #64748b;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.held-order-customer {
+  min-width: 120px;
+}
+
+.customer-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(99, 102, 241, 0.1);
+  color: #6366f1;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.walk-in-customer {
+  background: rgba(100, 116, 139, 0.1);
+  color: #64748b;
+}
+
+.customer-tag i {
+  font-size: 10px;
+}
+
+/* Items Summary */
+.held-order-items {
+  min-width: 200px;
+}
+
+.held-items-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.held-item-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.held-item-name {
+  font-size: 13px;
+  color: #475569;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-right: 8px;
+}
+
+.held-item-quantity {
+  background: #f59e0b;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  min-width: 30px;
+  text-align: center;
+}
+
+.held-more-items {
+  font-size: 11px;
+  color: #94a3b8;
+  font-style: italic;
+  text-align: center;
+  padding: 4px;
+  background: rgba(148, 163, 184, 0.1);
+  border-radius: 6px;
+}
+
+/* Total Amount */
+.held-order-total {
+  text-align: right;
+}
+
+.held-total-amount {
+  color: #059669;
+  font-size: 14px;
+  background: rgba(5, 150, 105, 0.1);
+  padding: 8px 12px;
+  border-radius: 8px;
+  display: inline-block;
+}
+
+/* Actions */
+.held-order-actions {
+  text-align: center;
+}
+
+.held-order-load-btn {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+.held-order-load-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+}
+
+.held-order-load-btn:active {
+  transform: translateY(0);
+}
+
+/* Footer */
+.held-orders-modal-footer {
+  padding: 20px 32px;
+  border-top: 1px solid rgba(226, 232, 240, 0.5);
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(248, 250, 252, 0.8);
+}
+
+.held-orders-close-btn {
+  background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(100, 116, 139, 0.3);
+}
+
+.held-orders-close-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(100, 116, 139, 0.4);
+  background: linear-gradient(135deg, #475569 0%, #334155 100%);
+}
+
+/* Scrollbar Styling */
+.held-orders-modal-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.held-orders-modal-body::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.held-orders-modal-body::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.held-orders-modal-body::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+.held-orders-table-container::-webkit-scrollbar {
+  height: 8px;
+}
+
+.held-orders-table-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.held-orders-table-container::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.held-orders-table-container::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .held-orders-modal-content {
+    width: 95%;
+    margin: 20px;
+  }
+
+  .held-orders-modal-header {
+    padding: 20px 24px;
+  }
+
+  .held-orders-modal-body {
+    padding: 24px;
+  }
+
+  .held-orders-modal-footer {
+    padding: 16px 24px;
+  }
+
+  .held-orders-table thead th,
+  .held-orders-table tbody td {
+    padding: 12px 8px;
+    font-size: 12px;
+  }
+
+  .held-order-items {
+    min-width: 150px;
+  }
+
+  .held-item-summary {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  .held-order-load-btn {
+    padding: 8px 12px;
+    font-size: 11px;
+  }
+
+  .held-orders-close-btn {
+    padding: 10px 20px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .held-orders-modal-header h3 {
+    font-size: 18px;
+  }
+
+  .held-orders-modal-body {
+    padding: 20px;
+  }
+
+  .held-orders-table-container {
+    font-size: 11px;
+  }
+
+  .customer-tag {
+    padding: 4px 8px;
+    font-size: 10px;
+  }
+
+  .held-total-amount {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+}

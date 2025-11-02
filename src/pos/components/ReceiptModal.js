@@ -1,6 +1,7 @@
 import React from 'react';
 import logo from '../../logo.png';
 import { formatCurrency } from '../../services/ApiService/api';
+import './ReceiptModal.css';
 
 const ReceiptModal = ({
   isOpen,
@@ -16,8 +17,8 @@ const ReceiptModal = ({
 
   const handlePrint = () => {
     const currentDate = new Date().toLocaleString();
-    
-    // Create print content
+
+    // Create print content with optimized thermal printer format
     const printContent = `
       <!DOCTYPE html>
       <html>
@@ -32,181 +33,132 @@ const ReceiptModal = ({
             }
             body {
               font-family: 'Courier New', monospace;
-              font-size: 16px;
-              line-height: 1.3;
+              font-size: 12px;
+              line-height: 1.2;
               color: #000;
               background: #fff;
-              width: 100%;
-              margin: 0;
-              padding: 8px;
+              width: 58mm;
+              margin: 0 auto;
+              padding: 2mm;
               -webkit-print-color-adjust: exact;
               print-color-adjust: exact;
               font-weight: bold;
             }
             .receipt {
               width: 100%;
-              max-width: 100%;
-              margin: 0 auto;
               font-weight: bold;
             }
             .receipt-header {
               text-align: center;
-              border-bottom: 3px solid #000;
-              padding-bottom: 10px;
-              margin-bottom: 10px;
+              border-bottom: 1px solid #000;
+              padding-bottom: 3px;
+              margin-bottom: 3px;
               font-weight: bold;
-            }
-            .logo-container {
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              gap: 10px;
-              margin-bottom: 8px;
-              font-weight: bold;
-            }
-            .receipt-logo {
-              width: 50px;
-              height: 50px;
-              object-fit: contain;
             }
             .logo-text {
               font-family: 'Courier New', monospace;
-              font-size: 28px;
+              font-size: 14px;
               font-weight: bold;
-              letter-spacing: 3px;
+              letter-spacing: 1px;
             }
             .receipt-title {
-              font-size: 22px;
+              font-size: 12px;
               font-weight: bold;
-              margin: 8px 0;
+              margin: 2px 0;
               text-transform: uppercase;
-              letter-spacing: 2px;
             }
-            .receipt-store-info h2 {
-              font-size: 20px;
-              margin: 5px 0;
-              font-weight: bold;
-            }
-            .receipt-store-info p {
-              margin: 3px 0;
-              font-size: 16px;
+            .receipt-store-info {
+              font-size: 10px;
+              margin: 2px 0;
               font-weight: bold;
             }
             .receipt-info {
-              margin-bottom: 15px;
-              padding: 0 8px;
+              margin-bottom: 5px;
               font-weight: bold;
+              font-size: 10px;
             }
             .receipt-info-row {
               display: flex;
               justify-content: space-between;
-              margin-bottom: 4px;
+              margin-bottom: 2px;
               font-weight: bold;
             }
             .receipt-items-header {
               display: flex;
               justify-content: space-between;
-              border-bottom: 2px solid #000;
-              border-top: 2px solid #000;
-              padding: 6px 8px;
-              margin: 12px 0 8px 0;
+              border-bottom: 1px solid #000;
+              padding: 2px 0;
+              margin: 3px 0;
               font-weight: bold;
-              background: #f0f0f0;
-              font-size: 16px;
+              font-size: 10px;
             }
             .item-name {
-              flex: 3;
+              flex: 2;
               text-align: left;
-              font-size: 15px;
+              font-size: 10px;
               font-weight: bold;
             }
             .item-qty {
-              width: 50px;
+              width: 20px;
               text-align: center;
-              font-size: 15px;
+              font-size: 10px;
               font-weight: bold;
             }
             .item-price {
-              width: 70px;
+              width: 30px;
               text-align: right;
-              font-size: 15px;
+              font-size: 10px;
               font-weight: bold;
             }
             .item-total {
-              width: 70px;
+              width: 30px;
               text-align: right;
-              font-size: 15px;
+              font-size: 10px;
               font-weight: bold;
             }
             .receipt-item {
               display: flex;
               justify-content: space-between;
-              margin-bottom: 6px;
-              padding: 0 8px;
-              align-items: flex-start;
+              margin-bottom: 2px;
               font-weight: bold;
-            }
-            .item-category {
-              display: block;
-              font-size: 12px;
-              color: #000;
-              margin-top: 2px;
-              font-style: italic;
-              font-weight: bold;
+              font-size: 10px;
             }
             .receipt-totals {
-              border-top: 3px solid #000;
-              border-bottom: 3px solid #000;
-              padding: 12px 8px;
-              margin: 15px 0;
+              border-top: 1px solid #000;
+              border-bottom: 1px solid #000;
+              padding: 3px 0;
+              margin: 5px 0;
               font-weight: bold;
+              font-size: 10px;
             }
             .receipt-total-row {
               display: flex;
               justify-content: space-between;
-              margin-bottom: 5px;
-              font-size: 16px;
+              margin-bottom: 2px;
               font-weight: bold;
             }
             .receipt-grand-total {
-              border-top: 2px solid #000;
-              padding-top: 8px;
-              margin-top: 8px;
+              border-top: 1px solid #000;
+              padding-top: 2px;
+              margin-top: 2px;
               font-weight: bold;
-              font-size: 20px;
+              font-size: 12px;
             }
             .receipt-footer {
               text-align: center;
-              border-top: 2px dashed #000;
-              padding-top: 12px;
-              margin-top: 15px;
+              border-top: 1px dashed #000;
+              padding-top: 3px;
+              margin-top: 5px;
               font-weight: bold;
+              font-size: 10px;
             }
             .receipt-footer p {
-              margin: 5px 0;
-              font-size: 16px;
-              font-weight: bold;
-            }
-            .barcode-placeholder {
-              font-family: 'Courier New', monospace;
-              font-size: 18px;
-              letter-spacing: 2px;
-              margin: 12px 0;
-              padding: 4px;
-              border: 2px solid #000;
+              margin: 2px 0;
               font-weight: bold;
             }
             .divider {
-              border-bottom: 2px dashed #000;
-              margin: 12px 0;
-            }
-            .text-center {
-              text-align: center;
-              font-weight: bold;
-            }
-            .text-right {
-              text-align: right;
-              font-weight: bold;
+              border-bottom: 1px dashed #000;
+              margin: 3px 0;
             }
             .bold {
               font-weight: bold;
@@ -214,14 +166,13 @@ const ReceiptModal = ({
             @media print {
               body {
                 margin: 0;
-                padding: 8px;
-                width: 100%;
-                font-size: 16px;
+                padding: 2mm;
+                width: 58mm;
+                font-size: 12px;
                 font-weight: bold;
               }
               .receipt {
                 width: 100%;
-                max-width: 100%;
                 font-weight: bold;
               }
               * {
@@ -230,38 +181,30 @@ const ReceiptModal = ({
             }
             @page {
               margin: 0;
-              size: auto;
+              size: 58mm auto;
             }
           </style>
         </head>
         <body>
           <div class="receipt">
             <div class="receipt-header">
-              <div class="logo-container">
-                <div class="logo-text">MWAMBA</div>
-              </div>
-              <h1 class="receipt-title">RECEIPT</h1>
+              <div class="logo-text">MWAMBA</div>
+              <div class="receipt-title">RECEIPT</div>
               <div class="receipt-store-info">
-                <h2>MWAMBA LIQUOR STORES</h2>
-                <p>RONGO</p>
-                <p>Tel: +254 745 119 135</p>
-                <p>Paybill: 522533</p>
-                <p>Account: 8015580</p>
+                MWAMBA LIQUOR STORES<br>
+                RONGO<br>
+                Tel: +254 745 119 135
               </div>
             </div>
 
             <div class="receipt-info">
               <div class="receipt-info-row">
                 <span>Date:</span>
-                <span>${currentDate}</span>
+                <span>${currentDate.split(',')[0]}</span>
               </div>
               <div class="receipt-info-row">
-                <span>Receipt #:</span>
+                <span>Receipt:</span>
                 <span class="bold">${saleData?.receipt_number || 'N/A'}</span>
-              </div>
-              <div class="receipt-info-row">
-                <span>Sale ID:</span>
-                <span>${saleData?.id || 'N/A'}</span>
               </div>
               ${customer ? `
                 <div class="receipt-info-row">
@@ -287,12 +230,7 @@ const ReceiptModal = ({
             <div class="receipt-items">
               ${cart.map((item, idx) => `
                 <div class="receipt-item">
-                  <div class="item-name">
-                    ${item.name}
-                    ${item.category_name ? `
-                      <small class="item-category">(${item.category_name})</small>
-                    ` : ''}
-                  </div>
+                  <div class="item-name">${item.name}</div>
                   <div class="item-qty">${item.quantity}</div>
                   <div class="item-price">${formatCurrency(item.price)}</div>
                   <div class="item-total">${formatCurrency(item.price * item.quantity)}</div>
@@ -306,10 +244,6 @@ const ReceiptModal = ({
               <div class="receipt-total-row">
                 <span>Subtotal:</span>
                 <span>${formatCurrency(total)}</span>
-              </div>
-              <div class="receipt-total-row">
-                <span>Tax:</span>
-                <span>KSh 0.00</span>
               </div>
               <div class="receipt-total-row receipt-grand-total">
                 <span>TOTAL:</span>
@@ -331,11 +265,6 @@ const ReceiptModal = ({
               <p class="bold">Thank you for your business!</p>
               <p>Please come again</p>
               <div class="divider"></div>
-              <div class="receipt-barcode">
-                <div class="barcode-placeholder text-center">
-                  ${saleData?.receipt_number || 'RECEIPT'}
-                </div>
-              </div>
               <p>MWAMBA STORES © ${new Date().getFullYear()}</p>
             </div>
           </div>
@@ -343,8 +272,8 @@ const ReceiptModal = ({
       </html>
     `;
 
-    // Create a new window for printing
-    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    // Create a new window for printing with thermal printer dimensions
+    const printWindow = window.open('', '_blank', 'width=300,height=600,scrollbars=yes');
     if (!printWindow) {
       alert('Please allow popups for this site to print receipts.');
       return;
@@ -356,12 +285,13 @@ const ReceiptModal = ({
 
     // Wait for content to load then trigger print
     printWindow.onload = () => {
-      // Small delay to ensure everything is rendered
       setTimeout(() => {
         printWindow.print();
-        // Optionally close the window after printing
-        // printWindow.close();
-      }, 500);
+        // Close the window after printing attempt
+        setTimeout(() => {
+          printWindow.close();
+        }, 1000);
+      }, 300);
     };
   };
 
@@ -369,18 +299,18 @@ const ReceiptModal = ({
 
   return (
     <>
-      <div className="modal active">
-        <div className="modal-content receipt-modal">
+      <div className="receipt-modal-overlay">
+        <div className="receipt-modal-content">
           <div className="modal-header">
             <h3>Sale Receipt</h3>
             <div className="modal-actions">
-              <button className="btn btn-secondary" onClick={handlePrint}>
+              <button className="receipt-modal-btn receipt-modal-btn-secondary" onClick={handlePrint}>
                 <i className="fas fa-print" /> Print
               </button>
               <span className="close" onClick={onClose}>&times;</span>
             </div>
           </div>
-          <div className="modal-body">
+          <div className="receipt-modal-body">
             <div id="receipt-content" className="receipt">
               <div className="receipt-header">
                 <div className="logo-container">

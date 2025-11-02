@@ -1,10 +1,10 @@
 // components/Sidebar.js
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  FiHome, FiPackage, FiTruck, FiUsers, 
-  FiShoppingCart, FiBarChart2, FiSettings, 
-  FiChevronDown, FiChevronRight
+import {
+  FiHome, FiPackage, FiTruck, FiUsers,
+  FiShoppingCart, FiBarChart2, FiSettings,
+  FiChevronDown, FiChevronRight, FiMonitor
 } from 'react-icons/fi';
 import { userService } from '../../services/ApiService/api';
 
@@ -56,6 +56,7 @@ const Sidebar = ({ sidebarOpen }) => {
       ]
     },
     { name: 'Reporting', icon: <FiBarChart2 />, path: 'reporting', roles: ['admin','storekeeper'] },
+    { name: 'POS Admin', icon: <FiMonitor />, path: 'pos-admin', roles: ['admin'] },
     { name: 'Users', icon: <FiUsers />, path: 'users', roles: ['admin', 'manager'] },
     {
       name: 'Settings',
