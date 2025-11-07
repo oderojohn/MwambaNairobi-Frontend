@@ -6,6 +6,7 @@ const ProductGrid = ({ products = [], categories = [], onAddToCart, loading = fa
   const [selectedCategory, setSelectedCategory] = useState(null); // null = All Products
   const [searchTerm, setSearchTerm] = useState('');
   const [isSearchVisible, setIsSearchVisible] = useState(false);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const searchInputRef = useRef(null);
 
   // Predefined color palette for automatic assignment
@@ -33,6 +34,20 @@ const ProductGrid = ({ products = [], categories = [], onAddToCart, loading = fa
       searchInputRef.current.focus();
     }
   }, [isSearchVisible]);
+
+  // Handle loading state changes
+  useEffect(() => {
+    if (loading) {
+      setIsLoadingProducts(true);
+      // Simulate loading delay for animation effect
+      const timer = setTimeout(() => {
+        setIsLoadingProducts(false);
+      }, 300);
+      return () => clearTimeout(timer);
+    } else {
+      setIsLoadingProducts(false);
+    }
+  }, [loading]);
 
   // Close search when clicking outside
   useEffect(() => {
@@ -254,18 +269,19 @@ const ProductGrid = ({ products = [], categories = [], onAddToCart, loading = fa
             </div>
           ) : (
             <div className="pos-products-grid__products">
-              {filteredProducts.map(product => {
+              {filteredProducts.map((product, index) => {
                 const colors = getCategoryColors(product);
-                
+
                 return (
                   <div
                     key={product.id}
-                    className={`pos-products-grid__product-card ${disabled ? 'pos-products-grid__product-card--disabled' : ''}`}
+                    className={`pos-products-grid__product-card ${disabled ? 'pos-products-grid__product-card--disabled' : ''} ${isLoadingProducts ? 'pos-products-grid__product-card--loading' : ''}`}
                     onClick={() => !disabled && onAddToCart(product)}
                     style={{
                       '--product-color': colors.primary,
                       '--product-bg': colors.background,
-                      '--product-hover': colors.hover
+                      '--product-hover': colors.hover,
+                      '--animation-delay': `${index * 50}ms`
                     }}
                   >
                     <div className="pos-products-grid__product-header">

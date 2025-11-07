@@ -200,6 +200,10 @@
   flex-direction: column;
   height: 140px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  opacity: 0;
+  transform: translateY(20px);
+  animation: productCardFadeIn 0.5s ease-out forwards;
+  animation-delay: var(--animation-delay, 0ms);
 }
 
 .pos-products-grid__product-card:hover {
@@ -208,9 +212,19 @@
   border-color: var(--product-color, #3498db);
 }
 
+.pos-products-grid__product-card--loading:hover,
+.pos-products-grid__product-card--disabled:hover {
+  transform: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
 .pos-products-grid__product-card--disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.pos-products-grid__product-card--loading {
+  animation: productCardPulse 1.5s ease-in-out infinite;
 }
 
 .pos-products-grid__product-card--disabled:hover {
@@ -395,6 +409,26 @@
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+@keyframes productCardFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes productCardPulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
 }
 
 /* Search Container Styles - MOVED AND CORRECTED */
