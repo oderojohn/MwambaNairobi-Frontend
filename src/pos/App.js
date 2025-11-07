@@ -185,6 +185,10 @@ function PosApp() {
     setSelectedCustomer(null);
     setCurrentHeldOrderId(null);
 
+    // Force refresh products data to ensure correct prices are loaded
+    setProducts([]);
+    setCategories([]);
+
     setMode(newMode);
     await fetchData(newMode);
   };
@@ -662,6 +666,11 @@ function PosApp() {
         paymentRecord.mpesa_number = paymentData.mpesaNumber;
       }
 
+      // Add split payment data if applicable
+      if (paymentData.method === 'split' && paymentData.split_data) {
+        paymentRecord.split_data = paymentData.split_data;
+      }
+
       console.log('Creating payment record:', paymentRecord);
 
       // Validate sale ID
@@ -701,7 +710,9 @@ function PosApp() {
         paymentMethod: paymentData.method,
         change: paymentData.cashReceived ? paymentData.cashReceived - total : 0,
         customer: selectedCustomer,
-        transactionId: paymentData.transactionId
+        transactionId: paymentData.transactionId,
+        mode: mode,
+        splitData: paymentData.method === 'split' ? paymentData.split_data : null
       };
 
       setReceiptData(receiptInfo);
@@ -1072,7 +1083,7 @@ function PosApp() {
       // Create payment record
       const paymentRecord = {
         sale: sale.id,
-        payment_type: paymentData.method,
+        payment_type: paymentData.method.toLowerCase(),
         amount: Number(total),
         reference_number: paymentData.transactionId || null,
         status: 'completed'
@@ -1080,6 +1091,11 @@ function PosApp() {
 
       if (paymentData.mpesaNumber) {
         paymentRecord.mpesa_number = paymentData.mpesaNumber;
+      }
+
+      // Add split payment data if applicable
+      if (paymentData.method === 'split' && paymentData.split_data) {
+        paymentRecord.split_data = paymentData.split_data;
       }
 
       await paymentsAPI.createPayment(paymentRecord);
@@ -1104,7 +1120,9 @@ function PosApp() {
         paymentMethod: paymentData.method,
         change: 0, // Held orders don't have change calculation
         customer: selectedCustomer,
-        transactionId: paymentData.transactionId
+        transactionId: paymentData.transactionId,
+        mode: mode,
+        splitData: paymentData.method === 'split' ? paymentData.split_data : null
       };
 
       setReceiptData(receiptInfo);
@@ -1235,7 +1253,7 @@ function PosApp() {
     if (!paymentData.method) {
       errors.push('Payment method is required');
     } else {
-      const validMethods = ['cash', 'mpesa'];
+      const validMethods = ['cash', 'mpesa', 'split'];
       if (!validMethods.includes(paymentData.method.toLowerCase())) {
         errors.push(`Invalid payment method: ${paymentData.method}. Valid methods: ${validMethods.join(', ')}`);
       }
@@ -1250,6 +1268,17 @@ function PosApp() {
     }
 
     // Validate split payment amounts
+    if (paymentData.method === 'split') {
+      const splitTotal = (paymentData.split_data?.cash || 0) + (paymentData.split_data?.mpesa || 0);
+      if (Math.abs(splitTotal - totalAmount) > 0.01) { // Allow for floating point precision
+        errors.push(`Split payment total (${formatCurrency(splitTotal)}) does not match sale total (${formatCurrency(totalAmount)})`);
+      }
+      if (!paymentData.mpesaNumber) {
+        errors.push('M-Pesa phone number is required for split payments');
+      }
+    }
+
+    // Validate split payment amounts (legacy check)
     if (paymentData.splitPayment) {
       const splitTotal = (paymentData.cashAmount || 0) + (paymentData.mpesaAmount || 0) + (paymentData.cardAmount || 0);
       if (Math.abs(splitTotal - totalAmount) > 0.01) { // Allow for floating point precision
@@ -1448,6 +1477,9 @@ function PosApp() {
         paymentMethod={receiptData?.paymentMethod || 'cash'}
         change={receiptData?.change || 0}
         customer={receiptData?.customer}
+        mode={receiptData?.mode || 'retail'}
+        splitData={receiptData?.splitData}
+        vatRate={0.16}
       />
     </div>
   );

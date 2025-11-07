@@ -11,9 +11,16 @@ const ReceiptModal = ({
   total,
   paymentMethod,
   change = 0,
-  customer = null
+  customer = null,
+  mode = 'retail',
+  splitData = null,
+  vatRate = 0.16 // Default VAT rate of 16%
 }) => {
   if (!isOpen) return null;
+
+  // Calculate VAT
+  const subtotal = total / (1 + vatRate);
+  const vatAmount = total - subtotal;
 
   const handlePrint = () => {
     const currentDate = new Date().toLocaleString();
@@ -206,6 +213,10 @@ const ReceiptModal = ({
                 <span>Receipt:</span>
                 <span class="bold">${saleData?.receipt_number || 'N/A'}</span>
               </div>
+              <div class="receipt-info-row">
+                <span>Mode:</span>
+                <span class="bold">${mode.toUpperCase()}</span>
+              </div>
               ${customer ? `
                 <div class="receipt-info-row">
                   <span>Customer:</span>
@@ -216,6 +227,16 @@ const ReceiptModal = ({
                 <span>Payment:</span>
                 <span class="bold">${paymentMethod.toUpperCase()}</span>
               </div>
+              ${paymentMethod === 'split' && splitData ? `
+                <div class="receipt-info-row">
+                  <span>MPesa:</span>
+                  <span>${formatCurrency(splitData.mpesa || 0)}</span>
+                </div>
+                <div class="receipt-info-row">
+                  <span>Cash:</span>
+                  <span>${formatCurrency(splitData.cash || 0)}</span>
+                </div>
+              ` : ''}
             </div>
 
             <div class="divider"></div>
@@ -243,7 +264,11 @@ const ReceiptModal = ({
             <div class="receipt-totals">
               <div class="receipt-total-row">
                 <span>Subtotal:</span>
-                <span>${formatCurrency(total)}</span>
+                <span>${formatCurrency(subtotal)}</span>
+              </div>
+              <div class="receipt-total-row">
+                <span>VAT (${(vatRate * 100).toFixed(0)}%):</span>
+                <span>${formatCurrency(vatAmount)}</span>
               </div>
               <div class="receipt-total-row receipt-grand-total">
                 <span>TOTAL:</span>
@@ -340,6 +365,10 @@ const ReceiptModal = ({
                   <span>Sale ID:</span>
                   <span>{saleData?.id || 'N/A'}</span>
                 </div>
+                <div className="receipt-info-row">
+                  <span>Mode:</span>
+                  <span className="bold">{mode.toUpperCase()}</span>
+                </div>
                 {customer && (
                   <div className="receipt-info-row">
                     <span>Customer:</span>
@@ -350,6 +379,18 @@ const ReceiptModal = ({
                   <span>Payment:</span>
                   <span className="bold">{paymentMethod.toUpperCase()}</span>
                 </div>
+                {paymentMethod === 'split' && splitData && (
+                  <>
+                    <div className="receipt-info-row">
+                      <span>MPesa:</span>
+                      <span>{formatCurrency(splitData.mpesa || 0)}</span>
+                    </div>
+                    <div className="receipt-info-row">
+                      <span>Cash:</span>
+                      <span>{formatCurrency(splitData.cash || 0)}</span>
+                    </div>
+                  </>
+                )}
               </div>
 
               <div className="divider" />
@@ -382,11 +423,11 @@ const ReceiptModal = ({
               <div className="receipt-totals">
                 <div className="receipt-total-row">
                   <span>Subtotal:</span>
-                  <span>{formatCurrency(total)}</span>
+                  <span>{formatCurrency(subtotal)}</span>
                 </div>
                 <div className="receipt-total-row">
-                  <span>Tax:</span>
-                  <span>KSh 0.00</span>
+                  <span>VAT ({(vatRate * 100).toFixed(0)}%):</span>
+                  <span>{formatCurrency(vatAmount)}</span>
                 </div>
                 <div className="receipt-total-row receipt-grand-total">
                   <span>TOTAL:</span>

@@ -5,6 +5,7 @@ const SalesSummaryModal = ({ isOpen, onClose, shiftId }) => {
   const [salesData, setSalesData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [expandedRows, setExpandedRows] = useState(new Set());
 
   const fetchSalesSummary = useCallback(async () => {
     try {
@@ -20,6 +21,16 @@ const SalesSummaryModal = ({ isOpen, onClose, shiftId }) => {
       setLoading(false);
     }
   }, [shiftId]);
+
+  const toggleRowExpansion = (saleId) => {
+    const newExpandedRows = new Set(expandedRows);
+    if (newExpandedRows.has(saleId)) {
+      newExpandedRows.delete(saleId);
+    } else {
+      newExpandedRows.add(saleId);
+    }
+    setExpandedRows(newExpandedRows);
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -87,25 +98,72 @@ const SalesSummaryModal = ({ isOpen, onClose, shiftId }) => {
                           <th>Receipt Number</th>
                           <th>Amount</th>
                           <th>Payment Method</th>
+                          <th>Sale Type</th>
+                          <th>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
                         {salesData.recent_sales.map((sale, index) => (
-                          <tr key={index}>
-                            <td className="date-cell">{new Date(sale.created_at).toLocaleString()}</td>
-                            <td className="receipt-cell">{sale.receipt_number || 'N/A'}</td>
-                            <td className="amount-cell">{formatCurrency(sale.total_amount)}</td>
-                            <td className="payment-cell">
-                              <span className={`payment-badge ${sale.payment_method?.toLowerCase() || 'unknown'}`}>
-                                {sale.payment_method || 'N/A'}
-                              </span>
-                            </td>
-                          </tr>
+                          <React.Fragment key={index}>
+                            <tr>
+                              <td className="date-cell">{new Date(sale.created_at).toLocaleString()}</td>
+                              <td className="receipt-cell">{sale.receipt_number || 'N/A'}</td>
+                              <td className="amount-cell">{formatCurrency(sale.total_amount)}</td>
+                              <td className="payment-cell">
+                                <span className={`payment-badge ${sale.payment_method?.toLowerCase() || 'unknown'}`}>
+                                  {sale.payment_method || 'N/A'}
+                                </span>
+                              </td>
+                              <td className="sale-type-cell">
+                                <span className={`sale-type-badge ${sale.sale_type?.toLowerCase() || 'unknown'}`}>
+                                  {sale.sale_type || 'N/A'}
+                                </span>
+                              </td>
+                              <td className="actions-cell">
+                                <button
+                                  className="btn btn-sm btn-outline-primary"
+                                  onClick={() => toggleRowExpansion(sale.id)}
+                                  title="View Items"
+                                >
+                                  V
+                                </button>
+                              </td>
+                            </tr>
+                            {expandedRows.has(sale.id) && sale.items && sale.items.length > 0 && (
+                              <tr className="expanded-row">
+                                <td colSpan="6" className="expanded-content">
+                                  <div className="sale-items-detail">
+                                    <h5>Items Sold:</h5>
+                                    <table className="items-table">
+                                      <thead>
+                                        <tr>
+                                          <th>Product</th>
+                                          <th>Quantity</th>
+                                          <th>Unit Price</th>
+                                          <th>Total</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {sale.items.map((item, itemIndex) => (
+                                          <tr key={itemIndex}>
+                                            <td>{item.product_name || item.name}</td>
+                                            <td>{item.quantity}</td>
+                                            <td>{formatCurrency(item.unit_price)}</td>
+                                            <td>{formatCurrency(item.unit_price * item.quantity)}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
                         ))}
                       </tbody>
                       <tfoot>
                         <tr>
-                          <td colSpan="2" className="summary-footer">
+                          <td colSpan="4" className="summary-footer">
                             Total Records: {salesData.recent_sales.length}
                           </td>
                           <td colSpan="2" className="summary-footer text-right">

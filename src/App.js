@@ -18,6 +18,7 @@ import InvoiceCreationPage from './Inventory/inventorypages/sales/InvoiceCreatio
 import InventoryDashboard from './Inventory/inventorypages/dashboard/Dashboard';
 import UserManagementPage from './manager/user/user';
 import PosApp from './pos/App';
+import SalesSummaryPage from './pos/pages/SalesSummaryPage';
 import ReportingPage from './Inventory/inventorypages/ReportingPage';
 import SettingsPage from './Inventory/inventorypages/settings/SettingsPage';
 import PosAdminPage from './Inventory/inventorypages/PosAdminPage';
@@ -44,6 +45,7 @@ const AppRoutes = () => {
         <Route path="/" element={<PosApp />} />
         <Route path="/order-preparation" element={<PosApp />} />
         <Route path="/order-management" element={<PosApp />} />
+        <Route path="/sales-summary" element={<SalesSummaryPage />} />
       </Routes>
     );
   }

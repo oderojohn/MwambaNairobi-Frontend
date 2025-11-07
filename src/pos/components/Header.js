@@ -61,7 +61,10 @@ const Header = ({ onOpenHeldOrders, onShiftManagement, onPrint, onLogout, onOpen
             <span className="pos-header__action-text">Held Orders</span>
           </button>
 
-          <button className="pos-header__action-btn pos-header__action-btn--info" onClick={() => onOpenSalesSummary(currentShift?.id)}>
+          <button className="pos-header__action-btn pos-header__action-btn--info" onClick={() => {
+            // Navigate to sales summary page
+            window.location.href = '/#/sales-summary';
+          }}>
             <i className="fas fa-chart-line pos-header__action-icon"></i>
             <span className="pos-header__action-text">Sales Summary</span>
           </button>
@@ -76,7 +79,25 @@ const Header = ({ onOpenHeldOrders, onShiftManagement, onPrint, onLogout, onOpen
             <span className="pos-header__action-text">Order Prep</span>
           </button>
 
-          <button className="pos-header__action-btn pos-header__action-btn--danger" onClick={onLogout}>
+          <button className="pos-header__action-btn pos-header__action-btn--danger" onClick={() => {
+            import('sweetalert2').then(Swal => {
+              Swal.default.fire({
+                title: 'Confirm Logout',
+                text: 'Are you sure you want to logout?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, logout',
+                cancelButtonText: 'Cancel',
+                zIndex: 10000,
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d'
+              }).then((result) => {
+                if (result.isConfirmed) {
+                  onLogout();
+                }
+              });
+            });
+          }}>
             <i className="fas fa-sign-out-alt pos-header__action-icon"></i>
             <span className="pos-header__action-text">Logout</span>
           </button>

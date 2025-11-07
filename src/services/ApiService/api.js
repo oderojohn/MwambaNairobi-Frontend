@@ -336,7 +336,8 @@ export const salesAPI = {
     }
   },
   getSalesSummary: (params = {}) => apiRequest('/api/reports/sales-summary/', 'GET', null, {}, false, params),
-  getSaleChitDetails: (saleId) => apiRequest('/api/reports/sales-summary/', 'GET', null, {}, false, { sale_id: saleId }),
+  getSaleChitDetails: (saleId) => apiRequest(`/api/reports/sales-chit/${saleId}/`, 'GET'),
+  reprintReceipt: (saleId) => apiRequest(`/api/reports/sales-chit/${saleId}/`, 'GET'),
 };
 
 export const cartsAPI = {

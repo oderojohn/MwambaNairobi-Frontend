@@ -1,32 +1,173 @@
 import React, { useState } from 'react';
-import { reportsAPI } from '../../services/ApiService/api';
+import { reportsAPI, formatCurrency } from '../../services/ApiService/api';
 import '../data/Modal.css';
 
-const ShiftModal = ({ isOpen, onClose, onStartShift, onEndShift, currentShift, onViewSalesSummary }) => {
+const ShiftModal = ({ isOpen, onClose, onStartShift, onEndShift, currentShift }) => {
   const [startingCash, setStartingCash] = useState('');
   const [showEndShiftConfirm, setShowEndShiftConfirm] = useState(false);
   const [shiftSummary, setShiftSummary] = useState(null);
-  const [loadingSummary, setLoadingSummary] = useState(false);
+  const [loadingSummary] = useState(false); // setLoadingSummary is not used, so removed
 
-  const handleViewSalesSummary = () => {
-    if (currentShift && currentShift.id) {
-      onViewSalesSummary(currentShift.id);
+  const handleRunEndOfDayReport = async () => {
+    try {
+      if (!currentShift || !currentShift.id) {
+        alert('No active shift found. Please start a shift first.');
+        return;
+      }
+
+      // Get sales data for the current shift
+      const salesData = await reportsAPI.getSalesReport({ shift_id: currentShift.id });
+
+      console.log('Shift sales data received:', salesData);
+
+      if (salesData && salesData.recent_sales && salesData.recent_sales.length > 0) {
+        // Filter out voided sales
+        const filteredSales = salesData.recent_sales.filter(sale => !sale.voided);
+
+        console.log('Filtered sales for shift:', filteredSales.length, 'out of', salesData.recent_sales.length);
+
+        if (filteredSales.length > 0) {
+          // Generate and print the end of day report for current shift
+          const reportContent = generateEndOfDayReport({ ...salesData, recent_sales: filteredSales });
+          printEndOfDayReport(reportContent);
+        } else {
+          alert('No valid sales data found for this shift (all sales may be voided).');
+        }
+      } else {
+        alert('No sales data found for this shift.');
+      }
+    } catch (error) {
+      console.error('Error generating end of day report:', error);
+      alert('Failed to generate end of day report. Please try again.');
     }
   };
 
-  // eslint-disable-next-line no-unused-vars
-  const fetchShiftSummary = async () => {
-    if (!currentShift || !currentShift.id) return;
-    setLoadingSummary(true);
-    try {
-      const data = await reportsAPI.getSalesReport({ shift_id: currentShift.id });
-      setShiftSummary(data);
-    } catch (error) {
-      console.error('Error fetching shift summary:', error);
-      setShiftSummary(null);
-    } finally {
-      setLoadingSummary(false);
+  const generateEndOfDayReport = (salesData) => {
+    const sales = salesData.recent_sales || [];
+    const today = new Date().toLocaleDateString();
+
+    let content = `
+      <div style="font-family: monospace; font-size: 8px; max-width: 280px; margin: 0 auto; line-height: 1.1;">
+        <div style="text-align: center; margin-bottom: 4px;">
+          <h2 style="margin: 0; font-size: 10px;">END OF DAY REPORT</h2>
+          <p style="margin: 1px 0;">${today}</p>
+        </div>
+
+        <div style="border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 2px 0; margin: 3px 0;">
+          <div><strong>Total:</strong> Ksh ${formatCurrency(salesData.total_sales || 0)}</div>
+          <div><strong>Trans:</strong> ${salesData.total_transactions || 0}</div>
+          <div><strong>Avg:</strong> Ksh ${formatCurrency(salesData.average_sale || 0)}</div>
+        </div>`;
+
+    if (salesData.sales_by_payment_method) {
+      content += `<div style="margin: 3px 0;"><strong>Payments:</strong>`;
+      Object.entries(salesData.sales_by_payment_method).forEach(([method, amount]) => {
+        content += `<div>${method.charAt(0).toUpperCase()}: Ksh ${formatCurrency(amount)}</div>`;
+      });
+      content += `</div>`;
     }
+
+    content += `<div style="margin: 4px 0;"><strong>Transaction Details:</strong>`;
+
+    sales.forEach((sale) => {
+      const receiptNum = sale.receipt_number ? sale.receipt_number.replace('POS-', '').split('-')[0] : 'N/A';
+      const time = new Date(sale.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+      const payment = sale.payment_method?.charAt(0).toUpperCase() || 'N';
+
+      content += `
+        <div style="margin: 3px 0; padding: 2px; border: 1px solid #ccc; border-radius: 2px;">
+          <div style="display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 2px;">
+            <span>Rcpt: ${receiptNum}</span>
+            <span>${time}</span>
+            <span>${payment}</span>
+            <span>Ksh ${formatCurrency(sale.total_amount)}</span>
+          </div>`;
+
+      // Add items if available
+      if (sale.items && sale.items.length > 0) {
+        content += `<div style="margin-top: 2px; padding-top: 2px; border-top: 1px dotted #999;">`;
+        sale.items.forEach((item) => {
+          content += `
+            <div style="display: flex; justify-content: space-between; font-size: 7px; margin-bottom: 1px;">
+              <span style="flex: 1;">${item.product_name || item.name}</span>
+              <span style="width: 20px; text-align: center;">${item.quantity}</span>
+              <span style="width: 40px; text-align: right;">Ksh ${formatCurrency(item.unit_price * item.quantity)}</span>
+            </div>`;
+        });
+        content += `</div>`;
+      }
+
+      content += `</div>`;
+    });
+
+
+    content += `
+        </div>
+
+        <div style="text-align: center; margin-top: 6px; font-size: 7px;">
+          <p>Generated: ${new Date().toLocaleString()}</p>
+        </div>
+      </div>`;
+
+    return content;
+  };
+
+  const printEndOfDayReport = (content) => {
+    // Create PDF content directly using browser's print to PDF functionality
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Please allow popups for this website to generate reports.');
+      return;
+    }
+
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0];
+    const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '-');
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>End of Day Report - ${dateStr} ${timeStr}</title>
+          <style>
+            body {
+              margin: 0;
+              padding: 20px;
+              font-family: 'Courier New', monospace;
+              font-size: 12px;
+              line-height: 1.4;
+              background: white;
+            }
+            @media print {
+              body { margin: 0; padding: 10mm; }
+              @page {
+                size: A4;
+                margin: 10mm;
+              }
+            }
+            .header { text-align: center; margin-bottom: 20px; }
+            .summary { border: 1px solid #000; padding: 10px; margin: 10px 0; }
+            .transactions { margin-top: 20px; }
+            .transaction { border: 1px solid #ccc; margin: 5px 0; padding: 8px; }
+            .items { margin-left: 10px; font-size: 10px; }
+          </style>
+        </head>
+        <body>
+          ${content}
+        </body>
+      </html>
+    `);
+
+    printWindow.document.close();
+
+    printWindow.onload = () => {
+      // Auto-trigger print dialog for PDF generation
+      printWindow.print();
+
+      // Close window after a delay
+      setTimeout(() => {
+        printWindow.close();
+      }, 1000);
+    };
   };
 
   const handleClose = () => {
@@ -114,15 +255,15 @@ const ShiftModal = ({ isOpen, onClose, onStartShift, onEndShift, currentShift, o
                   </div>
                   <div className="shift-stat-item">
                     <label className="shift-stat-label">Cash Sales</label>
-                    <span className="shift-stat-value">Ksh {(currentShift.cash_sales || 0).toFixed(2)}</span>
+                    <span className="shift-stat-value">Ksh {((currentShift.cash_sales || 0) + (currentShift.sales_by_payment_method?.cash || 0)).toFixed(2)}</span>
+                  </div>
+                  <div className="shift-stat-item">
+                    <label className="shift-stat-label">M-Pesa Sales</label>
+                    <span className="shift-stat-value">Ksh {((currentShift.mpesa_sales || 0) + (currentShift.sales_by_payment_method?.mpesa || 0)).toFixed(2)}</span>
                   </div>
                   <div className="shift-stat-item">
                     <label className="shift-stat-label">Card Sales</label>
-                    <span className="shift-stat-value">Ksh {(currentShift.card_sales || 0).toFixed(2)}</span>
-                  </div>
-                  <div className="shift-stat-item">
-                    <label className="shift-stat-label">Mobile Sales</label>
-                    <span className="shift-stat-value">Ksh {(currentShift.mobile_sales || 0).toFixed(2)}</span>
+                    <span className="shift-stat-value">Ksh {((currentShift.card_sales || 0) + (currentShift.sales_by_payment_method?.card || 0)).toFixed(2)}</span>
                   </div>
                   <div className="shift-stat-item">
                     <label className="shift-stat-label">Total Sales</label>
@@ -143,7 +284,7 @@ const ShiftModal = ({ isOpen, onClose, onStartShift, onEndShift, currentShift, o
                     </h5>
                     <div className="shift-reconciliation-item">
                       <span className="shift-reconciliation-label">Expected Cash:</span>
-                      <span className="shift-reconciliation-value">Ksh {(currentShift.opening_balance + (currentShift.cash_sales || 0)).toFixed(2)}</span>
+                      <span className="shift-reconciliation-value">Ksh {(currentShift.opening_balance + (currentShift.cash_sales || 0) + (currentShift.sales_by_payment_method?.cash || 0)).toFixed(2)}</span>
                     </div>
                     <div className="shift-reconciliation-item">
                       <span className="shift-reconciliation-label">Actual Cash:</span>
@@ -166,17 +307,12 @@ const ShiftModal = ({ isOpen, onClose, onStartShift, onEndShift, currentShift, o
                 <div className="shift-modal-actions">
                   <button
                     className="shift-btn shift-btn-info"
-                    onClick={handleViewSalesSummary}
+                    onClick={handleRunEndOfDayReport}
                   >
                     <i className="shift-btn-icon"></i>
-                    View Sales Summary
+                    Generate End of Day Report
                   </button>
-                  
-                  <button className="shift-btn shift-btn-secondary" onClick={() => window.print()}>
-                    <i className="shift-btn-icon"></i>
-                    Print Report
-                  </button>
-                  
+
                   {!currentShift.end_time && (
                     <button
                       className="shift-btn shift-btn-danger"

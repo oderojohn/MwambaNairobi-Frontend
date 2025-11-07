@@ -18,8 +18,14 @@ const PaymentModal = ({ isOpen, onClose, onProcessPayment, totalAmount, selected
 
   const [mpesaNumber, setMpesaNumber] = useState('');
   const [cashAmount, setCashAmount] = useState('');
+  const [mpesaAmount, setMpesaAmount] = useState('');
   const [change, setChange] = useState(0);
   const [transactionId, setTransactionId] = useState('');
+
+  // Split payment states - commented out as they are not used
+  // const [splitCashAmount, setSplitCashAmount] = useState('');
+  // const [splitMpesaAmount, setSplitMpesaAmount] = useState('');
+  // const [splitMpesaNumber, setSplitMpesaNumber] = useState('');
 
   if (!isOpen) {
     console.log('PaymentModal not rendering because isOpen is false');
@@ -50,6 +56,26 @@ const PaymentModal = ({ isOpen, onClose, onProcessPayment, totalAmount, selected
       return;
     }
 
+    if (paymentMethod === 'split') {
+      if (!mpesaAmount || parseFloat(mpesaAmount) <= 0) {
+        alert('Please enter a valid M-Pesa amount');
+        return;
+      }
+      if (!mpesaNumber.trim()) {
+        alert('Please enter M-Pesa phone number');
+        return;
+      }
+      if (!cashAmount || parseFloat(cashAmount) < parseFloat(mpesaAmount)) {
+        alert('Please enter cash amount received (must be at least the required cash amount)');
+        return;
+      }
+      const totalPaid = parseFloat(mpesaAmount) + parseFloat(cashAmount);
+      if (totalPaid < totalAmount) {
+        alert('Total payment amount is less than the total due');
+        return;
+      }
+    }
+
     // Credit payment validation removed
 
     if (paymentMethod === 'cash') {
@@ -71,6 +97,15 @@ const PaymentModal = ({ isOpen, onClose, onProcessPayment, totalAmount, selected
         // Additional data based on payment method
         ...(paymentMethod === 'mpesa' && { mpesaNumber: mpesaNumber.trim() }),
         ...(paymentMethod === 'cash' && {
+          cashReceived: parseFloat(cashAmount),
+          change: change
+        }),
+        ...(paymentMethod === 'split' && {
+          split_data: {
+            mpesa: parseFloat(mpesaAmount),
+            cash: parseFloat(cashAmount)
+          },
+          mpesaNumber: mpesaNumber.trim(),
           cashReceived: parseFloat(cashAmount),
           change: change
         })
@@ -114,6 +149,14 @@ const PaymentModal = ({ isOpen, onClose, onProcessPayment, totalAmount, selected
                <i className="fas fa-mobile-alt"></i>
                <div>M-Pesa</div>
              </button>
+             <button
+               type="button"
+               className={`payment-modal-option-btn ${paymentMethod === 'split' ? 'active' : ''}`}
+               onClick={() => setPaymentMethod('split')}
+             >
+               <i className="fas fa-exchange-alt"></i>
+               <div>Split</div>
+             </button>
            </div>
 
            {paymentMethod === 'cash' && (
@@ -145,8 +188,60 @@ const PaymentModal = ({ isOpen, onClose, onProcessPayment, totalAmount, selected
              </div>
            )}
 
-
-            {/* Split payment removed */}
+           {paymentMethod === 'split' && (
+             <div className="payment-modal-split-section">
+               <div className="payment-modal-form-group">
+                 <label>M-Pesa Amount:</label>
+                 <input
+                   type="number"
+                   value={mpesaAmount}
+                   onChange={(e) => {
+                     setMpesaAmount(e.target.value);
+                     const mpesaValue = parseFloat(e.target.value) || 0;
+                     const remaining = Math.max(0, totalAmount - mpesaValue);
+                     setCashAmount(remaining.toString());
+                   }}
+                   placeholder="Enter M-Pesa amount"
+                   min="0"
+                   step="0.01"
+                 />
+               </div>
+               <div className="payment-modal-form-group">
+                 <label>Cash Amount (Auto-calculated):</label>
+                 <input
+                   type="number"
+                   value={cashAmount}
+                   readOnly
+                   placeholder="Remaining cash amount"
+                 />
+               </div>
+               <div className="payment-modal-form-group">
+                 <label>M-Pesa Phone Number:</label>
+                 <input
+                   type="tel"
+                   value={mpesaNumber}
+                   onChange={(e) => setMpesaNumber(e.target.value)}
+                   placeholder="Enter phone number"
+                 />
+               </div>
+               <div className="payment-modal-form-group">
+                 <label>Cash Received:</label>
+                 <input
+                   type="number"
+                   value={cashAmount}
+                   onChange={(e) => calculateChange(e.target.value)}
+                   placeholder="Enter cash received"
+                   min={cashAmount}
+                   step="0.01"
+                 />
+                 {change > 0 && (
+                   <div className="payment-modal-cash-change">
+                     Change: {formatCurrency(change)}
+                   </div>
+                 )}
+               </div>
+             </div>
+           )}
 
             {/* Credit and installment sections removed */}
 
