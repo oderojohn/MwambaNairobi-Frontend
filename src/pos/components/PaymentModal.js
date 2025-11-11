@@ -57,21 +57,25 @@ const PaymentModal = ({ isOpen, onClose, onProcessPayment, totalAmount, selected
     }
 
     if (paymentMethod === 'split') {
-      if (!mpesaAmount || parseFloat(mpesaAmount) <= 0) {
-        alert('Please enter a valid M-Pesa amount');
+      if (!mpesaAmount || parseFloat(mpesaAmount) < 0) {
+        alert('Please enter a valid M-Pesa amount (0 or more)');
         return;
       }
-      if (!mpesaNumber.trim()) {
-        alert('Please enter M-Pesa phone number');
+      if (!cashAmount || parseFloat(cashAmount) < 0) {
+        alert('Please enter a valid cash amount (0 or more)');
         return;
       }
-      if (!cashAmount || parseFloat(cashAmount) < parseFloat(mpesaAmount)) {
-        alert('Please enter cash amount received (must be at least the required cash amount)');
+      if (!mpesaNumber.trim() && parseFloat(mpesaAmount) > 0) {
+        alert('Please enter M-Pesa phone number when M-Pesa amount is greater than 0');
         return;
       }
       const totalPaid = parseFloat(mpesaAmount) + parseFloat(cashAmount);
       if (totalPaid < totalAmount) {
         alert('Total payment amount is less than the total due');
+        return;
+      }
+      if (parseFloat(mpesaAmount) === 0 && parseFloat(cashAmount) === 0) {
+        alert('Please enter amounts for at least one payment method');
         return;
       }
     }
