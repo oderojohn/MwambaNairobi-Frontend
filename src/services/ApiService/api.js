@@ -29,7 +29,7 @@ const STORAGE_KEYS = {
 };
 
 // Token expiration times in milliseconds
-const ACCESS_TOKEN_EXPIRY = 60 * 60 * 1000; // 60 minutes to match Django
+const ACCESS_TOKEN_EXPIRY = 24 * 60 * 60 * 1000; // 24 hours to match Django
 const REFRESH_TOKEN_EXPIRY = 24 * 60 * 60 * 1000; // 1 day to match Django
 const REFRESH_THRESHOLD = 1 * 60 * 1000;
 
