@@ -38,6 +38,9 @@ const ReceiptModal = ({
               box-sizing: border-box;
               font-weight: bold !important;
             }
+            body, div, span, p, h1, h2, h3, h4, h5, h6, table, tr, td, th {
+              font-weight: bold !important;
+            }
             body {
               font-family: 'Courier New', monospace;
               font-size: 12px;
@@ -176,13 +179,16 @@ const ReceiptModal = ({
                 padding: 2mm;
                 width: 58mm;
                 font-size: 12px;
-                font-weight: bold;
+                font-weight: bold !important;
               }
               .receipt {
                 width: 100%;
-                font-weight: bold;
+                font-weight: bold !important;
               }
               * {
+                font-weight: bold !important;
+              }
+              div, span, p, h1, h2, h3, h4, h5, h6 {
                 font-weight: bold !important;
               }
             }
