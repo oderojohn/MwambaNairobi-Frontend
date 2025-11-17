@@ -170,7 +170,7 @@ const ShoppingCart = ({ cart, categories = [], onUpdateQuantity, onRemoveItem, o
                   <div className="pos-shopping-cart__item-controls">
                     <div className="pos-shopping-cart__quantity-section">
                       <div className="pos-shopping-cart__quantity-controls">
-                        <button 
+                        <button
                           className="pos-shopping-cart__quantity-btn pos-shopping-cart__quantity-btn--decrease"
                           onClick={() => !disabled && onUpdateQuantity(item.id, -1)}
                           disabled={disabled}
@@ -178,10 +178,36 @@ const ShoppingCart = ({ cart, categories = [], onUpdateQuantity, onRemoveItem, o
                         >
                           <i className="fas fa-minus"></i>
                         </button>
-                        <span className="pos-shopping-cart__quantity-display">
-                          {item.quantity}
-                        </span>
-                        <button 
+                        <input
+                          type="number"
+                          className="pos-shopping-cart__quantity-input"
+                          value={item.quantity}
+                          onChange={(e) => {
+                            if (!disabled) {
+                              const value = e.target.value;
+                              // Allow empty input for deletion
+                              if (value === '') {
+                                return;
+                              }
+                              const newQty = parseInt(value) || 0;
+                              if (newQty >= 0) {
+                                const diff = newQty - item.quantity;
+                                onUpdateQuantity(item.id, diff);
+                              }
+                            }
+                          }}
+                          onBlur={(e) => {
+                            // If user leaves field empty or at 0, remove the item
+                            if (!disabled && (e.target.value === '' || parseInt(e.target.value) === 0)) {
+                              onRemoveItem(item.id);
+                            }
+                          }}
+                          onFocus={(e) => e.target.select()}
+                          disabled={disabled}
+                          min="0"
+                          title="Enter quantity (0 to remove)"
+                        />
+                        <button
                           className="pos-shopping-cart__quantity-btn pos-shopping-cart__quantity-btn--increase"
                           onClick={() => !disabled && onUpdateQuantity(item.id, 1)}
                           disabled={disabled}

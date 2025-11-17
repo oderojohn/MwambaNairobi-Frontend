@@ -307,6 +307,35 @@
   padding: 0 4px;
 }
 
+.pos-shopping-cart__quantity-input {
+  width: 50px;
+  height: 28px;
+  border: none;
+  background: #ffffff;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #1e293b;
+  padding: 0 4px;
+  outline: none;
+  -moz-appearance: textfield;
+}
+
+.pos-shopping-cart__quantity-input::-webkit-outer-spin-button,
+.pos-shopping-cart__quantity-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.pos-shopping-cart__quantity-input:focus {
+  background: #f8fafc;
+}
+
+.pos-shopping-cart__quantity-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .pos-shopping-cart__remove-btn {
   width: 28px;
   height: 28px;
