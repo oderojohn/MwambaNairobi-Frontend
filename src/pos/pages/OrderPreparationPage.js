@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import logo from '../../logo.png';
-import { toNumber, formatCurrency, purchaseOrdersAPI } from '../../services/ApiService/api';
+import { toNumber, formatCurrency, purchaseOrdersAPI, reportsAPI } from '../../services/ApiService/api';
 import './OrderPreparationPage.css';
 
 const OrderPreparationPage = ({ products, categories, suppliers }) => {
@@ -489,6 +489,79 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
   };
 
 
+  const handleDownloadPDF = async () => {
+    const result = await Swal.fire({
+      title: 'Download Product Price List',
+      text: 'Select the price types to include in the PDF:',
+      input: 'radio',
+      inputOptions: {
+        retail: 'Retail Price Only',
+        wholesale: 'Wholesale Price Only',
+        both: 'Both Retail and Wholesale Prices'
+      },
+      inputValue: 'both',
+      showCancelButton: true,
+      confirmButtonText: 'Download PDF',
+      cancelButtonText: 'Cancel',
+      inputValidator: (value) => {
+        if (!value) {
+          return 'Please select a price type!';
+        }
+      }
+    });
+
+    if (result.isConfirmed && result.value) {
+      try {
+        // Show loading
+        const loadingSwal = Swal.fire({
+          title: 'Generating PDF...',
+          text: 'Please wait while we generate your PDF',
+          allowOutsideClick: false,
+          allowEscapeKey: false,
+          showConfirmButton: false,
+          didOpen: () => {
+            Swal.showLoading();
+          }
+        });
+
+        // Call backend API to generate PDF
+        const response = await reportsAPI.generateProductPriceListPDF(result.value);
+
+        // The API returns a blob directly
+        const pdfBlob = response;
+
+        // Create download link
+        const url = window.URL.createObjectURL(pdfBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `product_price_list_${result.value}_${new Date().toISOString().split('T')[0]}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+
+        // Close loading and show success
+        loadingSwal.close();
+        Swal.fire({
+          icon: 'success',
+          title: 'PDF Downloaded!',
+          text: 'Product price list has been downloaded successfully.',
+          timer: 2000,
+          showConfirmButton: false,
+        });
+
+      } catch (error) {
+        console.error('Error downloading PDF:', error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Failed to download PDF. Please try again.',
+        });
+      }
+    }
+  };
+
+
 
   const renderProductsTable = () => (
     <div className="order-prep-products-panel">
@@ -856,6 +929,13 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
           </button>
           <button
             className="order-prep-mode-btn"
+            onClick={handleDownloadPDF}
+          >
+            <i className="fas fa-download"></i>
+            Download PDF
+          </button>
+          <button
+            className="order-prep-mode-btn"
             onClick={() => navigate('/order-management')}
           >
             <i className="fas fa-list"></i>
@@ -905,6 +985,8 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
 
     </div>
   );
+
+
 };
 
 export default OrderPreparationPage;

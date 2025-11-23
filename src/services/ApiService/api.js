@@ -1,6 +1,6 @@
 // api.js
 const API_BASE_URL = 'https://pos-iota-five.vercel.app';
-// const API_BASE_URL = 'http://127.0.0.1:8001';
+// const API_BASE_URL = 'http://127.0.0.1:8005';
 
 
 // Utility function to safely convert values to numbers
@@ -499,6 +499,29 @@ export const reportsAPI = {
   getTodaySummary: () => apiRequest('/api/reports/sales-summary/?today_summary=true'),
   getProfitLossSummary: (params = {}) => apiRequest('/api/reports/profitloss-summary/', 'GET', null, {}, false, params),
 
+  // PDF generation endpoints
+  generateProductPriceListPDF: async (priceType = 'both') => {
+    const url = `/api/reports/product-price-list-pdf/?price_type=${priceType}`;
+
+    // Special handling for PDF downloads (blob response)
+    if (tokenService.isAuthenticated()) {
+      await tokenService.ensureValidAccessToken();
+    }
+
+    const response = await fetch(`${API_BASE_URL}${url}`, {
+      method: 'GET',
+      headers: tokenService.isAuthenticated() ? {
+        'Authorization': `Bearer ${tokenService.getAccessToken()}`,
+      } : {},
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to generate PDF: ${response.status}`);
+    }
+
+    return response.blob();
+  },
+
   // Report data endpoints (using summary data for now)
   generateSalesReport: (data, queryParams) => apiRequest('/api/reports/sales-summary/', 'GET', null, {}, false, queryParams),
   generateInventoryReport: (queryParams = {}) => apiRequest('/api/reports/inventory-summary/', 'GET', null, {}, false, queryParams),
@@ -617,6 +640,19 @@ export const inventoryAPI = {
     byProduct: (productId) => apiRequest(`/api/inventory/sales-history/product/${productId}/`),
     byCustomer: (customerId) => apiRequest(`/api/inventory/sales-history/customer/${customerId}/`),
     byDateRange: (params) => apiRequest('/api/inventory/sales-history/date/', 'GET', null, {}, false, params),
+  },
+  productHistory: {
+    getAll: () => apiRequest('/api/inventory/product-history/'),
+    create: (history) => apiRequest('/api/inventory/product-history/', 'POST', history),
+    update: (id, history) => apiRequest(`/api/inventory/product-history/${id}/`, 'PUT', history),
+    delete: (id) => apiRequest(`/api/inventory/product-history/${id}/`, 'DELETE'),
+    byProduct: (productId) => apiRequest(`/api/inventory/product-history/product/${productId}/`),
+  },
+  timeline: {
+    getProductTimeline: (productId, params = {}) => apiRequest(`/api/inventory/products/${productId}/timeline/`, 'GET', null, {}, false, params),
+  },
+  endOfDayStock: {
+    getReport: (params = {}) => apiRequest('/api/inventory/reports/end-of-day-stock/', 'GET', null, {}, false, params),
   },
   reports: {
     stock: () => apiRequest('/api/inventory/reports/stock/'),

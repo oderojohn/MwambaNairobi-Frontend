@@ -8,6 +8,9 @@ import ProductsPage from './Inventory/inventorypages/inventory/ProductsPage';
 import CategoriesPage from './Inventory/inventorypages/inventory/CategoriesPage';
 import BatchesPage from './Inventory/inventorypages/inventory/BatchesPage';
 import StockLevelsPage from './Inventory/inventorypages/inventory/StockLevelsPage';
+import ProductHistoryPage from './Inventory/inventorypages/inventory/ProductHistoryPage';
+import ProductTimelinePage from './Inventory/inventorypages/inventory/ProductTimelinePage';
+import EndOfDayStockPage from './Inventory/inventorypages/inventory/EndOfDayStockPage';
 import OrdersPage from './Inventory/inventorypages/Purchasing/OrdersPage';
 import SuppliersPage from './Inventory/inventorypages/Purchasing/SuppliersPage';
 import ReceivingPage from './Inventory/inventorypages/Purchasing/ReceivingPage';
@@ -64,6 +67,9 @@ const AppRoutes = () => {
         <Route path="categories" element={<CategoriesPage />} />
         <Route path="BatchesPage" element={<BatchesPage />} />
         <Route path="stock-levels" element={<StockLevelsPage />} />
+        <Route path="product-history" element={<ProductHistoryPage />} />
+        <Route path="product-timeline" element={<ProductTimelinePage />} />
+        <Route path="end-of-day-stock" element={<EndOfDayStockPage />} />
         <Route path="orders" element={<OrdersPage />} />
         <Route path="suppliers" element={<SuppliersPage />} />
         <Route path="receiving" element={<ReceivingPage />} />

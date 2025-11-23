@@ -15,7 +15,7 @@ import ErrorModal from './components/ErrorModal';
 import OrderPreparationPage from './pages/OrderPreparationPage';
 import OrderManagementPage from './pages/OrderManagementPage';
 import ReceiptModal from './components/ReceiptModal';
-import { inventoryAPI, salesAPI, shiftsAPI, chitsAPI, paymentsAPI, customersAPI, suppliersAPI, toNumber, formatCurrency } from '../services/ApiService/api';
+import { inventoryAPI, salesAPI, shiftsAPI, chitsAPI, customersAPI, suppliersAPI, toNumber, formatCurrency } from '../services/ApiService/api';
 import { useAuth } from '../services/context/authContext';
 import './data/pos.css';
 import './data/Modal.css'
@@ -631,47 +631,25 @@ function PosApp() {
         total_amount: Number(total),
         tax_amount: Number(0),
         discount_amount: Number(0),
-        payment_method: paymentData.splitPayment ? 'split' : paymentData.method,
+        payment_method: paymentData.method,
         customer: selectedCustomer ? selectedCustomer.id : null,
         receipt_number: `POS-${Date.now()}`,
         sale_type: mode
       };
 
       // Add split data if split payment
-      if (paymentData.splitPayment) {
+      if (paymentData.method === 'split') {
         cartData.split_data = {
-          cash: Number(paymentData.cashAmount || 0),
-          mpesa: Number(paymentData.mpesaAmount || 0),
-          card: Number(paymentData.cardAmount || 0)
+          cash: Number(paymentData.split_data?.cash || 0),
+          mpesa: Number(paymentData.split_data?.mpesa || 0)
         };
       }
 
       console.log('Sending cart data to backend:', cartData);
 
-      // Send to backend
+      // Send to backend (backend handles payment creation)
       const sale = await salesAPI.createSale(cartData);
       console.log('Sale created successfully:', sale);
-
-      // Create payment record
-      const paymentRecord = {
-        sale: sale.id,
-        payment_type: paymentData.method.toLowerCase(),
-        amount: Number(total),
-        reference_number: paymentData.transactionId || null,
-        status: 'completed'
-      };
-
-      // Add payment method specific data if available
-      if (paymentData.mpesaNumber) {
-        paymentRecord.mpesa_number = paymentData.mpesaNumber;
-      }
-
-      // Add split payment data if applicable
-      if (paymentData.method === 'split' && paymentData.split_data) {
-        paymentRecord.split_data = paymentData.split_data;
-      }
-
-      console.log('Creating payment record:', paymentRecord);
 
       // Validate sale ID
       if (!sale.id) {
@@ -684,9 +662,6 @@ function PosApp() {
         });
         return;
       }
-
-      // Create payment record
-      await paymentsAPI.createPayment(paymentRecord);
 
       // Update product stock quantities immediately
       setProducts(prevProducts => prevProducts.map(product => {
@@ -1074,31 +1049,22 @@ function PosApp() {
         sale_type: mode
       };
 
+      // Add split payment data if applicable
+      if (paymentData.method === 'split') {
+        cartData.split_data = {
+          cash: paymentData.split_data?.cash || 0,
+          mpesa: paymentData.split_data?.mpesa || 0
+        };
+        cartData.mpesa_number = paymentData.mpesaNumber || '';
+      } else if (paymentData.method === 'mpesa') {
+        cartData.mpesa_number = paymentData.mpesaNumber || '';
+      }
+
       console.log('Completing held order with data:', cartData);
 
-      // Complete the held order
+      // Complete the held order (backend handles payment creation)
       const sale = await salesAPI.completeHeldOrder(heldOrderId, cartData);
       console.log('Held order completed successfully:', sale);
-
-      // Create payment record
-      const paymentRecord = {
-        sale: sale.id,
-        payment_type: paymentData.method.toLowerCase(),
-        amount: Number(total),
-        reference_number: paymentData.transactionId || null,
-        status: 'completed'
-      };
-
-      if (paymentData.mpesaNumber) {
-        paymentRecord.mpesa_number = paymentData.mpesaNumber;
-      }
-
-      // Add split payment data if applicable
-      if (paymentData.method === 'split' && paymentData.split_data) {
-        paymentRecord.split_data = paymentData.split_data;
-      }
-
-      await paymentsAPI.createPayment(paymentRecord);
 
       // Refresh shift data to update totals
       await refreshShiftData();
@@ -1278,14 +1244,6 @@ function PosApp() {
       }
     }
 
-    // Validate split payment amounts (legacy check)
-    if (paymentData.splitPayment) {
-      const splitTotal = (paymentData.cashAmount || 0) + (paymentData.mpesaAmount || 0) + (paymentData.cardAmount || 0);
-      if (Math.abs(splitTotal - totalAmount) > 0.01) { // Allow for floating point precision
-        errors.push(`Split payment total (${formatCurrency(splitTotal)}) does not match sale total (${formatCurrency(totalAmount)})`);
-      }
-    }
-
     return errors;
   };
 
@@ -1309,7 +1267,7 @@ function PosApp() {
   };
 
   const subtotal = cart.reduce((sum, item) => sum + (toNumber(item.price) * toNumber(item.quantity)), 0);
-  const total = Math.round(Number(subtotal));
+  const total = Math.round(subtotal * 100) / 100; // Round to 2 decimal places properly
 
   // Check current path to determine which component to render
   const isOrderPreparationPage = location.pathname === '/order-preparation';

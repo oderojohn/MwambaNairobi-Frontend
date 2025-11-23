@@ -18,6 +18,7 @@ const PaymentModal = ({ isOpen, onClose, onProcessPayment, totalAmount, selected
 
   const [mpesaNumber, setMpesaNumber] = useState('');
   const [cashAmount, setCashAmount] = useState('');
+  const [cashReceived, setCashReceived] = useState('');
   const [mpesaAmount, setMpesaAmount] = useState('');
   const [change, setChange] = useState(0);
   const [transactionId, setTransactionId] = useState('');
@@ -35,10 +36,19 @@ const PaymentModal = ({ isOpen, onClose, onProcessPayment, totalAmount, selected
   console.log('PaymentModal rendering with totalAmount:', totalAmount);
 
   const calculateChange = (amount) => {
-    const numericTotal = toNumber(totalAmount);
-    const changeAmount = toNumber(amount) - numericTotal;
-    setChange(changeAmount >= 0 ? changeAmount : 0);
-    setCashAmount(amount);
+    if (paymentMethod === 'split') {
+      // For split payments, calculate change based on cash received vs required cash
+      const requiredCash = parseFloat(cashAmount) || 0;
+      const receivedCash = parseFloat(amount) || 0;
+      const changeAmount = Math.round((receivedCash - requiredCash) * 100) / 100;
+      setChange(changeAmount >= 0 ? changeAmount : 0);
+    } else {
+      // For regular cash payments
+      const numericTotal = toNumber(totalAmount);
+      const changeAmount = Math.round((toNumber(amount) - numericTotal) * 100) / 100;
+      setChange(changeAmount >= 0 ? changeAmount : 0);
+      setCashAmount(amount);
+    }
   };
 
   const handlePayment = async () => {
@@ -57,25 +67,29 @@ const PaymentModal = ({ isOpen, onClose, onProcessPayment, totalAmount, selected
     }
 
     if (paymentMethod === 'split') {
-      if (!mpesaAmount || parseFloat(mpesaAmount) < 0) {
-        alert('Please enter a valid M-Pesa amount (0 or more)');
+      const mpesaValue = parseFloat(mpesaAmount) || 0;
+      const cashValue = parseFloat(cashAmount) || 0;
+
+      if (mpesaValue < 0) {
+        alert('M-Pesa amount cannot be negative');
         return;
       }
-      if (!cashAmount || parseFloat(cashAmount) < 0) {
-        alert('Please enter a valid cash amount (0 or more)');
+      if (cashValue < 0) {
+        alert('Cash amount cannot be negative');
         return;
       }
-      if (!mpesaNumber.trim() && parseFloat(mpesaAmount) > 0) {
+      if (mpesaValue === 0 && cashValue === 0) {
+        alert('Please enter amounts for at least one payment method');
+        return;
+      }
+      if (mpesaValue > 0 && !mpesaNumber.trim()) {
         alert('Please enter M-Pesa phone number when M-Pesa amount is greater than 0');
         return;
       }
-      const totalPaid = parseFloat(mpesaAmount) + parseFloat(cashAmount);
-      if (totalPaid < totalAmount) {
-        alert('Total payment amount is less than the total due');
-        return;
-      }
-      if (parseFloat(mpesaAmount) === 0 && parseFloat(cashAmount) === 0) {
-        alert('Please enter amounts for at least one payment method');
+
+      const totalPaid = mpesaValue + cashValue;
+      if (Math.abs(totalPaid - totalAmount) > 0.01) { // Allow for small floating point differences
+        alert(`Total payment (${formatCurrency(totalPaid)}) does not match total due (${formatCurrency(totalAmount)})`);
         return;
       }
     }
@@ -94,26 +108,73 @@ const PaymentModal = ({ isOpen, onClose, onProcessPayment, totalAmount, selected
     setIsProcessing(true);
 
     try {
-      const paymentData = {
-        method: paymentMethod,
+      // Determine the actual payment method based on amounts
+      let actualMethod = paymentMethod;
+      let paymentData = {
         amount: totalAmount,
         transactionId: transactionId.trim() || null,
-        // Additional data based on payment method
-        ...(paymentMethod === 'mpesa' && { mpesaNumber: mpesaNumber.trim() }),
-        ...(paymentMethod === 'cash' && {
-          cashReceived: parseFloat(cashAmount),
-          change: change
-        }),
-        ...(paymentMethod === 'split' && {
-          split_data: {
-            mpesa: parseFloat(mpesaAmount),
-            cash: parseFloat(cashAmount)
-          },
-          mpesaNumber: mpesaNumber.trim(),
-          cashReceived: parseFloat(cashAmount),
-          change: change
-        })
       };
+
+      if (paymentMethod === 'cash') {
+        actualMethod = 'cash';
+        paymentData = {
+          ...paymentData,
+          method: 'cash',
+          cashReceived: parseFloat(cashAmount),
+          change: change
+        };
+      } else if (paymentMethod === 'mpesa') {
+        actualMethod = 'mpesa';
+        paymentData = {
+          ...paymentData,
+          method: 'mpesa',
+          mpesaNumber: mpesaNumber.trim()
+        };
+      } else if (paymentMethod === 'split') {
+        const mpesaAmt = parseFloat(mpesaAmount) || 0;
+        const cashAmt = parseFloat(cashAmount) || 0;
+
+        if (mpesaAmt > 0 && cashAmt > 0) {
+          // True split payment
+          actualMethod = 'split';
+          paymentData = {
+            ...paymentData,
+            method: 'split',
+            split_data: {
+              mpesa: mpesaAmt,
+              cash: cashAmt
+            },
+            mpesaNumber: mpesaNumber.trim(),
+            cashReceived: parseFloat(cashReceived) || 0,
+            change: change
+          };
+        } else if (mpesaAmt > 0) {
+          // Pure MPESA payment
+          actualMethod = 'mpesa';
+          paymentData = {
+            ...paymentData,
+            method: 'mpesa',
+            mpesaNumber: mpesaNumber.trim()
+          };
+        } else if (cashAmt > 0) {
+          // Pure cash payment
+          actualMethod = 'cash';
+          paymentData = {
+            ...paymentData,
+            method: 'cash',
+            cashReceived: parseFloat(cashReceived) || 0,
+            change: change
+          };
+        } else {
+          alert('Please enter valid payment amounts');
+          setIsProcessing(false);
+          return;
+        }
+      }
+
+      console.log('PaymentModal: Actual payment method determined:', actualMethod);
+      console.log('PaymentModal: Payment data being sent to backend:', paymentData);
+      console.log('PaymentModal: Total amount:', totalAmount);
 
       await onProcessPayment(paymentData);
     } catch (error) {
@@ -194,31 +255,42 @@ const PaymentModal = ({ isOpen, onClose, onProcessPayment, totalAmount, selected
 
            {paymentMethod === 'split' && (
              <div className="payment-modal-split-section">
+               <div className="payment-modal-split-summary">
+                 <div className="split-total-due">
+                   <strong>Total Due: {formatCurrency(totalAmount)}</strong>
+                 </div>
+               </div>
+
                <div className="payment-modal-form-group">
                  <label>M-Pesa Amount:</label>
                  <input
                    type="number"
                    value={mpesaAmount}
                    onChange={(e) => {
-                     setMpesaAmount(e.target.value);
                      const mpesaValue = parseFloat(e.target.value) || 0;
-                     const remaining = Math.max(0, totalAmount - mpesaValue);
+                     setMpesaAmount(e.target.value);
+                     // Auto-calculate remaining cash needed with proper rounding
+                     const remaining = Math.max(0, Math.round((totalAmount - mpesaValue) * 100) / 100);
                      setCashAmount(remaining.toString());
                    }}
                    placeholder="Enter M-Pesa amount"
                    min="0"
+                   max={totalAmount}
                    step="0.01"
                  />
                </div>
+
                <div className="payment-modal-form-group">
-                 <label>Cash Amount (Auto-calculated):</label>
+                 <label>Cash Amount Required:</label>
                  <input
                    type="number"
                    value={cashAmount}
                    readOnly
-                   placeholder="Remaining cash amount"
+                   placeholder="Cash amount needed"
                  />
+                 <small className="form-help">Auto-calculated based on M-Pesa amount</small>
                </div>
+
                <div className="payment-modal-form-group">
                  <label>M-Pesa Phone Number:</label>
                  <input
@@ -226,14 +298,19 @@ const PaymentModal = ({ isOpen, onClose, onProcessPayment, totalAmount, selected
                    value={mpesaNumber}
                    onChange={(e) => setMpesaNumber(e.target.value)}
                    placeholder="Enter phone number"
+                   required={parseFloat(mpesaAmount) > 0}
                  />
                </div>
+
                <div className="payment-modal-form-group">
                  <label>Cash Received:</label>
                  <input
                    type="number"
-                   value={cashAmount}
-                   onChange={(e) => calculateChange(e.target.value)}
+                   value={cashReceived}
+                   onChange={(e) => {
+                     setCashReceived(e.target.value);
+                     calculateChange(e.target.value);
+                   }}
                    placeholder="Enter cash received"
                    min={cashAmount}
                    step="0.01"
@@ -243,6 +320,27 @@ const PaymentModal = ({ isOpen, onClose, onProcessPayment, totalAmount, selected
                      Change: {formatCurrency(change)}
                    </div>
                  )}
+                 {parseFloat(cashReceived) > 0 && parseFloat(cashReceived) < parseFloat(cashAmount) && (
+                   <small className="form-warning">
+                     Cash received is less than required amount
+                   </small>
+                 )}
+               </div>
+
+               <div className="payment-modal-split-breakdown">
+                 <h5>Payment Breakdown</h5>
+                 <div className="breakdown-item">
+                   <span>M-Pesa:</span>
+                   <span>{formatCurrency(parseFloat(mpesaAmount) || 0)}</span>
+                 </div>
+                 <div className="breakdown-item">
+                   <span>Cash:</span>
+                   <span>{formatCurrency(parseFloat(cashAmount) || 0)}</span>
+                 </div>
+                 <div className="breakdown-item total">
+                   <span><strong>Total:</strong></span>
+                   <span><strong>{formatCurrency((parseFloat(mpesaAmount) || 0) + (parseFloat(cashAmount) || 0))}</strong></span>
+                 </div>
                </div>
              </div>
            )}

@@ -31,7 +31,10 @@ const Sidebar = ({ sidebarOpen }) => {
         { name: 'Products', path: 'products', roles: ['admin',  'storekeeper'] },
         { name: 'Categories', path: 'categories', roles: ['admin',  'storekeeper'] },
         { name: 'Stock Levels', path: 'stock-levels', roles: ['admin',  'storekeeper'] },
-        { name: 'Batches', path: 'BatchesPage', roles: ['admin',  'storekeeper'] }
+        { name: 'Batches', path: 'BatchesPage', roles: ['admin',  'storekeeper'] },
+        { name: 'Product History', path: 'product-history', roles: ['admin',  'storekeeper'] },
+        { name: 'Product Timeline', path: 'product-timeline', roles: ['admin',  'storekeeper'] },
+        { name: 'End of Day Stock', path: 'end-of-day-stock', roles: ['admin',  'storekeeper'] }
 
       ]
     },

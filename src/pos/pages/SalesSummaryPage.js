@@ -240,20 +240,6 @@ const SalesSummaryPage = ({ shiftId }) => {
                     <span>{formatCurrency(salesData.today_sales || 0)}</span>
                   </div>
                 </div>
-
-                {salesData.sales_by_payment_method && Object.keys(salesData.sales_by_payment_method).length > 0 && (
-                  <div className="payment-methods-summary">
-                    <h4>Sales by Payment Method</h4>
-                    <div className="summary-grid">
-                      {Object.entries(salesData.sales_by_payment_method).map(([method, amount]) => (
-                        <div key={method} className="summary-item">
-                          <label>{method.charAt(0).toUpperCase() + method.slice(1)}:</label>
-                          <span>{formatCurrency(amount)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </>
             )}
 
@@ -267,7 +253,7 @@ const SalesSummaryPage = ({ shiftId }) => {
                   </div>
                   <div className="summary-item">
                     <label>M-Pesa Count:</label>
-                    <span>{salesData.recent_sales?.filter(sale => sale.payment_method === 'mpesa').length || 0}</span>
+                    <span>{salesData.recent_sales?.filter(sale => sale.payment_method === 'mpesa' || (sale.payment_method === 'split' && sale.split_data?.mpesa)).length || 0}</span>
                   </div>
                 </div>
               </div>
@@ -283,7 +269,7 @@ const SalesSummaryPage = ({ shiftId }) => {
                   </div>
                   <div className="summary-item">
                     <label>Cash Count:</label>
-                    <span>{salesData.recent_sales?.filter(sale => sale.payment_method === 'cash').length || 0}</span>
+                    <span>{salesData.recent_sales?.filter(sale => sale.payment_method === 'cash' || (sale.payment_method === 'split' && sale.split_data?.cash)).length || 0}</span>
                   </div>
                 </div>
               </div>
@@ -295,11 +281,17 @@ const SalesSummaryPage = ({ shiftId }) => {
                 <div className="summary-grid">
                   <div className="summary-item">
                     <label>Split Cash:</label>
-                    <span>{formatCurrency(salesData.sales_by_payment_method?.cash || 0)}</span>
+                    <span>{formatCurrency(
+                      salesData.recent_sales?.filter(sale => sale.payment_method === 'split')
+                        .reduce((total, sale) => total + (sale.split_data?.cash || 0), 0) || 0
+                    )}</span>
                   </div>
                   <div className="summary-item">
                     <label>Split M-Pesa:</label>
-                    <span>{formatCurrency(salesData.sales_by_payment_method?.mpesa || 0)}</span>
+                    <span>{formatCurrency(
+                      salesData.recent_sales?.filter(sale => sale.payment_method === 'split')
+                        .reduce((total, sale) => total + (sale.split_data?.mpesa || 0), 0) || 0
+                    )}</span>
                   </div>
                   <div className="summary-item">
                     <label>Split Count:</label>
@@ -328,8 +320,8 @@ const SalesSummaryPage = ({ shiftId }) => {
                       {salesData.recent_sales
                         .filter(sale => {
                           if (activeTab === 'overview') return true;
-                          if (activeTab === 'mpesa') return sale.payment_method === 'mpesa';
-                          if (activeTab === 'cash') return sale.payment_method === 'cash';
+                          if (activeTab === 'mpesa') return sale.payment_method === 'mpesa' || (sale.payment_method === 'split' && sale.split_data?.mpesa);
+                          if (activeTab === 'cash') return sale.payment_method === 'cash' || (sale.payment_method === 'split' && sale.split_data?.cash);
                           if (activeTab === 'split') return sale.payment_method === 'split';
                           return true;
                         })
@@ -347,7 +339,20 @@ const SalesSummaryPage = ({ shiftId }) => {
                             <td className="amount-cell">{formatCurrency(sale.total_amount)}</td>
                             <td className="payment-cell">
                               <span className={`payment-badge ${sale.payment_method?.toLowerCase() || 'unknown'}`}>
-                                {sale.payment_method ? sale.payment_method.charAt(0).toUpperCase() : 'N/A'}
+                                {activeTab === 'mpesa' ? 'M-Pesa' :
+                                 activeTab === 'cash' ? 'Cash' :
+                                 activeTab === 'split' ? 'Split' :
+                                 activeTab === 'overview' ? (
+                                   sale.payment_method === 'mpesa' ? 'M-Pesa' :
+                                   sale.payment_method === 'cash' ? 'Cash' :
+                                   sale.payment_method === 'split' ? (
+                                     sale.split_data && Object.keys(sale.split_data).length === 2 && 'mpesa' in sale.split_data && 'cash' in sale.split_data ? 'M-Pesa & Cash' :
+                                     sale.split_data && 'mpesa' in sale.split_data ? 'M-Pesa' :
+                                     sale.split_data && 'cash' in sale.split_data ? 'Cash' :
+                                     'Split'
+                                   ) :
+                                   sale.payment_method ? sale.payment_method.charAt(0).toUpperCase() + sale.payment_method.slice(1) : 'N/A'
+                                 ) : 'N/A'}
                               </span>
                             </td>
                             <td className="sale-type-cell">
@@ -428,8 +433,8 @@ const SalesSummaryPage = ({ shiftId }) => {
                           Period: {shiftId ? `Shift ${shiftId}` : 'Current'} •
                           Total Records: {salesData.recent_sales.filter(sale => {
                             if (activeTab === 'overview') return true;
-                            if (activeTab === 'mpesa') return sale.payment_method === 'mpesa';
-                            if (activeTab === 'cash') return sale.payment_method === 'cash';
+                            if (activeTab === 'mpesa') return sale.payment_method === 'mpesa' || (sale.payment_method === 'split' && sale.split_data?.mpesa);
+                            if (activeTab === 'cash') return sale.payment_method === 'cash' || (sale.payment_method === 'split' && sale.split_data?.cash);
                             if (activeTab === 'split') return sale.payment_method === 'split';
                             return true;
                           }).length}
