@@ -14,19 +14,20 @@ import '../../../pos/pages/OrderManagementPage.css';
 
 const ProductHistoryPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [productFilter, setProductFilter] = useState('');
+  const [productSearchTerm, setProductSearchTerm] = useState('');
   const [fieldFilter, setFieldFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [history, setHistory] = useState([]);
   const [products, setProducts] = useState([]);
+  const [selectedProduct, setSelectedProduct] = useState(null);
   const [showExportModal, setShowExportModal] = useState(false);
   const [activeTab, setActiveTab] = useState('export');
 
   // Fetch data on component mount
   useEffect(() => {
-    fetchHistory();
     fetchProducts();
+    fetchHistory();
   }, []);
 
   const fetchHistory = async () => {
@@ -53,16 +54,29 @@ const ProductHistoryPage = () => {
     }
   };
 
+  const filteredProducts = products.filter(product =>
+    product.name.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
+    product.sku.toLowerCase().includes(productSearchTerm.toLowerCase())
+  );
+
   const filteredHistory = history.filter(item => {
     const matchesSearch = (item.product_name && item.product_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                         (item.field_changed && item.field_changed.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                         (item.notes && item.notes.toLowerCase().includes(searchTerm.toLowerCase()));
+                          (item.field_changed && item.field_changed.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                          (item.notes && item.notes.toLowerCase().includes(searchTerm.toLowerCase()));
 
-    const matchesProduct = !productFilter || item.product === parseInt(productFilter);
+    const matchesProduct = !selectedProduct || item.product === selectedProduct.id;
     const matchesField = !fieldFilter || item.field_changed === fieldFilter;
 
     return matchesSearch && matchesProduct && matchesField;
   });
+
+  const handleProductSelect = async (product) => {
+    setSelectedProduct(product);
+    // Load history if not loaded yet
+    if (history.length === 0) {
+      await fetchHistory();
+    }
+  };
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -88,12 +102,100 @@ const ProductHistoryPage = () => {
     return fields;
   };
 
+  const formatChange = (item) => {
+    const field = item.field_changed;
+    const oldVal = item.old_value;
+    const newVal = item.new_value;
+
+    if (field === 'stock_quantity') {
+      const oldNum = parseFloat(oldVal) || 0;
+      const newNum = parseFloat(newVal) || 0;
+      const diff = newNum - oldNum;
+      if (diff > 0) {
+        return `Stock increased by ${diff} (Balance: ${newNum})`;
+      } else if (diff < 0) {
+        return `Stock decreased by ${Math.abs(diff)} (Balance: ${newNum})`;
+      } else {
+        return `Stock unchanged (Balance: ${newNum})`;
+      }
+    }
+    return `${oldVal || 'N/A'} → ${newVal || 'N/A'}`;
+  };
+
   if (loading) {
-    return <div className="loading">Loading product history...</div>;
+    return <div className="loading">L
+    Nov 23, 2025, 11:28 AM
+    Stock Quantity	UPDATE	Stock decreased by 3 (Balance: 5)	System	Updated stock_quantity
+    Nov 23, 2025, 11:25 AM
+    Stock Quantity	UPDATE	oading product history...</div>;
   }
 
   return (
     <div className="page-container">
+      <style>
+        {`
+          .master-detail-container {
+            display: flex;
+            gap: 20px;
+            height: calc(100vh - 200px);
+          }
+          .left-panel {
+            flex: 0 0 300px;
+            border-right: 1px solid #ddd;
+            padding-right: 20px;
+          }
+          .right-panel {
+            flex: 1;
+            overflow: auto;
+          }
+          .products-table.small-font {
+            font-size: 12px;
+          }
+          .products-table.small-font th,
+          .products-table.small-font td,
+          .orders-table.small-font th,
+          .orders-table.small-font td {
+            padding: 4px 8px;
+            font-size: 12px;
+          }
+          .products-table tr.selected {
+            background-color: #e3f2fd;
+          }
+          .products-table tr:hover {
+            background-color: #f5f5f5;
+            cursor: pointer;
+          }
+          .product-search {
+            margin-bottom: 10px;
+            position: relative;
+          }
+          .product-search input {
+            width: 100%;
+            padding: 8px 30px 8px 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+          }
+          .product-search .search-icon {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #666;
+          }
+          .products-table-container {
+            max-height: 400px;
+            overflow-y: auto;
+          }
+          .history-table-container {
+            max-height: 600px;
+            overflow-y: auto;
+          }
+          .change-value {
+            font-weight: bold;
+            color: #333;
+          }
+        `}
+      </style>
       <div className="page-header">
         <h1>Product History</h1>
         <p>Track all changes made to products over time</p>
@@ -106,25 +208,11 @@ const ProductHistoryPage = () => {
           <div className="search-box">
             <input
               type="text"
-              placeholder="Search history, products, or fields..."
+              placeholder="Search history..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
             <FiSearch className="search-icon" />
-          </div>
-          <div className="filter-dropdown">
-            <select
-              value={productFilter}
-              onChange={(e) => setProductFilter(e.target.value)}
-            >
-              <option value="">All Products</option>
-              {products.map(product => (
-                <option key={product.id} value={product.id}>
-                  {product.name}
-                </option>
-              ))}
-            </select>
-            <FiPackage className="filter-icon" />
           </div>
           <div className="filter-dropdown">
             <select
@@ -157,59 +245,98 @@ const ProductHistoryPage = () => {
         </div>
       </div>
 
-      {/* Data Table */}
-      <div className="orders-table-container">
-        <table className="orders-table">
-          <thead>
-            <tr>
-              <th>Timestamp</th>
-              <th>Product</th>
-              <th>Field Changed</th>
-              <th>Change Type</th>
-              <th>Old Value</th>
-              <th>New Value</th>
-              <th>User</th>
-              <th>Notes</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredHistory.length > 0 ? filteredHistory.map(item => (
-              <tr key={item.id}>
-                <td>
-                  <div className="date-with-icon">
-                    <FiClock className="date-icon" />
-                    {formatDate(item.changed_at)}
-                  </div>
-                </td>
-                <td>{item.product_name || 'N/A'}</td>
-                <td>
-                  <span className="field-badge">
-                    {item.field_changed.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                  </span>
-                </td>
-                <td>
-                  <span className={`status-badge ${getChangeTypeColor(item.change_type)}`}>
-                    {item.change_type.charAt(0).toUpperCase() + item.change_type.slice(1)}
-                  </span>
-                </td>
-                <td className="value-cell">
-                  <span className="old-value">{item.old_value || 'N/A'}</span>
-                </td>
-                <td className="value-cell">
-                  <span className="new-value">{item.new_value || 'N/A'}</span>
-                </td>
-                <td>{item.user_name || 'System'}</td>
-                <td>{item.notes || 'N/A'}</td>
-              </tr>
-            )) : (
-              <tr>
-                <td colSpan="8" className="no-data">
-                  {loading ? 'Loading product history...' : 'No product history found'}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+      <div className="master-detail-container">
+        {/* Left Panel - Products List */}
+        <div className="left-panel">
+          <h3>Products</h3>
+          <div className="product-search">
+            <input
+              type="text"
+              placeholder="Search products..."
+              value={productSearchTerm}
+              onChange={(e) => setProductSearchTerm(e.target.value)}
+            />
+            <FiSearch className="search-icon" />
+          </div>
+          <div className="products-table-container">
+            <table className="products-table small-font">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>SKU</th>
+                  <th>Stock</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredProducts.map(product => (
+                  <tr
+                    key={product.id}
+                    className={selectedProduct && selectedProduct.id === product.id ? 'selected' : ''}
+                    onClick={() => handleProductSelect(product)}
+                  >
+                    <td>{product.name}</td>
+                    <td>{product.sku}</td>
+                    <td>{product.stock_quantity}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Right Panel - History Details */}
+        <div className="right-panel">
+          <h3>{selectedProduct ? `History for ${selectedProduct.name}` : 'Product History'}</h3>
+          <div className="history-table-container">
+            <table className="orders-table small-font">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Product</th>
+                  <th>Field Changed</th>
+                  <th>Change Type</th>
+                  <th>Change</th>
+                  <th>User</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredHistory.length > 0 ? filteredHistory.map(item => (
+                  <tr key={item.id}>
+                    <td>
+                      <div className="date-with-icon">
+                        <FiClock className="date-icon" />
+                        {formatDate(item.changed_at)}
+                      </div>
+                    </td>
+                    <td>{item.product_name || 'N/A'}</td>
+                    <td>
+                      <span className="field-badge">
+                        {item.field_changed.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={`status-badge ${getChangeTypeColor(item.change_type)}`}>
+                        {item.change_type.charAt(0).toUpperCase() + item.change_type.slice(1)}
+                      </span>
+                    </td>
+                    <td className="value-cell">
+                      <span className="change-value">{formatChange(item)}</span>
+                    </td>
+                    <td>{(item.user_name && item.user_name !== 'N/A') ? item.user_name : 'System'}</td>
+                    <td>{item.notes || 'N/A'}</td>
+                  </tr>
+                )) : (
+                  <tr>
+                    <td colSpan="7" className="no-data">
+                      {loading ? 'Loading history...' : 'No history found'}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       <div className="pagination-container">

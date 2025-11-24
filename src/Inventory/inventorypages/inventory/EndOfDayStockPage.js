@@ -4,13 +4,10 @@ import {
   FiDownload,
   FiPrinter,
   FiPackage,
-  FiTrendingUp,
-  FiTrendingDown,
-  FiBarChart2,
   FiX
 } from 'react-icons/fi';
 import { inventoryAPI } from '../../../services/ApiService/api';
-import '../../../pos/pages/OrderManagementPage.css';
+import './EndOfDayStockPage.css';
 
 const EndOfDayStockPage = () => {
   const [selectedProduct, setSelectedProduct] = useState('');
@@ -26,13 +23,13 @@ const EndOfDayStockPage = () => {
   // Fetch products on component mount
   useEffect(() => {
     fetchProducts();
-    // Set default date range (last 30 days)
+    // Set default date range (last 10 days)
     const today = new Date();
-    const thirtyDaysAgo = new Date(today);
-    thirtyDaysAgo.setDate(today.getDate() - 30);
+    const tenDaysAgo = new Date(today);
+    tenDaysAgo.setDate(today.getDate() - 10);
 
     setToDate(today.toISOString().split('T')[0]);
-    setFromDate(thirtyDaysAgo.toISOString().split('T')[0]);
+    setFromDate(tenDaysAgo.toISOString().split('T')[0]);
   }, []);
 
   const fetchProducts = async () => {
@@ -82,22 +79,6 @@ const EndOfDayStockPage = () => {
     });
   };
 
-  const getStockChange = (currentStock, previousStock) => {
-    if (!previousStock) return { change: 0, direction: 'neutral' };
-    const change = currentStock - previousStock;
-    return {
-      change: Math.abs(change),
-      direction: change > 0 ? 'up' : change < 0 ? 'down' : 'neutral'
-    };
-  };
-
-  const getStockChangeIcon = (direction) => {
-    switch (direction) {
-      case 'up': return <FiTrendingUp className="stock-up" />;
-      case 'down': return <FiTrendingDown className="stock-down" />;
-      default: return <FiBarChart2 />;
-    }
-  };
 
   return (
     <div className="page-container">
@@ -168,54 +149,30 @@ const EndOfDayStockPage = () => {
           </div>
 
           {reportData.products && reportData.products.length > 0 ? (
-            reportData.products.map((product, productIndex) => (
-              <div key={product.product_id} className="product-stock-report">
-                <div className="product-header">
-                  <h4>{product.product_name}</h4>
-                  <p>SKU: {product.product_sku}</p>
-                </div>
-
-                <div className="orders-table-container">
-                  <table className="orders-table">
-                    <thead>
-                      <tr>
-                        <th>Date</th>
-                        <th>End of Day Stock</th>
-                        <th>Current Stock</th>
-                        <th>Change</th>
-                        <th>Trend</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {product.daily_stock.map((day, index) => {
-                        const previousDay = product.daily_stock[index + 1];
-                        const stockChange = getStockChange(day.end_of_day_stock, previousDay?.end_of_day_stock);
-
-                        return (
-                          <tr key={day.date}>
-                            <td>{formatDate(day.date)}</td>
-                            <td className="stock-value">{day.end_of_day_stock}</td>
-                            <td className="current-stock">{day.current_stock}</td>
-                            <td className={`stock-change ${stockChange.direction}`}>
-                              {stockChange.change > 0 && (
-                                <>
-                                  {stockChange.direction === 'up' ? '+' : '-'}
-                                  {stockChange.change}
-                                </>
-                              )}
-                              {stockChange.change === 0 && 'No change'}
-                            </td>
-                            <td className="trend-indicator">
-                              {getStockChangeIcon(stockChange.direction)}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ))
+            (() => {
+              const allDates = [...new Set(reportData.products.flatMap(p => p.daily_stock.map(d => d.date)))].sort((a, b) => new Date(b) - new Date(a));
+              return (
+                <table className="end-of-day-table">
+                  <thead>
+                    <tr>
+                      <th>Product</th>
+                      {allDates.map(date => <th key={date}>{formatDate(date)}</th>)}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reportData.products.map(product => {
+                      const stockMap = new Map(product.daily_stock.map(d => [d.date, d.end_of_day_stock]));
+                      return (
+                        <tr key={product.product_id}>
+                          <td>{product.product_name} (SKU: {product.product_sku})</td>
+                          {allDates.map(date => <td key={date}>{stockMap.get(date) ?? '-'}</td>)}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              );
+            })()
           ) : (
             <div className="no-data">
               <FiPackage className="no-data-icon" />
