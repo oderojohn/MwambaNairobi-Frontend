@@ -5,7 +5,6 @@ import {
   FiDownload,
   FiPrinter,
   FiSearch,
-  FiPackage,
   FiClock,
   FiX
 } from 'react-icons/fi';

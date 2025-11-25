@@ -134,23 +134,24 @@
 
 .order-prep-table th {
   background: #f8fafc;
-  padding: 1rem 1.25rem;
+  padding: 0.25rem 0.5rem;
   text-align: left;
   font-weight: 600;
   color: #374151;
   border-bottom: 1px solid #e5e7eb;
-  font-size: 0.75rem;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   white-space: nowrap;
 }
 
 .order-prep-table td {
-  padding: 1rem 1.25rem;
+  padding: 0.5rem 0.75rem;
   border-bottom: 1px solid #f1f5f9;
   vertical-align: middle;
   color: #4b5563;
   font-weight: 400;
+  font-size: 0.7rem;
 }
 
 .order-prep-table tbody tr {
@@ -170,7 +171,7 @@
 /* Layout */
 .order-prep-layout {
   display: grid;
-  grid-template-columns: 1fr 420px;
+  grid-template-columns: 1fr 1fr;
   gap: 1.5rem;
   height: 100%;
   max-height: calc(100vh - 200px);
@@ -268,12 +269,12 @@
 }
 
 .order-prep-products-table .order-prep-table {
-  font-size: 0.8rem;
+  font-size: 0.7rem;
 }
 
 .order-prep-products-table .order-prep-table th,
 .order-prep-products-table .order-prep-table td {
-  padding: 0.875rem 1rem;
+  padding: 0.5rem 0.75rem;
 }
 
 /* Stock Status */
@@ -435,12 +436,12 @@
 }
 
 .order-prep-items-table {
-  font-size: 0.8rem;
+  font-size: 0.7rem;
 }
 
 .order-prep-items-table th,
 .order-prep-items-table td {
-  padding: 0.875rem 1rem;
+  padding: 0.5rem 0.75rem;
 }
 
 .order-prep-item-name {

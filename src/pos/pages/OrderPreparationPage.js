@@ -12,18 +12,16 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
   // State management
   const [orderItems, setOrderItems] = useState([]);
   const [selectedSupplier, setSelectedSupplier] = useState(null);
-  const [orderNotes, setOrderNotes] = useState('');
-  const [deliveryDate, setDeliveryDate] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [editingOrderId, setEditingOrderId] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isAddingToOrder, setIsAddingToOrder] = useState(false);
   const [isClearingOrder, setIsClearingOrder] = useState(false);
   const [isCopyingToWhatsApp, setIsCopyingToWhatsApp] = useState(false);
   const [sortBy, setSortBy] = useState('stock');
   const [savedOrder, setSavedOrder] = useState(null);
   const [orderSaved, setOrderSaved] = useState(false);
+  const [selectedProducts, setSelectedProducts] = useState([]);
 
   // Check for edit parameter in URL
   React.useEffect(() => {
@@ -80,77 +78,43 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
     return 'Good';
   };
 
-  const addToOrder = async (product) => {
-    if (isAddingToOrder) return; // Prevent multiple clicks
-
-    setIsAddingToOrder(true);
-
-    // Show loading Swal
-    const loadingSwal = Swal.fire({
-      title: 'Adding to Order...',
-      text: 'Please wait',
-      allowOutsideClick: false,
-      allowEscapeKey: false,
-      showConfirmButton: false,
-      zIndex: 10000,
-      didOpen: () => {
-        Swal.showLoading();
-      }
-    });
-
-    try {
-      // Simulate a small delay for better UX
-      await new Promise(resolve => setTimeout(resolve, 300));
-
-      setOrderItems(prevItems => {
-        const existingItem = prevItems.find(item => item.id === product.id);
-        if (existingItem) {
-          return prevItems.map(item =>
-            item.id === product.id
-              ? { ...item, quantity: item.quantity + 1 }
-              : item
-          );
-        } else {
-          const price = product.cost_price || 0; // Use cost_price as buying price
-          return [...prevItems, {
-            ...product,
-            quantity: 1,
-            price: price,
-            unit_price: price
-          }];
-        }
-      });
-
-      loadingSwal.close();
-
-      // Show success message briefly
-      Swal.fire({
-        icon: 'success',
-        title: 'Added!',
-        text: `${product.name} added to order`,
-        timer: 800,
-        showConfirmButton: false,
-        zIndex: 10000
-      });
-
-    } catch (error) {
-      console.error('Error adding to order:', error);
-      loadingSwal.close();
-      Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: 'Failed to add item to order',
-        zIndex: 10000
-      });
-    } finally {
-      setIsAddingToOrder(false);
+  const toggleProductSelection = (product) => {
+    const isSelected = selectedProducts.includes(product.id);
+    if (isSelected) {
+      // Remove from selected and order
+      setSelectedProducts(prev => prev.filter(id => id !== product.id));
+      removeFromOrder(product.id);
+    } else {
+      // Add to selected and order
+      setSelectedProducts(prev => [...prev, product.id]);
+      addToOrder(product);
     }
   };
 
+  const addToOrder = (product) => {
+    setOrderItems(prevItems => {
+      const existingItem = prevItems.find(item => item.id === product.id);
+      if (existingItem) {
+        return prevItems.map(item =>
+          item.id === product.id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        );
+      } else {
+        const price = product.cost_price || 0; // Use cost_price as buying price
+        return [...prevItems, {
+          ...product,
+          quantity: 1,
+          price: price,
+          unit_price: price
+        }];
+      }
+    });
+  };
+
   const updateQuantity = (productId, newQuantity) => {
-    if (newQuantity <= 0) {
-      removeFromOrder(productId);
-      return;
+    if (newQuantity < 0) {
+      newQuantity = 0;
     }
 
     setOrderItems(prevItems =>
@@ -164,6 +128,7 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
 
   const removeFromOrder = (productId) => {
     setOrderItems(prevItems => prevItems.filter(item => item.id !== productId));
+    setSelectedProducts(prev => prev.filter(id => id !== productId));
   };
 
   const calculateTotal = () => {
@@ -179,6 +144,30 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
     if (!selectedSupplier) {
       alert('Please select a supplier');
       return;
+    }
+
+    // Filter out items with zero quantity
+    const validItems = orderItems.filter(item => item.quantity > 0);
+    if (validItems.length === 0) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'No Valid Items',
+        text: 'All items have zero quantity. Please set quantities greater than 0.',
+        zIndex: 10000
+      });
+      return;
+    }
+
+    const removedCount = orderItems.length - validItems.length;
+    if (removedCount > 0) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Items with zero quantity removed',
+        text: `${removedCount} item(s) with zero quantity were excluded from the order.`,
+        timer: 3000,
+        showConfirmButton: false,
+        zIndex: 10000
+      });
     }
 
     // Show loading Swal
@@ -198,9 +187,7 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
       setIsLoading(true);
       const orderData = {
         supplier: selectedSupplier.id,
-        expected_delivery_date: deliveryDate || null,
-        notes: orderNotes,
-        items: orderItems.map(item => ({
+        items: validItems.map(item => ({
           product: item.id,
           quantity: item.quantity,
           unit_price: item.unit_price
@@ -237,6 +224,12 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
       // Store the saved order for viewing
       setSavedOrder(savedOrder);
       setOrderSaved(true);
+
+      // Clear the order form
+      setOrderItems([]);
+      setSelectedSupplier(null);
+      setSelectedProducts([]);
+      setEditingOrderId(null);
     } catch (error) {
       console.error('Error saving purchase order:', error);
       loadingSwal.close();
@@ -276,8 +269,7 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
 
       setOrderItems([]);
       setSelectedSupplier(null);
-      setOrderNotes('');
-      setDeliveryDate('');
+      setSelectedProducts([]);
       setEditingOrderId(null);
       setSavedOrder(null);
       setOrderSaved(false);
@@ -329,8 +321,8 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
     try {
       const items = useSavedOrder && savedOrder ? savedOrder.items : orderItems;
       const supplier = useSavedOrder && savedOrder ? savedOrder.supplier : selectedSupplier;
-      const notes = useSavedOrder && savedOrder ? savedOrder.notes : orderNotes;
-      const delivery = useSavedOrder && savedOrder ? savedOrder.expected_delivery_date : deliveryDate;
+      const notes = useSavedOrder && savedOrder ? savedOrder.notes : '';
+      const delivery = useSavedOrder && savedOrder ? savedOrder.expected_delivery_date : null;
       const orderNumber = useSavedOrder && savedOrder ? savedOrder.order_number : null;
 
       if (items.length === 0) {
@@ -404,8 +396,8 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
       try {
         const items = useSavedOrder && savedOrder ? savedOrder.items : orderItems;
         const supplier = useSavedOrder && savedOrder ? savedOrder.supplier : selectedSupplier;
-        const notes = useSavedOrder && savedOrder ? savedOrder.notes : orderNotes;
-        const delivery = useSavedOrder && savedOrder ? savedOrder.expected_delivery_date : deliveryDate;
+        const notes = useSavedOrder && savedOrder ? savedOrder.notes : '';
+        const delivery = useSavedOrder && savedOrder ? savedOrder.expected_delivery_date : null;
         const orderNumber = useSavedOrder && savedOrder ? savedOrder.order_number : null;
 
         let message = `*Purchase Order`;
@@ -472,8 +464,6 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
       const order = await purchaseOrdersAPI.getPurchaseOrder(orderId);
       setEditingOrderId(order.id);
       setSelectedSupplier(order.supplier);
-      setOrderNotes(order.notes || '');
-      setDeliveryDate(order.expected_delivery_date || '');
       setOrderItems(order.items?.map(item => ({
         ...item,
         quantity: item.quantity,
@@ -617,7 +607,7 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
                 <th>Cost Price</th>
                 <th>Stock Level</th>
                 <th>Status</th>
-                <th>Action</th>
+                <th>Select</th>
               </tr>
             </thead>
             <tbody>
@@ -663,14 +653,12 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
                       </span>
                     </td>
                     <td>
-                      <button
-                          className="order-prep-btn order-prep-btn-primary"
-                          onClick={() => addToOrder(product)}
-                          disabled={isAddingToOrder}
-                          style={{ fontSize: '0.75rem', padding: '0.4rem 0.75rem' }}
-                        >
-                          <i className="fas fa-plus"></i> {isAddingToOrder ? 'Adding...' : 'Add'}
-                        </button>
+                      <input
+                        type="checkbox"
+                        checked={selectedProducts.includes(product.id)}
+                        onChange={() => toggleProductSelection(product)}
+                        style={{ width: '20px', height: '20px' }}
+                      />
                     </td>
                   </tr>
                 );
@@ -758,11 +746,11 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
                   <td>
                     <input
                       type="number"
-                      min="1"
+                      min="0"
                       value={item.quantity}
-                      onChange={(e) => updateQuantity(item.id, parseInt(e.target.value) || 1)}
+                      onChange={(e) => updateQuantity(item.id, parseInt(e.target.value) || 0)}
                       className="order-prep-quantity-input"
-                      style={{ width: '60px', textAlign: 'center' }}
+                      style={{ width: '50px', textAlign: 'center' }}
                     />
                   </td>
 
@@ -788,27 +776,6 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
 
       {orderItems.length > 0 && (
         <>
-          <div className="order-prep-details">
-            <div className="order-prep-detail-group">
-              <label>Expected Delivery Date</label>
-              <input
-                type="date"
-                value={deliveryDate}
-                onChange={(e) => setDeliveryDate(e.target.value)}
-                min={new Date().toISOString().split('T')[0]}
-              />
-            </div>
-            <div className="order-prep-detail-group">
-              <label>Notes</label>
-              <textarea
-                value={orderNotes}
-                onChange={(e) => setOrderNotes(e.target.value)}
-                placeholder="Add any notes or special instructions..."
-                rows="3"
-              />
-            </div>
-          </div>
-
           <div className="order-prep-total-section">
             <div className="order-prep-total-line">
               <span>Total Amount:</span>
