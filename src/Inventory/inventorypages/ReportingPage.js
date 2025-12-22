@@ -26,6 +26,7 @@ const ReportingPage = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Generate comprehensive reports
   const generateReports = useCallback(async () => {
@@ -71,10 +72,10 @@ const ReportingPage = () => {
       }
 
       // Product performance
-      if (['dashboard', 'products'].includes(activeTab)) {
+      if (['products'].includes(activeTab)) {
         reportPromises.push(
           reportsAPI.getProfitLossSummary({
-            product_performance: 'true',
+            product_performance: true,
             date_from: dateRange.start,
             date_to: dateRange.end
           }).then(response => ({
@@ -82,6 +83,11 @@ const ReportingPage = () => {
             data: Array.isArray(response) ? response : []
           })).catch(() => ({ type: 'productPerformance', data: [] }))
         );
+      }
+
+      // Overall profit & loss summary (calculated from sales data)
+      if (['dashboard', 'profit'].includes(activeTab)) {
+        // We'll calculate this from the sales data after it's fetched
       }
 
       // Purchase orders for profit analysis
@@ -97,12 +103,34 @@ const ReportingPage = () => {
       }
 
       const results = await Promise.all(reportPromises);
-      
+
       setReports(prevReports => {
         const newReports = { ...prevReports };
         results.forEach(result => {
           newReports[result.type] = result.data;
         });
+
+        // Calculate profit & loss summary from sales data if not already available
+        if (newReports.sales && Array.isArray(newReports.sales) && newReports.sales.length > 0 && !newReports.profitLoss) {
+          const salesTotals = calculateTotals(newReports.sales, ['total_sales', 'gross_profit', 'net_profit', 'cost_of_goods_sold']);
+          const revenue = salesTotals.total_sales || 0;
+          const cogs = salesTotals.cost_of_goods_sold || 0;
+          const grossProfit = salesTotals.gross_profit || 0;
+          const netProfit = salesTotals.net_profit || 0;
+          const expenses = grossProfit - netProfit;
+
+          newReports.profitLoss = {
+            date_from: dateRange.start,
+            date_to: dateRange.end,
+            total_revenue: revenue,
+            cost_of_goods_sold: cogs,
+            gross_profit: grossProfit,
+            operating_expenses: expenses,
+            net_profit: netProfit,
+            profit_margin_percentage: revenue > 0 ? (netProfit / revenue) * 100 : 0
+          };
+        }
+
         return newReports;
       });
 
@@ -218,12 +246,29 @@ const ReportingPage = () => {
   };
 
   const exportProfitLossContent = (doc, yPosition) => {
-    const salesTotals = calculateTotals(reports.sales, ['total_sales']);
-    const revenue = salesTotals.total_sales || 0;
-    const cogs = revenue * 0.7;
-    const grossProfit = revenue - cogs;
-    const expenses = revenue * 0.1;
-    const netProfit = grossProfit - expenses;
+    // Use same logic as renderProfitLossReport
+    let revenue = 0;
+    let cogs = 0;
+    let grossProfit = 0;
+    let expenses = 0;
+    let netProfit = 0;
+
+    if (reports.profitLoss && Object.keys(reports.profitLoss).length > 0) {
+      // Use backend profit/loss data
+      revenue = reports.profitLoss.total_revenue || 0;
+      cogs = reports.profitLoss.cost_of_goods_sold || 0;
+      grossProfit = reports.profitLoss.gross_profit || 0;
+      expenses = reports.profitLoss.operating_expenses || 0;
+      netProfit = reports.profitLoss.net_profit || 0;
+    } else {
+      // Fallback to sales data calculations
+      const salesTotals = calculateTotals(reports.sales, ['total_sales', 'gross_profit', 'net_profit', 'cost_of_goods_sold']);
+      revenue = salesTotals.total_sales || 0;
+      cogs = salesTotals.cost_of_goods_sold || (revenue * 0.7);
+      grossProfit = salesTotals.gross_profit || (revenue - cogs);
+      netProfit = salesTotals.net_profit || (grossProfit * 0.95);
+      expenses = grossProfit - netProfit;
+    }
 
     const plData = [
       ['Total Revenue:', formatCurrency(revenue)],
@@ -231,7 +276,7 @@ const ReportingPage = () => {
       ['Gross Profit:', formatCurrency(grossProfit)],
       ['Operating Expenses:', formatCurrency(expenses)],
       ['Net Profit:', formatCurrency(netProfit)],
-      ['Profit Margin:', `${((netProfit / revenue) * 100).toFixed(2)}%`]
+      ['Profit Margin:', `${revenue > 0 ? ((netProfit / revenue) * 100).toFixed(2) : '0.00'}%`]
     ];
 
     doc.autoTable({
@@ -245,11 +290,11 @@ const ReportingPage = () => {
 
   // Render Dashboard
   const renderDashboard = () => {
-    const salesTotals = calculateTotals(reports.sales, ['total_sales', 'transactions']);
+    const salesTotals = calculateTotals(reports.sales, ['total_sales', 'transactions', 'gross_profit', 'net_profit']);
     const inventory = Array.isArray(reports.inventory) ? reports.inventory : [];
     const lowStockCount = inventory.filter(item => toNumber(item.stock_level) < 10).length;
     const revenue = salesTotals.total_sales || 0;
-    const netProfit = revenue * 0.2; // Simplified calculation
+    const netProfit = salesTotals.net_profit || 0;
 
     return (
       <div className="reporting-content">
@@ -260,7 +305,7 @@ const ReportingPage = () => {
             <div className="reporting-stat-value">{formatCurrency(revenue)}</div>
           </div>
           <div className="reporting-stat-card">
-            <div className="reporting-stat-label">Net Profit</div>
+            <div className="reporting-stat-label">Profit</div>
             <div className="reporting-stat-value reporting-positive">{formatCurrency(netProfit)}</div>
           </div>
           <div className="reporting-stat-card">
@@ -278,13 +323,69 @@ const ReportingPage = () => {
           <div className="reporting-chart-container">
             <h4 className="reporting-chart-title">Sales Performance</h4>
             <div className="reporting-chart-placeholder">
-              Sales Chart - Last 7 Days
+              {reports.sales && reports.sales.length > 0 ? (
+                <div style={{ padding: '20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'end', height: '200px', gap: '10px' }}>
+                    {reports.sales.slice(-7).map((sale, index) => {
+                      const maxAmount = Math.max(...reports.sales.slice(-7).map(s => s.total_sales));
+                      const height = maxAmount > 0 ? (sale.total_sales / maxAmount) * 180 : 0;
+                      return (
+                        <div key={index} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
+                          <div
+                            style={{
+                              width: '30px',
+                              height: `${height}px`,
+                              backgroundColor: '#8884d8',
+                              borderRadius: '4px 4px 0 0',
+                              marginBottom: '5px'
+                            }}
+                            title={`${sale.date}: ${formatCurrency(sale.total_sales)}`}
+                          ></div>
+                          <span style={{ fontSize: '10px', transform: 'rotate(-45deg)', width: '40px', textAlign: 'center' }}>{sale.date}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div style={{ textAlign: 'center', marginTop: '10px', fontSize: '12px', color: '#666' }}>Sales Trend (Last 7 Days)</div>
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '50px' }}>No sales data available</div>
+              )}
             </div>
           </div>
           <div className="reporting-chart-container">
             <h4 className="reporting-chart-title">Top Products</h4>
             <div className="reporting-chart-placeholder">
-              Product Performance Chart
+              {reports.productPerformance && Array.isArray(reports.productPerformance) && reports.productPerformance.length > 0 ? (
+                <div style={{ padding: '20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'end', height: '200px', gap: '10px' }}>
+                    {reports.productPerformance.filter(item => item.product_name !== 'TOTAL').slice(0, 5).map((product, index) => {
+                      const maxRevenue = Math.max(...reports.productPerformance.filter(item => item.product_name !== 'TOTAL').slice(0, 5).map(p => p.total_revenue));
+                      const height = maxRevenue > 0 ? (product.total_revenue / maxRevenue) * 180 : 0;
+                      const name = product.product_name.length > 10 ? product.product_name.substring(0, 10) + '...' : product.product_name;
+                      return (
+                        <div key={index} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
+                          <div
+                            style={{
+                              width: '40px',
+                              height: `${height}px`,
+                              backgroundColor: '#82ca9d',
+                              borderRadius: '4px 4px 0 0',
+                              marginBottom: '5px',
+                              cursor: 'pointer'
+                            }}
+                            title={`${product.product_name}: ${formatCurrency(product.total_revenue)}`}
+                          ></div>
+                          <span style={{ fontSize: '10px', textAlign: 'center', width: '50px' }}>{name}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div style={{ textAlign: 'center', marginTop: '10px', fontSize: '12px', color: '#666' }}>Top 5 Products by Revenue</div>
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '50px' }}>No product data available</div>
+              )}
             </div>
           </div>
         </div>
@@ -468,12 +569,29 @@ const ReportingPage = () => {
 
   // Render Profit & Loss Report
   const renderProfitLossReport = () => {
-    const salesTotals = calculateTotals(reports.sales, ['total_sales']);
-    const revenue = salesTotals.total_sales || 0;
-    const cogs = revenue * 0.7;
-    const grossProfit = revenue - cogs;
-    const expenses = revenue * 0.1;
-    const netProfit = grossProfit - expenses;
+    // Use actual backend data from profitLoss report if available, otherwise calculate from sales data
+    let revenue = 0;
+    let cogs = 0;
+    let grossProfit = 0;
+    let expenses = 0;
+    let netProfit = 0;
+
+    if (reports.profitLoss && Object.keys(reports.profitLoss).length > 0) {
+      // Use backend profit/loss data
+      revenue = reports.profitLoss.total_revenue || 0;
+      cogs = reports.profitLoss.cost_of_goods_sold || 0;
+      grossProfit = reports.profitLoss.gross_profit || 0;
+      expenses = reports.profitLoss.operating_expenses || 0;
+      netProfit = reports.profitLoss.net_profit || 0;
+    } else {
+      // Fallback to sales data calculations
+      const salesTotals = calculateTotals(reports.sales, ['total_sales', 'gross_profit', 'net_profit', 'cost_of_goods_sold']);
+      revenue = salesTotals.total_sales || 0;
+      cogs = salesTotals.cost_of_goods_sold || (revenue * 0.7);
+      grossProfit = salesTotals.gross_profit || (revenue - cogs);
+      netProfit = salesTotals.net_profit || (grossProfit * 0.95);
+      expenses = grossProfit - netProfit;
+    }
 
     return (
       <div className="reporting-main-section">
@@ -503,7 +621,7 @@ const ReportingPage = () => {
           </div>
           <div className="reporting-metric-card">
             <h4 className="reporting-metric-label">Profit Margin</h4>
-            <p className="reporting-metric-value">{((netProfit / revenue) * 100).toFixed(2)}%</p>
+            <p className="reporting-metric-value">{revenue > 0 ? ((netProfit / revenue) * 100).toFixed(2) : '0.00'}%</p>
           </div>
         </div>
 
@@ -525,22 +643,22 @@ const ReportingPage = () => {
               <tr className="reporting-table-row">
                 <td className="reporting-table-cell">Cost of Goods Sold</td>
                 <td className="reporting-table-cell">{formatCurrency(cogs)}</td>
-                <td className="reporting-table-cell">70%</td>
+                <td className="reporting-table-cell">{revenue > 0 ? ((cogs / revenue) * 100).toFixed(2) : '0.00'}%</td>
               </tr>
               <tr className="reporting-table-row">
                 <td className="reporting-table-cell">Gross Profit</td>
                 <td className="reporting-table-cell">{formatCurrency(grossProfit)}</td>
-                <td className="reporting-table-cell">30%</td>
+                <td className="reporting-table-cell">{revenue > 0 ? ((grossProfit / revenue) * 100).toFixed(2) : '0.00'}%</td>
               </tr>
               <tr className="reporting-table-row">
                 <td className="reporting-table-cell">Operating Expenses</td>
                 <td className="reporting-table-cell">{formatCurrency(expenses)}</td>
-                <td className="reporting-table-cell">10%</td>
+                <td className="reporting-table-cell">{revenue > 0 ? ((expenses / revenue) * 100).toFixed(2) : '0.00'}%</td>
               </tr>
               <tr className="reporting-total-row">
                 <td className="reporting-table-cell"><strong>Net Profit</strong></td>
                 <td className="reporting-table-cell"><strong>{formatCurrency(netProfit)}</strong></td>
-                <td className="reporting-table-cell"><strong>{((netProfit / revenue) * 100).toFixed(2)}%</strong></td>
+                <td className="reporting-table-cell"><strong>{revenue > 0 ? ((netProfit / revenue) * 100).toFixed(2) : '0.00'}%</strong></td>
               </tr>
             </tbody>
           </table>
@@ -552,21 +670,32 @@ const ReportingPage = () => {
   // Render Product Performance
   const renderProductPerformance = () => {
     const productData = Array.isArray(reports.productPerformance) ? reports.productPerformance : [];
+    const filteredProducts = productData.filter(item =>
+      item.product_name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     return (
       <div className="reporting-main-section">
         <div className="reporting-section-header">
           <h3 className="reporting-section-title">Top Products</h3>
           <div className="reporting-section-actions">
+            <input
+              type="text"
+              placeholder="Search products..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="reporting-search-input"
+              style={{ marginRight: '10px', padding: '5px 10px', border: '1px solid #ccc', borderRadius: '4px' }}
+            />
             <button className="reporting-btn reporting-btn-primary" onClick={() => exportReport('Product Performance')}>
               Export PDF
             </button>
           </div>
         </div>
 
-        <div className="reporting-table-container" style={{ overflowX: 'auto', maxWidth: '100%' }}>
+        <div className="reporting-table-container" style={{ overflowX: 'auto', maxWidth: '100%', maxHeight: '500px', overflowY: 'auto' }}>
           <table className="reporting-data-table" style={{ minWidth: '1200px', fontSize: '12px' }}>
-            <thead className="reporting-table-header">
+            <thead className="reporting-table-header" style={{ position: 'sticky', top: 0, background: 'white', zIndex: 2, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
               <tr>
                 <th className="reporting-table-head" style={{ minWidth: '150px' }}>Product Name</th>
                 <th className="reporting-table-head" style={{ minWidth: '80px' }}>SKU</th>
@@ -585,15 +714,15 @@ const ReportingPage = () => {
               </tr>
             </thead>
             <tbody className="reporting-table-body">
-              {productData.length === 0 ? (
+              {filteredProducts.length === 0 ? (
                 <tr>
                   <td colSpan="14" className="reporting-table-cell" style={{ textAlign: 'center' }}>
-                    No product performance data available for the selected date range.
+                    {productData.length === 0 ? 'No product performance data available for the selected date range.' : 'No products match your search.'}
                   </td>
                 </tr>
               ) : (
                 <>
-                  {productData.filter(item => item.product_name !== 'TOTAL').map((product, index) => (
+                  {filteredProducts.filter(item => item.product_name !== 'TOTAL').map((product, index) => (
                     <tr key={index} className="reporting-table-row">
                       <td className="reporting-table-cell" style={{ fontWeight: '500' }}>{product.product_name}</td>
                       <td className="reporting-table-cell" style={{ fontSize: '11px' }}>{product.sku}</td>
@@ -611,8 +740,8 @@ const ReportingPage = () => {
                       <td className="reporting-table-cell reporting-positive" style={{ fontSize: '11px', fontWeight: '600' }}>{formatCurrency(product.total_profit)}</td>
                     </tr>
                   ))}
-                  {productData.filter(item => item.product_name === 'TOTAL').map((total, index) => (
-                    <tr key={`total-${index}`} className="reporting-total-row">
+                  {filteredProducts.filter(item => item.product_name === 'TOTAL').map((total, index) => (
+                    <tr key={`total-${index}`} className="reporting-total-row" style={{ position: 'sticky', bottom: 0, background: 'white', zIndex: 1, boxShadow: '0 -2px 4px rgba(0,0,0,0.1)' }}>
                       <td className="reporting-table-cell"><strong>{total.product_name}</strong></td>
                       <td className="reporting-table-cell"></td>
                       <td className="reporting-table-cell"></td>
@@ -640,7 +769,7 @@ const ReportingPage = () => {
 
   return (
     <div className="reporting-page">
-      <div className="reporting-page-header">
+      <div className="reporting-page-header" style={{ position: 'sticky', top: 0, zIndex: 100, background: 'white', padding: '10px 0', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
         <h1 className="reporting-page-title">Business Intelligence Dashboard</h1>
         <div className="reporting-filters">
           <div className="reporting-filter-group">

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
-  FiPlus, FiFilter, FiDownload,FiSearch,
-  FiEdit, FiTrash2, FiAlertTriangle, FiCheckCircle,
+  FiPlus, FiDownload,
+  FiAlertTriangle, FiCheckCircle,
   FiPackage, FiTruck, FiDollarSign, FiRefreshCw,
   FiShoppingCart, FiUsers, FiCreditCard, FiTrendingUp
 } from 'react-icons/fi';
@@ -35,12 +35,9 @@ ChartJS.register(
 );
 
 const InventoryDashboard = () => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [products, setProducts] = useState([]);
-  const [categories, setCategories] = useState([]);
+  // Removed categories state as it's no longer used
   const [stockMovements, setStockMovements] = useState([]);
   const [lowStockProducts, setLowStockProducts] = useState([]);
   const [shifts, setShifts] = useState([]);
@@ -62,9 +59,7 @@ const InventoryDashboard = () => {
         setLoading(true);
         setError('');
 
-        const [productsRes, categoriesRes, movementsRes, lowStockRes, salesSummaryRes, inventorySummaryRes, customerSummaryRes, shiftSummaryRes, shiftsRes] = await Promise.all([
-          inventoryAPI.getProducts(),
-          inventoryAPI.getCategories(),
+        const [movementsRes, lowStockRes, salesSummaryRes, inventorySummaryRes, customerSummaryRes, shiftSummaryRes, shiftsRes] = await Promise.all([
           inventoryAPI.getStockMovements(),
           inventoryAPI.getLowStock(),
           salesAPI.getSalesSummary(),
@@ -74,8 +69,6 @@ const InventoryDashboard = () => {
           shiftsAPI.getShifts()
         ]);
 
-        setProducts(productsRes || []);
-        setCategories([{ id: 'all', name: 'All' }, ...(categoriesRes || [])]);
         setStockMovements(movementsRes || []);
         setLowStockProducts(lowStockRes || []);
         setShifts(shiftsRes || []);
@@ -106,19 +99,11 @@ const InventoryDashboard = () => {
     fetchData();
   }, []);
 
-  // Filter inventory
-  const filteredInventory = products.filter(item => {
-    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         item.sku.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = categoryFilter === 'all' || item.category?.toString() === categoryFilter;
-    return matchesSearch && matchesCategory;
-  });
-
-  // Calculate metrics
-  const totalItems = products.reduce((sum, item) => sum + item.stock_quantity, 0);
-  const totalValue = products.reduce((sum, item) => sum + (item.stock_quantity * item.selling_price), 0);
-  const lowStockItems = lowStockProducts.length;
-  const outOfStockItems = products.filter(item => item.stock_quantity === 0).length;
+  // Calculate metrics from inventory summary
+  const totalItems = inventorySummary?.total_items || 0;
+  const totalValue = inventorySummary?.total_value || 0;
+  const lowStockItems = inventorySummary?.low_stock_items || 0;
+  const outOfStockItems = inventorySummary?.out_of_stock_items || 0;
 
   // Recent activity data from stock movements
   const recentActivity = stockMovements.slice(0, 5).map(movement => ({
@@ -205,27 +190,11 @@ const InventoryDashboard = () => {
     ],
   };
 
-  // Data for pie chart (inventory distribution)
-  const categoryLabels = categories.filter(cat => cat.id !== 'all').map(cat => cat.name);
-  const inventoryDistributionData = {
-    labels: categoryLabels,
-    datasets: [
-      {
-        data: categories.filter(cat => cat.id !== 'all').map(category =>
-          products.filter(item => item.category === category.id).length
-        ),
-        backgroundColor: [
-          '#3b82f6', '#ef4444', '#10b981', '#f59e0b',
-          '#6366f1', '#ec4899', '#14b8a6', '#f97316'
-        ],
-        borderWidth: 1,
-      },
-    ],
-  };
 
   // Chart options
   const lineChartOptions = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
       legend: {
         position: 'top',
@@ -246,21 +215,10 @@ const InventoryDashboard = () => {
     },
   };
 
-  const pieChartOptions = {
-    responsive: true,
-    plugins: {
-      legend: {
-        position: 'right',
-      },
-      title: {
-        display: true,
-        text: 'Inventory by Category',
-      },
-    },
-  };
 
   const salesTrendOptions = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
       legend: {
         position: 'top',
@@ -283,6 +241,7 @@ const InventoryDashboard = () => {
 
   const paymentMethodsOptions = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
       legend: {
         position: 'right',
@@ -429,23 +388,14 @@ const InventoryDashboard = () => {
       {/* Inventory Charts Row */}
       <div className="dashboard-grid" style={{
         display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
+        gridTemplateColumns: '1fr',
         gap: '20px',
         marginBottom: '20px'
       }}>
         {/* Line Chart */}
         <div className="data-table-container">
-          <div style={{ padding: '16px' }}>
+          <div style={{ padding: '16px', height: '300px' }}>
             <Line data={stockMovementData} options={lineChartOptions} />
-          </div>
-        </div>
-
-        {/* Pie Chart */}
-        <div className="data-table-container">
-          <div style={{ padding: '8px', display: 'flex', justifyContent: 'center' }}>
-            <div style={{ width: '200px', height: '200px' }}>
-              <Pie data={inventoryDistributionData} options={pieChartOptions} />
-            </div>
           </div>
         </div>
       </div>
@@ -459,14 +409,14 @@ const InventoryDashboard = () => {
       }}>
         {/* Sales Trend Chart */}
         <div className="data-table-container">
-          <div style={{ padding: '16px' }}>
+          <div style={{ padding: '16px', height: '300px' }}>
             <Line data={salesTrendData} options={salesTrendOptions} />
           </div>
         </div>
 
         {/* Payment Methods Chart */}
         <div className="data-table-container">
-          <div style={{ padding: '8px', display: 'flex', justifyContent: 'center' }}>
+          <div style={{ padding: '8px', display: 'flex', justifyContent: 'center', height: '250px' }}>
             <div style={{ width: '200px', height: '200px' }}>
               <Pie data={paymentMethodsData} options={paymentMethodsOptions} />
             </div>
@@ -474,96 +424,6 @@ const InventoryDashboard = () => {
         </div>
       </div>
 
-      {/* Inventory Table */}
-      <div className="data-table-container" style={{ marginBottom: '20px' }}>
-        <div className="page-actions" style={{ marginBottom: '10px' }}>
-          <div className="search-filter">
-            <div className="search-box">
-              <FiSearch className="search-icon" />
-              <input
-                type="text"
-                placeholder="Search inventory..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <div className="filter-dropdown">
-              <select
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-              >
-                {categories.map(category => (
-                  <option key={category.id} value={category.id}>{category.name}</option>
-                ))}
-              </select>
-              <FiFilter className="filter-icon" />
-            </div>
-          </div>
-        </div>
-
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Product</th>
-              <th>SKU</th>
-              <th>Category</th>
-              <th>Stock</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredInventory.map(item => {
-              const status = item.stock_quantity === 0 ? 'Out of Stock' :
-                            item.stock_quantity <= item.low_stock_threshold ? 'Low Stock' : 'In Stock';
-              const categoryName = categories.find(cat => cat.id === item.category)?.name || 'N/A';
-
-              return (
-                <tr key={item.id}>
-                  <td>{item.name}</td>
-                  <td>{item.sku}</td>
-                  <td>{categoryName}</td>
-                  <td>
-                    <div style={{
-                      width: '100%',
-                      backgroundColor: '#e2e8f0',
-                      borderRadius: '4px',
-                      height: '8px',
-                      marginTop: '4px'
-                    }}>
-                      <div
-                        style={{
-                          width: `${(item.stock_quantity / (item.low_stock_threshold * 2)) * 100}%`,
-                          backgroundColor: status === 'Low Stock' ? '#f59e0b' :
-                                          status === 'Out of Stock' ? '#ef4444' : '#10b981',
-                          height: '100%',
-                          borderRadius: '4px'
-                        }}
-                      ></div>
-                    </div>
-                    {item.stock_quantity} / {item.low_stock_threshold}
-                  </td>
-                  <td>
-                    <span className={`status-badge ${status.toLowerCase().replace(' ', '-')}`}>
-                      {status}
-                    </span>
-                  </td>
-                  <td>
-                    <div className="action-buttons">
-                      <button className="btn-icon" title="Edit">
-                        <FiEdit />
-                      </button>
-                      <button className="btn-icon danger" title="Delete">
-                        <FiTrash2 />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
 
       {/* POS Analytics Section */}
       <div className="dashboard-grid" style={{
@@ -650,46 +510,100 @@ const InventoryDashboard = () => {
         </div>
       </div>
 
-      {/* Recent Activity */}
-      <div className="data-table-container">
-        <h3 style={{ padding: '16px', margin: 0, borderBottom: '1px solid #e2e8f0' }}>Recent Activity</h3>
-        <div style={{ padding: '16px' }}>
-          {recentActivity.map(activity => (
-            <div key={activity.id} style={{
-              display: 'flex',
-              alignItems: 'center',
-              padding: '12px 0',
-              borderBottom: '1px solid #f1f5f9'
-            }}>
+      {/* Inventory Analytics Summary */}
+      <div className="dashboard-grid" style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: '20px',
+        marginBottom: '20px'
+      }}>
+        {/* Low Stock Alerts */}
+        <div className="data-table-container">
+          <h3 style={{ padding: '16px', margin: 0, borderBottom: '1px solid #e2e8f0' }}>Low Stock Alerts</h3>
+          <div style={{ padding: '16px' }}>
+            {lowStockProducts.length > 0 ? (
+              lowStockProducts.slice(0, 5).map((product, index) => (
+                <div key={index} style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '12px 0',
+                  borderBottom: '1px solid #f1f5f9'
+                }}>
+                  <div style={{
+                    width: '30px',
+                    height: '30px',
+                    borderRadius: '50%',
+                    backgroundColor: '#fee2e2',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginRight: '12px',
+                    flexShrink: 0
+                  }}>
+                    <FiAlertTriangle size={14} color="#ef4444" />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 500 }}>{product.name}</div>
+                    <div style={{ fontSize: '14px', color: '#64748b' }}>
+                      Current Stock: {product.stock_quantity} • Threshold: {product.low_stock_threshold}
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
               <div style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '50%',
-                backgroundColor: activity.quantity > 0 ? '#d1fae5' : '#fee2e2',
+                textAlign: 'center',
+                padding: '20px',
+                color: '#64748b',
+                fontStyle: 'italic'
+              }}>
+                No low stock items. All inventory levels are good!
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Recent Activity */}
+        <div className="data-table-container">
+          <h3 style={{ padding: '16px', margin: 0, borderBottom: '1px solid #e2e8f0' }}>Recent Activity</h3>
+          <div style={{ padding: '16px' }}>
+            {recentActivity.map(activity => (
+              <div key={activity.id} style={{
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                marginRight: '12px',
-                flexShrink: 0
+                padding: '12px 0',
+                borderBottom: '1px solid #f1f5f9'
               }}>
-                {activity.quantity > 0 ? (
-                  <FiCheckCircle size={18} color="#10b981" />
-                ) : (
-                  <FiAlertTriangle size={18} color="#ef4444" />
-                )}
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 500 }}>{activity.action}</div>
-                <div style={{ fontSize: '14px', color: '#64748b' }}>
-                  {activity.item} • {activity.quantity > 0 ? `+${activity.quantity}` : activity.quantity}
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '50%',
+                  backgroundColor: activity.quantity > 0 ? '#d1fae5' : '#fee2e2',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: '12px',
+                  flexShrink: 0
+                }}>
+                  {activity.quantity > 0 ? (
+                    <FiCheckCircle size={18} color="#10b981" />
+                  ) : (
+                    <FiAlertTriangle size={18} color="#ef4444" />
+                  )}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 500 }}>{activity.action}</div>
+                  <div style={{ fontSize: '14px', color: '#64748b' }}>
+                    {activity.item} • {activity.quantity > 0 ? `+${activity.quantity}` : activity.quantity}
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: '12px', color: '#64748b' }}>{activity.date.split(' ')[0]}</div>
+                  <div style={{ fontSize: '12px', color: '#64748b' }}>{activity.user}</div>
                 </div>
               </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '12px', color: '#64748b' }}>{activity.date.split(' ')[0]}</div>
-                <div style={{ fontSize: '12px', color: '#64748b' }}>{activity.user}</div>
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
 
