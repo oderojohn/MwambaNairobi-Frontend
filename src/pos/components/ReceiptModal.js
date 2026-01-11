@@ -206,7 +206,9 @@ const ReceiptModal = ({
               <div class="receipt-store-info">
                 MWAMBA LIQUOR STORES<br>
                 RONGO<br>
-                Tel: +254 745 119 135
+                Tel: +254 745 119 135<br>
+                Paybill: 522533<br>
+                Account: 8015580
               </div>
             </div>
 
