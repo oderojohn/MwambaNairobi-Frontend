@@ -1,16 +1,24 @@
-// PosAdminPage.js - POS Administration Page
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Swal from 'sweetalert2';
 import logo from '../../logo.png';
-import { shiftsAPI, salesAPI, paymentsAPI, formatCurrency } from '../../services/ApiService/api';
+import PosManagerDashboard from './components/PosManagerDashboard';
+import CurrentShiftTab from './components/CurrentShiftTab';
+import ShiftsTab from './components/ShiftsTab';
+import SalesTab from './components/SalesTab';
+import PaymentsTab from './components/PaymentsTab';
+import VoidModal from './components/modals/VoidModal';
+import RefundModal from './components/modals/RefundModal';
+import EditTransactionModal from './components/modals/EditTransactionModal';
+import ShiftDetailsModal from './components/modals/ShiftDetailsModal';
+import { shiftsAPI, salesAPI, paymentsAPI } from '../../services/ApiService/api';
 import './PosAdminPage.css';
 
 const PosAdminPage = () => {
   const navigate = useNavigate();
 
   // State management
-  const [activeTab, setActiveTab] = useState('current-shift');
+  const [activeTab, setActiveTab] = useState('pos-manager');
   const [shifts, setShifts] = useState([]);
   const [sales, setSales] = useState([]);
   const [payments, setPayments] = useState([]);
@@ -21,24 +29,33 @@ const PosAdminPage = () => {
   const [selectedShift, setSelectedShift] = useState(null);
   const [showShiftDetails, setShowShiftDetails] = useState(false);
   const [showVoidModal, setShowVoidModal] = useState(false);
+  const [showRefundModal, setShowRefundModal] = useState(false);
+  const [showEditTransactionModal, setShowEditTransactionModal] = useState(false);
   const [selectedSale, setSelectedSale] = useState(null);
+  const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [voidReason, setVoidReason] = useState('');
+  const [refundReason, setRefundReason] = useState('');
+  const [refundAmount, setRefundAmount] = useState(0);
+  const [editTransactionData, setEditTransactionData] = useState({});
   const [dateRange, setDateRange] = useState({
     start: new Date().toISOString().split('T')[0],
     end: new Date().toISOString().split('T')[0]
   });
+  const [pagination, setPagination] = useState({
+    shifts: { page: 1, limit: 20 },
+    sales: { page: 1, limit: 20 },
+    payments: { page: 1, limit: 20 }
+  });
 
+  // Data loading functions
   const loadCurrentShiftData = useCallback(async () => {
     if (!currentShift) return;
 
     try {
-      // Load sales for current shift
-      const shiftSales = await salesAPI.getSales({
-        shift_id: currentShift.id
-      });
+      const shiftSales = await salesAPI.getSales({ shift_id: currentShift.id });
       setCurrentShiftSales(shiftSales || []);
 
-      // Aggregate items sold in current shift
+      // Aggregate items
       const itemsMap = new Map();
       shiftSales.forEach(sale => {
         sale.items?.forEach(item => {
@@ -70,40 +87,46 @@ const PosAdminPage = () => {
     try {
       const shiftsData = await shiftsAPI.getAllShifts({
         start_date: dateRange.start,
-        end_date: dateRange.end
+        end_date: dateRange.end,
+        page: pagination.shifts.page,
+        page_size: pagination.shifts.limit
       });
       setShifts(shiftsData || []);
     } catch (error) {
       console.error('Error loading shifts:', error);
       setShifts([]);
     }
-  }, [dateRange]);
+  }, [dateRange, pagination.shifts]);
 
   const loadSales = useCallback(async () => {
     try {
       const salesData = await salesAPI.getSales({
         start_date: dateRange.start,
-        end_date: dateRange.end
+        end_date: dateRange.end,
+        page: pagination.sales.page,
+        page_size: pagination.sales.limit
       });
       setSales(salesData || []);
     } catch (error) {
       console.error('Error loading sales:', error);
       setSales([]);
     }
-  }, [dateRange]);
+  }, [dateRange, pagination.sales]);
 
   const loadPayments = useCallback(async () => {
     try {
       const paymentsData = await paymentsAPI.getPayments({
         start_date: dateRange.start,
-        end_date: dateRange.end
+        end_date: dateRange.end,
+        page: pagination.payments.page,
+        page_size: pagination.payments.limit
       });
       setPayments(paymentsData || []);
     } catch (error) {
       console.error('Error loading payments:', error);
       setPayments([]);
     }
-  }, [dateRange]);
+  }, [dateRange, pagination.payments]);
 
   const loadCurrentShift = useCallback(async () => {
     try {
@@ -143,28 +166,28 @@ const PosAdminPage = () => {
       }
     } catch (error) {
       console.error('Error loading data:', error);
-      Swal.fire({
-        icon: 'error',
-        title: 'Loading Error',
-        text: 'Failed to load data. Please try again.',
-        zIndex: 10000
-      });
     } finally {
       setIsLoading(false);
     }
   }, [activeTab, loadCurrentShiftData, loadShifts, loadSales, loadPayments]);
 
-  // Load data on component mount and when tab changes
   useEffect(() => {
     loadData();
   }, [activeTab, dateRange, loadData]);
 
-  // Load current shift data on mount
+  useEffect(() => {
+    setPagination({
+      shifts: { page: 1, limit: 20 },
+      sales: { page: 1, limit: 20 },
+      payments: { page: 1, limit: 20 }
+    });
+  }, [dateRange]);
+
   useEffect(() => {
     loadCurrentShift();
   }, [loadCurrentShift]);
 
-
+  // Handler functions
   const handleViewShiftDetails = (shift) => {
     setSelectedShift(shift);
     setShowShiftDetails(true);
@@ -176,550 +199,48 @@ const PosAdminPage = () => {
     setShowVoidModal(true);
   };
 
-  const confirmVoidSale = async () => {
-    if (!selectedSale || !voidReason.trim()) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'Missing Information',
-        text: 'Please provide a reason for voiding this sale.',
-        zIndex: 10000
-      });
-      return;
-    }
+  const handleRefundSale = (sale) => {
+    setSelectedSale(sale);
+    setRefundReason('');
+    setRefundAmount(sale.total_amount || 0);
+    setShowRefundModal(true);
+  };
 
+  const handleViewTransactionDetails = async (sale) => {
     try {
-      setIsLoading(true);
-      await salesAPI.voidSale(selectedSale.id, { reason: voidReason.trim() });
-
-      Swal.fire({
-        icon: 'success',
-        title: 'Sale Voided',
-        text: 'The sale has been successfully voided.',
-        zIndex: 10000
+      // Fetch full sale details including items
+      const fullSaleData = await salesAPI.getSale(sale.id);
+      setSelectedTransaction(fullSaleData);
+      setEditTransactionData({
+        customer_name: fullSaleData.customer_name || '',
+        discount: fullSaleData.discount_amount || 0,
+        tax: fullSaleData.tax_amount || 0,
+        notes: fullSaleData.notes || ''
       });
-
-      setShowVoidModal(false);
-      setSelectedSale(null);
-      setVoidReason('');
-
-      // Refresh current shift data
-      await loadCurrentShiftData();
+      setShowEditTransactionModal(true);
     } catch (error) {
-      console.error('Error voiding sale:', error);
-      Swal.fire({
-        icon: 'error',
-        title: 'Void Failed',
-        text: 'Failed to void the sale. Please try again.',
-        zIndex: 10000
+      console.error('Error fetching sale details:', error);
+      // Fallback to using the table data
+      setSelectedTransaction(sale);
+      setEditTransactionData({
+        customer_name: sale.customer_name || '',
+        discount: sale.discount_amount || 0,
+        tax: sale.tax_amount || 0,
+        notes: sale.notes || ''
       });
-    } finally {
-      setIsLoading(false);
+      setShowEditTransactionModal(true);
     }
   };
 
   const handleDateRangeChange = (field, value) => {
-    setDateRange(prev => ({
+    setDateRange(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handlePaginationChange = (type, page) => {
+    setPagination(prev => ({
       ...prev,
-      [field]: value
+      [type]: { ...prev[type], page }
     }));
-  };
-
-  const getShiftStatus = (shift) => {
-    if (shift.end_time) return 'Closed';
-    return 'Active';
-  };
-
-  const getShiftStatusColor = (shift) => {
-    return shift.end_time ? '#28a745' : '#ffc107';
-  };
-
-  const calculateShiftTotals = (shift) => {
-    return {
-      totalSales: shift.total_sales || 0,
-      transactionCount: shift.transaction_count || 0,
-      openingBalance: shift.opening_balance || 0,
-      closingBalance: shift.closing_balance || 0
-    };
-  };
-
-  const renderCurrentShiftTab = () => (
-    <div className="pos-admin-tab-content">
-      <div className="pos-admin-section-header">
-        <h3>Current Shift Operations</h3>
-        <div className="pos-admin-filters">
-          <button
-            className="btn btn-primary"
-            onClick={loadCurrentShift}
-            disabled={isLoading}
-          >
-            <i className="fas fa-refresh"></i> Refresh
-          </button>
-        </div>
-      </div>
-
-      {!currentShift ? (
-        <div className="empty-state">
-          <i className="fas fa-clock"></i>
-          <h3>No Active Shift</h3>
-          <p>No shift is currently active in the POS system.</p>
-        </div>
-      ) : (
-        <div className="current-shift-overview">
-          {/* Shift Info */}
-          <div className="shift-info-card">
-            <h4>Shift Information</h4>
-            <div className="shift-details-grid">
-              <div className="detail-item">
-                <label>Shift ID:</label>
-                <span>#{currentShift.id}</span>
-              </div>
-              <div className="detail-item">
-                <label>User:</label>
-                <span>{currentShift.user_name || 'Unknown'}</span>
-              </div>
-              <div className="detail-item">
-                <label>Start Time:</label>
-                <span>{new Date(currentShift.start_time).toLocaleString()}</span>
-              </div>
-              <div className="detail-item">
-                <label>Opening Balance:</label>
-                <span>{formatCurrency(currentShift.opening_balance || 0)}</span>
-              </div>
-              <div className="detail-item">
-                <label>Total Sales:</label>
-                <span>{formatCurrency(currentShift.total_sales || 0)}</span>
-              </div>
-              <div className="detail-item">
-                <label>Transactions:</label>
-                <span>{currentShift.transaction_count || 0}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Items Sold in Current Shift */}
-          <div className="shift-items-section">
-            <h4>Items Sold in Current Shift</h4>
-            <div className="pos-admin-table-container">
-              {currentShiftItems.length === 0 ? (
-                <div className="empty-state">
-                  <i className="fas fa-shopping-cart"></i>
-                  <h3>No Items Sold</h3>
-                  <p>No items have been sold in the current shift yet.</p>
-                </div>
-              ) : (
-                <table className="pos-admin-table">
-                  <thead>
-                    <tr>
-                      <th>Product</th>
-                      <th>Quantity Sold</th>
-                      <th>Unit Price</th>
-                      <th>Total Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {currentShiftItems.map((item, index) => (
-                      <tr key={index}>
-                        <td>{item.product_name}</td>
-                        <td>{item.quantity}</td>
-                        <td>{formatCurrency(item.unit_price)}</td>
-                        <td>{formatCurrency(item.total_amount)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          </div>
-
-          {/* Recent Sales */}
-          <div className="shift-sales-section">
-            <h4>Recent Sales (Current Shift)</h4>
-            <div className="pos-admin-table-container">
-              {currentShiftSales.length === 0 ? (
-                <div className="empty-state">
-                  <i className="fas fa-receipt"></i>
-                  <h3>No Sales Yet</h3>
-                  <p>No sales have been made in the current shift yet.</p>
-                </div>
-              ) : (
-                <table className="pos-admin-table">
-                  <thead>
-                    <tr>
-                      <th>Sale ID</th>
-                      <th>Time</th>
-                      <th>Customer</th>
-                      <th>Items</th>
-                      <th>Total</th>
-                      <th>Payment</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {currentShiftSales.map(sale => (
-                      <tr key={sale.id}>
-                        <td>#{sale.id}</td>
-                        <td>{new Date(sale.created_at).toLocaleTimeString()}</td>
-                        <td>{sale.customer_name || 'Walk-in'}</td>
-                        <td>{sale.items?.length || 0}</td>
-                        <td>{formatCurrency(sale.total_amount || 0)}</td>
-                        <td>{sale.payment_method || 'N/A'}</td>
-                        <td>
-                          <button
-                            className="btn btn-sm btn-danger"
-                            onClick={() => handleVoidSale(sale)}
-                            disabled={isLoading}
-                          >
-                            <i className="fas fa-ban"></i> Void
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-
-  const renderShiftsTab = () => (
-    <div className="pos-admin-tab-content">
-      <div className="pos-admin-section-header">
-        <h3>Shift Management</h3>
-        <div className="pos-admin-filters">
-          <div className="filter-group">
-            <label>Start Date:</label>
-            <input
-              type="date"
-              value={dateRange.start}
-              onChange={(e) => handleDateRangeChange('start', e.target.value)}
-            />
-          </div>
-          <div className="filter-group">
-            <label>End Date:</label>
-            <input
-              type="date"
-              value={dateRange.end}
-              onChange={(e) => handleDateRangeChange('end', e.target.value)}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="pos-admin-table-container">
-        {isLoading ? (
-          <div className="loading">
-            <i className="fas fa-spinner fa-spin"></i>
-            <p>Loading shifts...</p>
-          </div>
-        ) : shifts.length === 0 ? (
-          <div className="empty-state">
-            <i className="fas fa-clock"></i>
-            <h3>No Shifts Found</h3>
-            <p>No shifts found for the selected date range.</p>
-          </div>
-        ) : (
-          <table className="pos-admin-table">
-            <thead>
-              <tr>
-                <th>Shift ID</th>
-                <th>User</th>
-                <th>Start Time</th>
-                <th>End Time</th>
-                <th>Status</th>
-                <th>Total Sales</th>
-                <th>Transactions</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {shifts.map(shift => {
-                const totals = calculateShiftTotals(shift);
-                return (
-                  <tr key={shift.id}>
-                    <td>#{shift.id}</td>
-                    <td>{shift.user_name || 'Unknown'}</td>
-                    <td>{new Date(shift.start_time).toLocaleString()}</td>
-                    <td>{shift.end_time ? new Date(shift.end_time).toLocaleString() : 'Active'}</td>
-                    <td>
-                      <span
-                        className="status-badge"
-                        style={{ backgroundColor: getShiftStatusColor(shift) }}
-                      >
-                        {getShiftStatus(shift)}
-                      </span>
-                    </td>
-                    <td>{formatCurrency(totals.totalSales)}</td>
-                    <td>{totals.transactionCount}</td>
-                    <td>
-                      <button
-                        className="btn btn-sm btn-primary"
-                        onClick={() => handleViewShiftDetails(shift)}
-                      >
-                        <i className="fas fa-eye"></i> Details
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </div>
-    </div>
-  );
-
-  const renderSalesTab = () => (
-    <div className="pos-admin-tab-content">
-      <div className="pos-admin-section-header">
-        <h3>Sales Overview</h3>
-        <div className="pos-admin-filters">
-          <div className="filter-group">
-            <label>Start Date:</label>
-            <input
-              type="date"
-              value={dateRange.start}
-              onChange={(e) => handleDateRangeChange('start', e.target.value)}
-            />
-          </div>
-          <div className="filter-group">
-            <label>End Date:</label>
-            <input
-              type="date"
-              value={dateRange.end}
-              onChange={(e) => handleDateRangeChange('end', e.target.value)}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="pos-admin-table-container">
-        {isLoading ? (
-          <div className="loading">
-            <i className="fas fa-spinner fa-spin"></i>
-            <p>Loading sales...</p>
-          </div>
-        ) : sales.length === 0 ? (
-          <div className="empty-state">
-            <i className="fas fa-shopping-cart"></i>
-            <h3>No Sales Found</h3>
-            <p>No sales found for the selected date range.</p>
-          </div>
-        ) : (
-          <table className="pos-admin-table">
-            <thead>
-              <tr>
-                <th>Sale ID</th>
-                <th>Date</th>
-                <th>Customer</th>
-                <th>Items</th>
-                <th>Total Amount</th>
-                <th>Payment Method</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sales.map(sale => (
-                <tr key={sale.id}>
-                  <td>#{sale.id}</td>
-                  <td>{new Date(sale.created_at).toLocaleString()}</td>
-                  <td>{sale.customer_name || 'Walk-in'}</td>
-                  <td>{sale.items?.length || 0}</td>
-                  <td>{formatCurrency(sale.total_amount || 0)}</td>
-                  <td>{sale.payment_method || 'N/A'}</td>
-                  <td>
-                    <span className="status-badge" style={{ backgroundColor: '#28a745' }}>
-                      {sale.status || 'Completed'}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-    </div>
-  );
-
-  const renderPaymentsTab = () => (
-    <div className="pos-admin-tab-content">
-      <div className="pos-admin-section-header">
-        <h3>Payment Records</h3>
-        <div className="pos-admin-filters">
-          <div className="filter-group">
-            <label>Start Date:</label>
-            <input
-              type="date"
-              value={dateRange.start}
-              onChange={(e) => handleDateRangeChange('start', e.target.value)}
-            />
-          </div>
-          <div className="filter-group">
-            <label>End Date:</label>
-            <input
-              type="date"
-              value={dateRange.end}
-              onChange={(e) => handleDateRangeChange('end', e.target.value)}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="pos-admin-table-container">
-        {isLoading ? (
-          <div className="loading">
-            <i className="fas fa-spinner fa-spin"></i>
-            <p>Loading payments...</p>
-          </div>
-        ) : payments.length === 0 ? (
-          <div className="empty-state">
-            <i className="fas fa-credit-card"></i>
-            <h3>No Payments Found</h3>
-            <p>No payments found for the selected date range.</p>
-          </div>
-        ) : (
-          <table className="pos-admin-table">
-            <thead>
-              <tr>
-                <th>Payment ID</th>
-                <th>Date</th>
-                <th>Sale ID</th>
-                <th>Amount</th>
-                <th>Method</th>
-                <th>Reference</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {payments.map(payment => (
-                <tr key={payment.id}>
-                  <td>#{payment.id}</td>
-                  <td>{new Date(payment.created_at).toLocaleString()}</td>
-                  <td>#{payment.sale}</td>
-                  <td>{formatCurrency(payment.amount || 0)}</td>
-                  <td>{payment.payment_type || 'N/A'}</td>
-                  <td>{payment.reference_number || 'N/A'}</td>
-                  <td>
-                    <span className="status-badge" style={{ backgroundColor: '#28a745' }}>
-                      {payment.status || 'Completed'}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-    </div>
-  );
-
-  const renderVoidModal = () => {
-    if (!showVoidModal || !selectedSale) return null;
-
-    return (
-      <div className="modal active">
-        <div className="modal-content">
-          <div className="modal-header">
-            <h3>Void Sale #{selectedSale.id}</h3>
-            <span className="close" onClick={() => setShowVoidModal(false)}>&times;</span>
-          </div>
-          <div className="modal-body">
-            <div className="void-sale-info">
-              <p><strong>Sale ID:</strong> #{selectedSale.id}</p>
-              <p><strong>Customer:</strong> {selectedSale.customer_name || 'Walk-in'}</p>
-              <p><strong>Total Amount:</strong> {formatCurrency(selectedSale.total_amount || 0)}</p>
-              <p><strong>Time:</strong> {new Date(selectedSale.created_at).toLocaleString()}</p>
-            </div>
-            <div className="form-group">
-              <label htmlFor="voidReason">Reason for voiding this sale: *</label>
-              <textarea
-                id="voidReason"
-                value={voidReason}
-                onChange={(e) => setVoidReason(e.target.value)}
-                placeholder="Please provide a reason for voiding this sale..."
-                rows="4"
-                required
-              />
-            </div>
-          </div>
-          <div className="modal-footer">
-            <button className="btn btn-warning" onClick={() => setShowVoidModal(false)}>
-              Cancel
-            </button>
-            <button
-              className="btn btn-danger"
-              onClick={confirmVoidSale}
-              disabled={isLoading || !voidReason.trim()}
-            >
-              {isLoading ? 'Voiding...' : 'Void Sale'}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const renderShiftDetailsModal = () => {
-    if (!showShiftDetails || !selectedShift) return null;
-
-    const totals = calculateShiftTotals(selectedShift);
-
-    return (
-      <div className="modal active">
-        <div className="modal-content modal-large">
-          <div className="modal-header">
-            <h3>Shift Details #{selectedShift.id}</h3>
-            <span className="close" onClick={() => setShowShiftDetails(false)}>&times;</span>
-          </div>
-          <div className="modal-body">
-            <div className="shift-details-grid">
-              <div className="detail-item">
-                <label>User:</label>
-                <span>{selectedShift.user_name || 'Unknown'}</span>
-              </div>
-              <div className="detail-item">
-                <label>Start Time:</label>
-                <span>{new Date(selectedShift.start_time).toLocaleString()}</span>
-              </div>
-              <div className="detail-item">
-                <label>End Time:</label>
-                <span>{selectedShift.end_time ? new Date(selectedShift.end_time).toLocaleString() : 'Active'}</span>
-              </div>
-              <div className="detail-item">
-                <label>Status:</label>
-                <span className={`status-badge ${getShiftStatus(selectedShift).toLowerCase()}`}
-                      style={{ backgroundColor: getShiftStatusColor(selectedShift) }}>
-                  {getShiftStatus(selectedShift)}
-                </span>
-              </div>
-              <div className="detail-item">
-                <label>Opening Balance:</label>
-                <span>{formatCurrency(totals.openingBalance)}</span>
-              </div>
-              <div className="detail-item">
-                <label>Closing Balance:</label>
-                <span>{selectedShift.end_time ? formatCurrency(totals.closingBalance) : 'N/A'}</span>
-              </div>
-              <div className="detail-item">
-                <label>Total Sales:</label>
-                <span>{formatCurrency(totals.totalSales)}</span>
-              </div>
-              <div className="detail-item">
-                <label>Transaction Count:</label>
-                <span>{totals.transactionCount}</span>
-              </div>
-            </div>
-          </div>
-          <div className="modal-footer">
-            <button className="btn btn-warning" onClick={() => setShowShiftDetails(false)}>
-              Close
-            </button>
-          </div>
-        </div>
-      </div>
-    );
   };
 
   return (
@@ -734,17 +255,23 @@ const PosAdminPage = () => {
             onClick={loadData}
             disabled={isLoading}
           >
-            <i className="fas fa-refresh"></i> Refresh
+            <i className="fas fa-refresh"></i> Refresh All
           </button>
         </div>
         <h1>
           <img src={logo} alt="Logo" className="pos-admin-logo" />
-          POS Administration
+          POS Manager & Administration
         </h1>
       </div>
 
       {/* Tab Navigation */}
       <div className="pos-admin-tabs">
+        <button
+          className={`tab-button ${activeTab === 'pos-manager' ? 'active' : ''}`}
+          onClick={() => setActiveTab('pos-manager')}
+        >
+          <i className="fas fa-chart-line"></i> POS Manager
+        </button>
         <button
           className={`tab-button ${activeTab === 'current-shift' ? 'active' : ''}`}
           onClick={() => setActiveTab('current-shift')}
@@ -772,14 +299,108 @@ const PosAdminPage = () => {
       </div>
 
       {/* Tab Content */}
-      {activeTab === 'current-shift' && renderCurrentShiftTab()}
-      {activeTab === 'shifts' && renderShiftsTab()}
-      {activeTab === 'sales' && renderSalesTab()}
-      {activeTab === 'payments' && renderPaymentsTab()}
+      {activeTab === 'pos-manager' && (
+        <PosManagerDashboard
+          isLoading={isLoading}
+          handleViewTransactionDetails={handleViewTransactionDetails}
+          handleVoidSale={handleVoidSale}
+          handleRefundSale={handleRefundSale}
+          handleDateRangeChange={handleDateRangeChange}
+        />
+      )}
+      {activeTab === 'current-shift' && (
+        <CurrentShiftTab
+          currentShift={currentShift}
+          currentShiftItems={currentShiftItems}
+          currentShiftSales={currentShiftSales}
+          isLoading={isLoading}
+          handleVoidSale={handleVoidSale}
+          handleViewTransactionDetails={handleViewTransactionDetails}
+          loadCurrentShift={loadCurrentShift}
+        />
+      )}
+      {activeTab === 'shifts' && (
+        <ShiftsTab
+          shifts={shifts}
+          isLoading={isLoading}
+          dateRange={dateRange}
+          pagination={pagination.shifts}
+          handleViewShiftDetails={handleViewShiftDetails}
+          handleDateRangeChange={handleDateRangeChange}
+          handlePaginationChange={() => handlePaginationChange('shifts', pagination.shifts.page + 1)}
+        />
+      )}
+      {activeTab === 'sales' && (
+        <SalesTab
+          sales={sales}
+          isLoading={isLoading}
+          dateRange={dateRange}
+          pagination={pagination.sales}
+          handleDateRangeChange={handleDateRangeChange}
+          handlePaginationChange={() => handlePaginationChange('sales', pagination.sales.page + 1)}
+        />
+      )}
+      {activeTab === 'payments' && (
+        <PaymentsTab
+          payments={payments}
+          isLoading={isLoading}
+          dateRange={dateRange}
+          pagination={pagination.payments}
+          handleDateRangeChange={handleDateRangeChange}
+          handlePaginationChange={() => handlePaginationChange('payments', pagination.payments.page + 1)}
+        />
+      )}
 
       {/* Modals */}
-      {renderVoidModal()}
-      {renderShiftDetailsModal()}
+      <VoidModal
+        show={showVoidModal}
+        selectedSale={selectedSale}
+        voidReason={voidReason}
+        setVoidReason={setVoidReason}
+        onClose={() => setShowVoidModal(false)}
+        onConfirm={() => {
+          setShowVoidModal(false);
+          loadData();
+          loadCurrentShift();
+        }}
+        isLoading={isLoading}
+      />
+
+      <RefundModal
+        show={showRefundModal}
+        selectedSale={selectedSale}
+        refundReason={refundReason}
+        setRefundReason={setRefundReason}
+        refundAmount={refundAmount}
+        setRefundAmount={setRefundAmount}
+        onClose={() => setShowRefundModal(false)}
+        onConfirm={() => {
+          setShowRefundModal(false);
+          loadData();
+          loadCurrentShift();
+        }}
+        isLoading={isLoading}
+      />
+
+      <EditTransactionModal
+        show={showEditTransactionModal}
+        selectedTransaction={selectedTransaction}
+        editTransactionData={editTransactionData}
+        setEditTransactionData={setEditTransactionData}
+        onClose={() => setShowEditTransactionModal(false)}
+        onConfirm={() => {
+          setShowEditTransactionModal(false);
+          loadData();
+          loadCurrentShift();
+        }}
+        isLoading={isLoading}
+      />
+
+      <ShiftDetailsModal
+        show={showShiftDetails}
+        shift={selectedShift}
+        onClose={() => setShowShiftDetails(false)}
+      />
     </div>
   );
 };

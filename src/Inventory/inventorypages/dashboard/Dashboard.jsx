@@ -60,7 +60,7 @@ const InventoryDashboard = () => {
         setError('');
 
         const [movementsRes, lowStockRes, salesSummaryRes, inventorySummaryRes, customerSummaryRes, shiftSummaryRes, shiftsRes] = await Promise.all([
-          inventoryAPI.getStockMovements(),
+          inventoryAPI.getStockMovements({ page_size: 5 }),
           inventoryAPI.getLowStock(),
           salesAPI.getSalesSummary(),
           inventoryAPI.getInventorySummary(),
@@ -69,7 +69,7 @@ const InventoryDashboard = () => {
           shiftsAPI.getShifts()
         ]);
 
-        setStockMovements(movementsRes || []);
+        setStockMovements(movementsRes.results || []);
         setLowStockProducts(lowStockRes || []);
         setShifts(shiftsRes || []);
         setInventorySummary(inventorySummaryRes || null);

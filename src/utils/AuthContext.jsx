@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { userService } from '../services/api';
+import { userService, authService } from '../services/ApiService/api';
 
 const AuthContext = createContext();
 
@@ -27,27 +27,12 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (credentials) => {
     try {
-      const response = await fetch('http://localhost:8001/api/auth/login/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(credentials),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        localStorage.setItem('access_token', data.access);
-        localStorage.setItem('refresh_token', data.refresh);
-        userService.setUserData({ roles: data.roles });
-        setUser(userService.getUserData());
-        return { success: true };
-      } else {
-        const errorData = await response.json();
-        return { success: false, error: errorData.detail || 'Invalid credentials' };
-      }
+      const data = await authService.login(credentials.username, credentials.password);
+      userService.setUserData({ roles: data.roles });
+      setUser(userService.getUserData());
+      return { success: true };
     } catch (error) {
-      return { success: false, error: 'Network error' };
+      return { success: false, error: error.message || 'Invalid credentials' };
     }
   };
 

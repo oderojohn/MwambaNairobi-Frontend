@@ -310,6 +310,7 @@ export const salesAPI = {
     const url = queryString ? `/api/sales/?${queryString}` : '/api/sales/';
     return apiRequest(url);
   },
+  getSale: (id) => apiRequest(`/api/sales/${id}/`),
   createSale: async (sale) => {
     try {
       console.log('Creating sale with data:', sale);
@@ -319,9 +320,10 @@ export const salesAPI = {
       throw error;
     }
   },
-  updateSale: (id, sale) => apiRequest(`/api/sales/${id}/`, 'PUT', sale),
+  updateSale: (id, sale) => apiRequest(`/api/sales/${id}/admin_edit_sale/`, 'PATCH', sale),
   deleteSale: (id) => apiRequest(`/api/sales/${id}/`, 'DELETE'),
   voidSale: (id, data) => apiRequest(`/api/sales/${id}/void_sale/`, 'POST', data),
+  adminVoidSale: (id, data) => apiRequest(`/api/sales/${id}/admin_void_sale/`, 'POST', data),
   getHeldOrders: () => apiRequest('/api/sales/held_orders/'),
   completeHeldOrder: (id, data) => apiRequest(`/api/sales/${id}/complete_held_order/`, 'POST', data),
   voidHeldOrder: async (id, data) => {
@@ -595,6 +597,11 @@ export const inventoryAPI = {
       const url = queryString ? `/api/inventory/products/?${queryString}` : '/api/inventory/products/';
       return apiRequest(url);
     },
+    getPosProducts: (params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      const url = queryString ? `/api/inventory/products/pos_products/?${queryString}` : '/api/inventory/products/pos_products/';
+      return apiRequest(url);
+    },
     create: (product) => apiRequest('/api/inventory/products/', 'POST', product),
     update: (id, product) => apiRequest(`/api/inventory/products/${id}/`, 'PUT', product),
     delete: (id) => apiRequest(`/api/inventory/products/${id}/`, 'DELETE'),
@@ -665,7 +672,8 @@ export const inventoryAPI = {
   createCategory: (category) => apiRequest('/api/inventory/categories/', 'POST', category),
   updateCategory: (id, category) => apiRequest(`/api/inventory/categories/${id}/`, 'PUT', category),
   deleteCategory: (id) => apiRequest(`/api/inventory/categories/${id}/`, 'DELETE'),
-  getProducts: () => apiRequest('/api/inventory/products/'),
+  getProducts: (queryParams = {}) => apiRequest('/api/inventory/products/', 'GET', null, {}, false, queryParams),
+  getProductHistory: (queryParams = {}) => apiRequest('/api/inventory/product-history/', 'GET', null, {}, false, queryParams),
   createProduct: (product) => apiRequest('/api/inventory/products/', 'POST', product),
   updateProduct: (id, product) => apiRequest(`/api/inventory/products/${id}/`, 'PUT', product),
   deleteProduct: (id) => apiRequest(`/api/inventory/products/${id}/`, 'DELETE'),

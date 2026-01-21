@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   FiPlus, FiFilter, FiEdit, FiTrash2, FiPrinter, FiDownload,
   FiSearch, FiSave, FiX, FiCheck, FiAlertTriangle
@@ -15,6 +15,7 @@ if (typeof jsPDF !== 'undefined') {
 
 const ProductsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchInput, setSearchInput] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [showAddForm, setShowAddForm] = useState(false);
   const [addMode, setAddMode] = useState('single'); // 'single' or 'bulk'
@@ -23,62 +24,22 @@ const ProductsPage = () => {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState('');
-  const [products, setProducts] = useState([
-    { 
-      id: 6, 
-      name: 'Whiskey - Jack Daniels', 
-      sku: 'ALC-001', 
-      category: 'Whiskey', 
-      price: 45.00, 
-      cost: 30.00,
-      stock: 25, 
-      status: 'In Stock',
-      supplier: 'Premium Liquor Distributors',
-      batchNumber: 'BATCH-2023-001',
-      expiryDate: '2025-12-31',
-      barcode: '123456789012',
-      description: 'Premium Tennessee whiskey aged in charred oak barrels',
-      taxRate: 16,
-      unit: '750ml bottle',
-      reorderLevel: 5
-    },
-    { 
-      id: 7, 
-      name: 'Vodka - Absolut', 
-      sku: 'ALC-002', 
-      category: 'Vodka', 
-      price: 35.00, 
-      cost: 22.50,
-      stock: 8, 
-      status: 'Low Stock',
-      supplier: 'Global Spirits Ltd',
-      batchNumber: 'BATCH-2023-002',
-      expiryDate: '2024-06-30',
-      barcode: '234567890123',
-      description: 'Premium Swedish vodka made from winter wheat',
-      taxRate: 16,
-      unit: '1L bottle',
-      reorderLevel: 3
-    },
-    { 
-      id: 8, 
-      name: 'Rum - Bacardi', 
-      sku: 'ALC-003', 
-      category: 'Rum', 
-      price: 30.00, 
-      cost: 18.00,
-      stock: 15, 
-      status: 'In Stock',
-      supplier: 'Caribbean Imports',
-      batchNumber: 'BATCH-2023-003',
-      expiryDate: '2026-03-15',
-      barcode: '345678901234',
-      description: 'White rum distilled from molasses',
-      taxRate: 16,
-      unit: '700ml bottle',
-      reorderLevel: 4
-    },
-  ]);
+  const [pagination, setPagination] = useState({ page: 1, limit: 20 });
+  const [products, setProducts] = useState([]);
+
+  const handleSearchChange = (value) => {
+    setSearchInput(value);
+  };
+
+  const handleSearch = () => {
+    setSearchTerm(searchInput);
+    setPagination(prev => ({ ...prev, page: 1 }));
+  };
+
+  const handleCategoryChange = (value) => {
+    setSelectedCategory(value);
+    setPagination(prev => ({ ...prev, page: 1 }));
+  };
 
   const [bulkProducts, setBulkProducts] = useState([
     { 
@@ -136,44 +97,42 @@ const ProductsPage = () => {
   const [categories, setCategories] = useState([]);
   const statusOptions = ['In Stock', 'Low Stock', 'Out of Stock'];
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError('');
-        const [productsResponse, categoriesResponse] = await Promise.all([
-          inventoryAPI.getProducts(),
-          inventoryAPI.getCategories()
-        ]);
-        setProducts(productsResponse || []);
-        // Store categories as objects with id and name, plus 'All' option
-        // Create categories array with 'All' option plus actual categories
-        const allCategories = [{ id: 'all', name: 'All' }];
-        if (categoriesResponse && categoriesResponse.length > 0) {
-          categoriesResponse.forEach(cat => {
-            allCategories.push({ id: cat.id, name: cat.name });
-          });
-        }
-        setCategories(allCategories);
-      } catch (err) {
-        console.error('Error fetching data:', err);
-        setError(err.response?.data?.message || 'Failed to load products');
-      } finally {
-        setLoading(false);
+  const fetchData = useCallback(async (search = '', category = 'all', page = 1) => {
+    try {
+      setLoading(true);
+      setError('');
+      const params = { page, page_size: pagination.limit };
+      if (search) params.search = search;
+      if (category !== 'all') params.category = category;
+
+      const [productsResponse, categoriesResponse] = await Promise.all([
+        inventoryAPI.getProducts(params),
+        inventoryAPI.getCategories()
+      ]);
+      const apiProducts = productsResponse.results || [];
+      setProducts(apiProducts);
+
+      // Store categories as objects with id and name, plus 'All' option
+      const allCategories = [{ id: 'all', name: 'All' }];
+      if (categoriesResponse && categoriesResponse.length > 0) {
+        categoriesResponse.forEach(cat => {
+          allCategories.push({ id: cat.id, name: cat.name });
+        });
       }
-    };
+      setCategories(allCategories);
+    } catch (err) {
+      console.error('Error fetching data:', err);
+      setError(err.response?.data?.message || 'Failed to load products');
+    } finally {
+      setLoading(false);
+    }
+  }, [pagination.limit]);
 
-    fetchData();
-  }, []);
+  useEffect(() => {
+    fetchData(searchTerm, selectedCategory, pagination.page);
+  }, [fetchData, selectedCategory, pagination.page, searchTerm]);
 
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          product.sku.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' ||
-                           product.category_name === selectedCategory ||
-                           (product.category_name === 'N/A' && selectedCategory === '');
-    return matchesSearch && matchesCategory;
-  });
+  const filteredProducts = products;
 
   const handleSingleInputChange = (e) => {
     const { name, value } = e.target;
@@ -208,8 +167,8 @@ const ProductsPage = () => {
       await inventoryAPI.createProduct(productData);
 
       // Refresh products
-      const response = await inventoryAPI.getProducts();
-      setProducts(response || []);
+      const response = await inventoryAPI.getProducts({ page: pagination.page, page_size: pagination.limit });
+      setProducts(response.results || []);
 
       setSingleProduct({
         sku: '',
@@ -385,8 +344,8 @@ const ProductsPage = () => {
       await inventoryAPI.updateProduct(editingId, productData);
 
       // Refresh products
-      const response = await inventoryAPI.getProducts();
-      setProducts(response || []);
+      const response = await inventoryAPI.getProducts({ page: pagination.page, page_size: pagination.limit });
+      setProducts(response.results || []);
       setEditingId(null);
       setShowEditModal(false);
       setEditProduct({
@@ -438,8 +397,8 @@ const ProductsPage = () => {
     try {
       await inventoryAPI.deleteProduct(id);
       // Refresh products
-      const response = await inventoryAPI.getProducts();
-      setProducts(response || []);
+      const response = await inventoryAPI.getProducts({ page: pagination.page, page_size: pagination.limit });
+      setProducts(response.results || []);
     } catch (err) {
       console.error('Error deleting product:', err);
       setError('Failed to delete product');
@@ -678,17 +637,20 @@ const ProductsPage = () => {
             <input
               type="text"
               placeholder="Search products..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              value={searchInput}
+              onChange={(e) => handleSearchChange(e.target.value)}
             />
+            <button className="btn btn-primary" onClick={handleSearch}>
+              <FiSearch /> Search
+            </button>
           </div>
           <div className="filter-dropdown">
             <select
               value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
+              onChange={(e) => handleCategoryChange(e.target.value)}
             >
               {categories.map(category => (
-                <option key={category.id} value={category.id === 'all' ? 'all' : category.name}>
+                <option key={category.id} value={category.id}>
                   {category.name}
                 </option>
               ))}
@@ -1109,12 +1071,24 @@ const ProductsPage = () => {
 
           <div className="pagination-container">
             <div className="pagination-info">
-              Showing {filteredProducts.length} of {products.length} entries
+              Page {pagination.page}
             </div>
             <div className="pagination-controls">
-              <button className="btn-pagination" disabled>Previous</button>
-              <button className="btn-pagination active">1</button>
-              <button className="btn-pagination">Next</button>
+              <button
+                className="btn-pagination"
+                onClick={() => setPagination(prev => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
+                disabled={pagination.page <= 1 || loading}
+              >
+                Previous
+              </button>
+              <button className="btn-pagination active">{pagination.page}</button>
+              <button
+                className="btn-pagination"
+                onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
+                disabled={filteredProducts.length < pagination.limit || loading}
+              >
+                Next
+              </button>
             </div>
           </div>
         </>

@@ -22,18 +22,27 @@ const ProductHistoryPage = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showExportModal, setShowExportModal] = useState(false);
   const [activeTab, setActiveTab] = useState('export');
+  const [dateFrom, setDateFrom] = useState(() => {
+    const today = new Date();
+    const weekAgo = new Date(today);
+    weekAgo.setDate(today.getDate() - 7);
+    return weekAgo.toISOString().split('T')[0];
+  });
+  const [dateTo, setDateTo] = useState(() => new Date().toISOString().split('T')[0]);
 
   // Fetch data on component mount
   useEffect(() => {
     fetchProducts();
-    fetchHistory();
   }, []);
 
-  const fetchHistory = async () => {
+  const fetchHistory = async (productId = null, fromDate = dateFrom, toDate = dateTo) => {
     try {
       setLoading(true);
-      const response = await inventoryAPI.productHistory.getAll();
-      setHistory(response || []);
+      setError('');
+      const params = { date_from: fromDate, date_to: toDate };
+      if (productId) params.product = productId;
+      const response = await inventoryAPI.getProductHistory(params);
+      setHistory(response.results || []);
     } catch (err) {
       setError('Failed to fetch product history');
       console.error('Error fetching product history:', err);
@@ -45,11 +54,13 @@ const ProductHistoryPage = () => {
 
   const fetchProducts = async () => {
     try {
-      const response = await inventoryAPI.products.getAll();
-      setProducts(response || []);
+      const response = await inventoryAPI.getProducts();
+      setProducts(response.results || []);
     } catch (err) {
       console.error('Error fetching products:', err);
       setProducts([]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -63,18 +74,14 @@ const ProductHistoryPage = () => {
                           (item.field_changed && item.field_changed.toLowerCase().includes(searchTerm.toLowerCase())) ||
                           (item.notes && item.notes.toLowerCase().includes(searchTerm.toLowerCase()));
 
-    const matchesProduct = !selectedProduct || item.product === selectedProduct.id;
     const matchesField = !fieldFilter || item.field_changed === fieldFilter;
 
-    return matchesSearch && matchesProduct && matchesField;
+    return matchesSearch && matchesField;
   });
 
   const handleProductSelect = async (product) => {
     setSelectedProduct(product);
-    // Load history if not loaded yet
-    if (history.length === 0) {
-      await fetchHistory();
-    }
+    await fetchHistory(product.id);
   };
 
   const formatDate = (dateString) => {
@@ -193,6 +200,26 @@ const ProductHistoryPage = () => {
             font-weight: bold;
             color: #333;
           }
+          .date-filters {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 10px;
+          }
+          .date-input-group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+          }
+          .date-input-group label {
+            font-weight: bold;
+            color: #555;
+          }
+          .date-input-group input {
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+          }
         `}
       </style>
       <div className="page-header">
@@ -203,6 +230,30 @@ const ProductHistoryPage = () => {
       {error && <div className="error-message">{error}</div>}
 
       <div className="page-actions">
+        <div className="date-filters">
+          <div className="date-input-group">
+            <label>From:</label>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+            />
+          </div>
+          <div className="date-input-group">
+            <label>To:</label>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+            />
+          </div>
+          <button
+            className="btn btn-secondary"
+            onClick={() => selectedProduct && fetchHistory(selectedProduct.id)}
+          >
+            Apply Filter
+          </button>
+        </div>
         <div className="search-filter">
           <div className="search-box">
             <input

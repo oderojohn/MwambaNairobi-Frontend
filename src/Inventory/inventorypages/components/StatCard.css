@@ -1,0 +1,178 @@
+/* StatCard.css */
+.stat-card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  transition: all 0.3s ease;
+  border: 1px solid #e9ecef;
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  border-color: #dee2e6;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--card-color, #007bff), transparent);
+}
+
+.stat-card.total-sales { --card-color: #28a745; }
+.stat-card.total-transactions { --card-color: #17a2b8; }
+.stat-card.average-ticket { --card-color: #ffc107; }
+.stat-card.net-sales { --card-color: #20c997; }
+.stat-card.void-count { --card-color: #dc3545; }
+.stat-card.refund-amount { --card-color: #6f42c1; }
+
+.stat-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  color: white;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, var(--icon-color, #007bff), var(--icon-color-dark, #0056b3));
+  box-shadow: 0 4px 12px rgba(var(--icon-shadow, 0, 123, 255), 0.3);
+}
+
+.total-sales .stat-icon {
+  --icon-color: #28a745;
+  --icon-color-dark: #1e7e34;
+  --icon-shadow: 40, 167, 69;
+}
+
+.total-transactions .stat-icon {
+  --icon-color: #17a2b8;
+  --icon-color-dark: #117a8b;
+  --icon-shadow: 23, 162, 184;
+}
+
+.average-ticket .stat-icon {
+  --icon-color: #ffc107;
+  --icon-color-dark: #d39e00;
+  --icon-shadow: 255, 193, 7;
+}
+
+.net-sales .stat-icon {
+  --icon-color: #20c997;
+  --icon-color-dark: #1a9c7a;
+  --icon-shadow: 32, 201, 151;
+}
+
+.void-count .stat-icon {
+  --icon-color: #dc3545;
+  --icon-color-dark: #bd2130;
+  --icon-shadow: 220, 53, 69;
+}
+
+.refund-amount .stat-icon {
+  --icon-color: #6f42c1;
+  --icon-color-dark: #563d7c;
+  --icon-shadow: 111, 66, 193;
+}
+
+.stat-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.stat-content h3 {
+  margin: 0 0 8px 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: #2d3748;
+  line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stat-content p {
+  margin: 0;
+  color: #718096;
+  font-size: 14px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-trend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 8px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgba(40, 167, 69, 0.1);
+  color: #28a745;
+  align-self: flex-start;
+}
+
+.stat-trend.negative {
+  background: rgba(220, 53, 69, 0.1);
+  color: #dc3545;
+}
+
+.stat-trend i {
+  font-size: 10px;
+}
+
+.stat-detail {
+  font-size: 12px;
+  color: #a0aec0;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stat-detail i {
+  font-size: 10px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .stat-card {
+    padding: 20px;
+    gap: 16px;
+  }
+  
+  .stat-icon {
+    width: 50px;
+    height: 50px;
+    font-size: 20px;
+  }
+  
+  .stat-content h3 {
+    font-size: 24px;
+  }
+}
+
+@media (max-width: 480px) {
+  .stat-card {
+    flex-direction: column;
+    text-align: center;
+    gap: 12px;
+  }
+  
+  .stat-content h3 {
+    font-size: 22px;
+  }
+}

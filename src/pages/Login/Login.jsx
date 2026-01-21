@@ -26,7 +26,7 @@ const Login = () => {
 
     if (result.success) {
       const userRole = user?.roles?.[0];
-      if (userRole === 'pos') {
+      if (userRole === 'Cashier' || userRole === 'Manager') {
         navigate('/pos');
       } else {
         navigate('/dashboard');

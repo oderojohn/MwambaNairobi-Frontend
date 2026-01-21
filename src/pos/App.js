@@ -91,7 +91,7 @@ function PosApp() {
     try {
       setLoading(true);
       const [productsRes, categoriesRes, customersRes, suppliersRes, chitsRes, currentShiftRes] = await Promise.all([
-        inventoryAPI.products.getAll({ mode: currentMode }),
+        inventoryAPI.products.getPosProducts({ mode: currentMode }),
         inventoryAPI.categories.getAll(),
         customersAPI.getCustomers({ mode: currentMode }),
         suppliersAPI.getSuppliers(),
@@ -101,8 +101,8 @@ function PosApp() {
 
       setProducts(productsRes || []);
       setCategories(categoriesRes || []);
-      setCustomers(customersRes || []);
-      setSuppliers(suppliersRes || []);
+      setCustomers(customersRes.results || []);
+      setSuppliers(suppliersRes.results || []);
       setChits(chitsRes || []);
 
       if (currentShiftRes) {

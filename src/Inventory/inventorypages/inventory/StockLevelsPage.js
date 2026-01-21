@@ -10,6 +10,7 @@ const StockLevelsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [products, setProducts] = useState([]);
+  const [stockTakes, setStockTakes] = useState({});
 
   // Fetch products on component mount
   useEffect(() => {
@@ -20,7 +21,7 @@ const StockLevelsPage = () => {
     try {
       setLoading(true);
       const response = await inventoryAPI.products.getAll();
-      setProducts(response || []);
+      setProducts(response.results || []);
     } catch (err) {
       setError('Failed to fetch products');
       console.error('Error fetching products:', err);
@@ -28,6 +29,11 @@ const StockLevelsPage = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleStockTakeChange = (productId, value) => {
+    const count = parseFloat(value) || 0;
+    setStockTakes(prev => ({ ...prev, [productId]: count }));
   };
 
   const getStockStatus = (product) => {
@@ -69,11 +75,13 @@ const StockLevelsPage = () => {
   const convertToCSV = (data) => {
     if (!Array.isArray(data) || data.length === 0) return '';
 
-    const headers = ['ID', 'Name', 'SKU', 'Category', 'Stock Quantity', 'Low Stock Threshold', 'Status'];
+    const headers = ['ID', 'Name', 'SKU', 'Category', 'Stock Quantity', 'Low Stock Threshold', 'Stock Take', 'Variance', 'Status'];
     const csvRows = [headers.join(',')];
 
     data.forEach(item => {
       const status = getStockStatus(item);
+      const stockTake = stockTakes[item.id] || 0;
+      const variance = (item.stock_quantity || 0) - stockTake;
       const row = [
         item.id || '',
         `"${(item.name || '').replace(/"/g, '""')}"`,
@@ -81,6 +89,8 @@ const StockLevelsPage = () => {
         `"${(item.category_name || '').replace(/"/g, '""')}"`,
         item.stock_quantity || 0,
         item.low_stock_threshold || 0,
+        stockTake,
+        variance,
         status
       ];
       csvRows.push(row.join(','));
@@ -107,6 +117,26 @@ const StockLevelsPage = () => {
 
   return (
     <div className="page-container">
+      <style>
+        {`
+          .stock-take-input {
+            width: 80px;
+            padding: 4px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            text-align: center;
+          }
+          .variance-cell {
+            font-weight: bold;
+          }
+          .variance-cell.positive {
+            color: #388e3c;
+          }
+          .variance-cell.negative {
+            color: #d32f2f;
+          }
+        `}
+      </style>
       <div className="page-header">
         <h1>Stock Levels</h1>
         <p>Monitor inventory stock levels and alerts</p>
@@ -189,12 +219,16 @@ const StockLevelsPage = () => {
               <th>Category</th>
               <th>Current Stock</th>
               <th>Low Stock Threshold</th>
+              <th>Stock Take</th>
+              <th>Variance</th>
               <th>Status</th>
             </tr>
           </thead>
           <tbody>
             {filteredProducts.length > 0 ? filteredProducts.map(product => {
               const status = getStockStatus(product);
+              const stockTake = stockTakes[product.id] || 0;
+              const variance = (product.stock_quantity || 0) - stockTake;
               return (
                 <tr key={product.id}>
                   <td>{product.id}</td>
@@ -208,6 +242,19 @@ const StockLevelsPage = () => {
                   <td>{product.stock_quantity || 0}</td>
                   <td>{product.low_stock_threshold || 0}</td>
                   <td>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={stockTake}
+                      onChange={(e) => handleStockTakeChange(product.id, e.target.value)}
+                      className="stock-take-input"
+                    />
+                  </td>
+                  <td className={`variance-cell ${variance > 0 ? 'positive' : variance < 0 ? 'negative' : ''}`}>
+                    {variance !== 0 ? variance : ''}
+                  </td>
+                  <td>
                     <span className={`status-badge ${status.toLowerCase().replace(' ', '-')}`}>
                       {status}
                     </span>
@@ -216,7 +263,7 @@ const StockLevelsPage = () => {
               );
             }) : (
               <tr>
-                <td colSpan="7" className="no-data">
+                <td colSpan="9" className="no-data">
                   {loading ? 'Loading products...' : 'No products found'}
                 </td>
               </tr>

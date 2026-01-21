@@ -35,7 +35,7 @@ const EndOfDayStockPage = () => {
   const fetchProducts = async () => {
     try {
       const response = await inventoryAPI.products.getAll();
-      setProducts(response || []);
+      setProducts(response.results || []);
     } catch (err) {
       console.error('Error fetching products:', err);
       setProducts([]);
