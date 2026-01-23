@@ -84,7 +84,7 @@ const ProductGrid = ({ products = [], categories = [], onAddToCart, loading = fa
       (product.category_name && product.category_name.toLowerCase().includes(searchTerm.toLowerCase()));
 
     return categoryMatch && searchMatch;
-  }).sort((a, b) => a.category - b.category);
+  }).sort((a, b) => a.id - b.id);
 
   // Helper function to get category colors safely
   const getCategoryColors = (product) => {

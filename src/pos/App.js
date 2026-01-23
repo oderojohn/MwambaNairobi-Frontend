@@ -101,8 +101,8 @@ function PosApp() {
 
       setProducts(productsRes || []);
       setCategories(categoriesRes || []);
-      setCustomers(customersRes.results || []);
-      setSuppliers(suppliersRes.results || []);
+      setCustomers(customersRes.results || customersRes || []);
+      setSuppliers(suppliersRes.results || suppliersRes || []);
       setChits(chitsRes || []);
 
       if (currentShiftRes) {
