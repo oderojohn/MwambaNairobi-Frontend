@@ -556,7 +556,7 @@ const CategoriesPage = () => {
             <FiSearch className="search-icon" />
           </div>
         </div>
-        <div className="action-buttons">
+        <div className="">
           <button 
             className="btn btn-primary"
             onClick={() => setShowAddModal(true)}

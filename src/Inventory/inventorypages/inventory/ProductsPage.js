@@ -13,6 +13,220 @@ if (typeof jsPDF !== 'undefined') {
   jsPDF.API.autoTable = autoTable;
 }
 
+// Inline styles for Products Page to ensure buttons are visible
+const productsPageStyles = `
+  .products-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+  }
+  
+  .products-btn-primary {
+    background-color: #4361ee;
+    color: white;
+  }
+  
+  .products-btn-primary:hover {
+    background-color: #3651d4;
+  }
+  
+  .products-btn-secondary {
+    background-color: #6c757d;
+    color: white;
+  }
+  
+  .products-btn-secondary:hover {
+    background-color: #5a6268;
+  }
+  
+  .products-btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: #4361ee;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .products-btn-icon:hover {
+    background-color: rgba(67, 97, 238, 0.1);
+  }
+  
+  .products-btn-icon-danger {
+    color: #dc3545;
+  }
+  
+  .products-btn-icon-danger:hover {
+    background-color: rgba(220, 53, 69, 0.1);
+  }
+  
+  .products-modal-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: #6c757d;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .products-modal-close:hover {
+    background-color: #dc3545;
+    color: white;
+  }
+  
+  .products-toggle-btn {
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    border: 2px solid #4361ee;
+    border-radius: 4px;
+    background-color: transparent;
+    color: #4361ee;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .products-toggle-btn.active {
+    background-color: #4361ee;
+    color: white;
+  }
+  
+  .products-pagination-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 32px;
+    padding: 0 8px;
+    font-size: 14px;
+    font-weight: 500;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    background-color: white;
+    color: #4361ee;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .products-pagination-btn:hover:not(:disabled) {
+    background-color: #4361ee;
+    border-color: #4361ee;
+    color: white;
+  }
+  
+  .products-pagination-btn.active {
+    background-color: #4361ee;
+    border-color: #4361ee;
+    color: white;
+  }
+  
+  .products-pagination-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  .products-action-buttons {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+  
+  /* Delete Confirmation Modal */
+  .products-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  
+  .products-modal-content {
+    background-color: white;
+    border-radius: 8px;
+    padding: 24px;
+    max-width: 400px;
+    width: 90%;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+  
+  .products-modal-icon {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 16px;
+    color: #dc3545;
+  }
+  
+  .products-modal-title {
+    text-align: center;
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #333;
+  }
+  
+  .products-modal-message {
+    text-align: center;
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 24px;
+  }
+  
+  .products-modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+  }
+  
+  .products-modal-btn-cancel {
+    background-color: #6c757d;
+    color: white;
+  }
+  
+  .products-modal-btn-cancel:hover {
+    background-color: #5a6268;
+  }
+  
+  .products-modal-btn-delete {
+    background-color: #dc3545;
+    color: white;
+  }
+  
+  .products-modal-btn-delete:hover {
+    background-color: #c82333;
+  }
+  
+  .products-modal-btn-delete:disabled {
+    background-color: #e0a8a8;
+    cursor: not-allowed;
+  }
+`;
+
 const ProductsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchInput, setSearchInput] = useState('');
@@ -96,6 +310,11 @@ const ProductsPage = () => {
 
   const [categories, setCategories] = useState([]);
   const statusOptions = ['In Stock', 'Low Stock', 'Out of Stock'];
+  
+  // Delete confirmation modal state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [productToDelete, setProductToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchData = useCallback(async (search = '', category = 'all', page = 1) => {
     try {
@@ -395,14 +614,52 @@ const ProductsPage = () => {
 
   const deleteProduct = async (id) => {
     try {
+      setDeleting(true);
       await inventoryAPI.deleteProduct(id);
       // Refresh products
       const response = await inventoryAPI.getProducts({ page: pagination.page, page_size: pagination.limit });
       setProducts(response.results || []);
+      setShowDeleteModal(false);
+      setProductToDelete(null);
+      
+      // Show success message
+      if (typeof window.Swal !== 'undefined') {
+        window.Swal.fire({
+          icon: 'success',
+          title: 'Deleted',
+          text: 'Product has been deleted successfully',
+          timer: 2000,
+          showConfirmButton: false
+        });
+      }
     } catch (err) {
       console.error('Error deleting product:', err);
       setError('Failed to delete product');
+      setShowDeleteModal(false);
+      
+      // Show error message
+      if (typeof window.Swal !== 'undefined') {
+        window.Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Failed to delete product. Please try again.'
+        });
+      }
+    } finally {
+      setDeleting(false);
     }
+  };
+
+  // Open delete confirmation modal
+  const confirmDelete = (product) => {
+    setProductToDelete(product);
+    setShowDeleteModal(true);
+  };
+
+  // Cancel delete
+  const cancelDelete = () => {
+    setShowDeleteModal(false);
+    setProductToDelete(null);
   };
 
   const exportProductsToPDF = () => {
@@ -624,6 +881,7 @@ const ProductsPage = () => {
 
   return (
     <div className="page-container">
+      <style>{productsPageStyles}</style>
       <div className="page-header">
         <div className="breadcrumbs">
           <Link to="/">Home</Link> / <span>Inventory</span> / <span>Products</span>
@@ -640,7 +898,7 @@ const ProductsPage = () => {
               value={searchInput}
               onChange={(e) => handleSearchChange(e.target.value)}
             />
-            <button className="btn btn-primary" onClick={handleSearch}>
+            <button className="products-btn products-btn-primary" onClick={handleSearch}>
               <FiSearch /> Search
             </button>
           </div>
@@ -658,9 +916,9 @@ const ProductsPage = () => {
             <FiFilter className="filter-icon" />
           </div>
         </div>
-        <div className="action-buttons">
+        <div className="">
           <button 
-            className="btn btn-primary"
+            className="products-btn products-btn-primary"
             onClick={() => {
               setShowAddForm(true);
               setAddMode('single');
@@ -668,10 +926,10 @@ const ProductsPage = () => {
           >
             <FiPlus /> Add Product
           </button>
-          <button className="btn btn-secondary" onClick={exportProductsToPDF}>
+          <button className="products-btn products-btn-secondary" onClick={exportProductsToPDF}>
             <FiDownload /> Export to PDF
           </button>
-          <button className="btn btn-secondary">
+          <button className="products-btn products-btn-secondary">
             <FiPrinter /> Print
           </button>
         </div>
@@ -681,13 +939,13 @@ const ProductsPage = () => {
         <div className="product-form-container">
           <div className="form-toggle-buttons">
             <button
-              className={`toggle-btn ${addMode === 'single' ? 'active' : ''}`}
+              className={`products-toggle-btn ${addMode === 'single' ? 'active' : ''}`}
               onClick={() => setAddMode('single')}
             >
               Single Product
             </button>
             <button
-              className={`toggle-btn ${addMode === 'bulk' ? 'active' : ''}`}
+              className={`products-toggle-btn ${addMode === 'bulk' ? 'active' : ''}`}
               onClick={() => setAddMode('bulk')}
             >
               Multiple Products
@@ -859,7 +1117,7 @@ const ProductsPage = () => {
           ) : (
             <>
               <div className="bulk-actions">
-                <button className="btn btn-secondary" onClick={addNewRow}>
+                <button className="products-btn products-btn-secondary" onClick={addNewRow}>
                   <FiPlus /> Add Row
                 </button>
                 <div className="hint">
@@ -966,7 +1224,7 @@ const ProductsPage = () => {
                         </td>
                         <td>
                           <button 
-                            className="btn-icon danger"
+                            className="products-btn-icon products-btn-icon-danger"
                             onClick={() => removeRow(product.id)}
                             disabled={bulkProducts.length <= 1}
                           >
@@ -984,7 +1242,7 @@ const ProductsPage = () => {
           <div className="form-actions">
             {addMode === 'single' ? (
               <button 
-                className="btn btn-primary"
+                className="products-btn products-btn-primary"
                 onClick={addSingleProduct}
                 disabled={!singleProduct.name || !singleProduct.sku}
               >
@@ -992,7 +1250,7 @@ const ProductsPage = () => {
               </button>
             ) : (
               <button 
-                className="btn btn-primary"
+                className="products-btn products-btn-primary"
                 onClick={saveBulkProducts}
                 disabled={bulkProducts.filter(p => p.name && p.sku).length === 0}
               >
@@ -1000,7 +1258,7 @@ const ProductsPage = () => {
               </button>
             )}
             <button 
-              className="btn btn-secondary"
+              className="products-btn products-btn-secondary"
               onClick={() => setShowAddForm(false)}
             >
               Cancel
@@ -1046,17 +1304,17 @@ const ProductsPage = () => {
                       {product.created_at ? new Date(product.created_at).toLocaleDateString() : 'N/A'}
                     </td>
                     <td>
-                      <div className="action-buttons">
+                      <div className="products-action-buttons">
                         <button
-                          className="btn-icon"
+                          className="products-btn-icon"
                           onClick={() => startEditing(product)}
                           title="Edit"
                         >
                           <FiEdit />
                         </button>
                         <button
-                          className="btn-icon danger"
-                          onClick={() => deleteProduct(product.id)}
+                          className="products-btn-icon products-btn-icon-danger"
+                          onClick={() => confirmDelete(product)}
                           title="Delete"
                         >
                           <FiTrash2 />
@@ -1075,15 +1333,15 @@ const ProductsPage = () => {
             </div>
             <div className="pagination-controls">
               <button
-                className="btn-pagination"
+                className="products-pagination-btn"
                 onClick={() => setPagination(prev => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
                 disabled={pagination.page <= 1 || loading}
               >
                 Previous
               </button>
-              <button className="btn-pagination active">{pagination.page}</button>
+              <button className="products-pagination-btn active">{pagination.page}</button>
               <button
-                className="btn-pagination"
+                className="products-pagination-btn"
                 onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
                 disabled={filteredProducts.length < pagination.limit || loading}
               >
@@ -1094,13 +1352,49 @@ const ProductsPage = () => {
         </>
       )}
 
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="products-modal-overlay">
+          <div className="products-modal-content">
+            <div className="products-modal-icon">
+              <FiAlertTriangle size={48} />
+            </div>
+            <h3 className="products-modal-title">Delete Product?</h3>
+            <p className="products-modal-message">
+              Are you sure you want to delete <strong>{productToDelete?.name}</strong>? 
+              This action cannot be undone.
+            </p>
+            <div className="products-modal-actions">
+              <button
+                className="products-btn products-modal-btn-cancel"
+                onClick={cancelDelete}
+                disabled={deleting}
+              >
+                <FiX /> Cancel
+              </button>
+              <button
+                className="products-btn products-modal-btn-delete"
+                onClick={() => productToDelete && deleteProduct(productToDelete.id)}
+                disabled={deleting}
+              >
+                {deleting ? 'Deleting...' : (
+                  <>
+                    <FiTrash2 /> Delete
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showEditModal && (
         <div className="modal-overlay active">
           <div className="modal-container form-animate">
             <div className="modal-header">
               <h3 className="modal-title">Edit Product</h3>
               <button
-                className="modal-close"
+                className="products-modal-close"
                 onClick={() => {
                   setShowEditModal(false);
                   setEditProduct({
@@ -1288,7 +1582,7 @@ const ProductsPage = () => {
               <div className="modal-footer">
                 <button
                   type="button"
-                  className="btn btn-secondary"
+                  className="products-btn products-btn-secondary"
                   onClick={() => {
                     setShowEditModal(false);
                     setEditProduct({
@@ -1312,7 +1606,7 @@ const ProductsPage = () => {
                 </button>
                 <button
                   type="submit"
-                  className="btn btn-primary"
+                  className="products-btn products-btn-primary"
                   disabled={!editProduct.name || !editProduct.sku || updating}
                 >
                   {updating ? (

@@ -1,0 +1,91 @@
+/* DataTable Styles */
+
+/* Table Common Styles */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th, td {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--theme-border-color);
+}
+
+th {
+  background-color: var(--theme-bg);
+  font-weight: 600;
+  color: var(--theme-text-color);
+  white-space: nowrap;
+}
+
+tbody tr {
+  transition: background-color 0.2s ease;
+}
+
+tbody tr:hover {
+  background-color: var(--row-hover);
+}
+
+/* Table Container */
+.data-table-container {
+  overflow-x: auto;
+  background-color: var(--theme-card-bg);
+  border-radius: 8px;
+  box-shadow: var(--theme-shadow);
+}
+
+/* Responsive Table */
+.table-responsive {
+  overflow-x: auto;
+}
+
+/* Table Actions Column */
+.table-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Table Status */
+.table-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.table-status.active {
+  color: var(--success-color);
+}
+
+.table-status.inactive {
+  color: var(--danger-color);
+}
+
+/* Table Loading State */
+.table-loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Table Empty State */
+.table-empty {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--theme-text-secondary);
+}
+
+.table-empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.table-empty-text {
+  font-size: 16px;
+  margin-bottom: 16px;
+}
+
+.table-empty-action {
+  margin-top: 16px;
+}

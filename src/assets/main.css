@@ -1,5 +1,8 @@
 @import './base.css';
 @import './componentsStyles/topbar.css';
 @import './componentsStyles/sidebar.css';
+@import './componentsStyles/buttons.css';
+@import './componentsStyles/datatable.css';
 @import './pagesStyles/stock-levels.css';
 @import './pagesStyles/users.css';
+@import './pagesStyles/products.css';

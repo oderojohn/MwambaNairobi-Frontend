@@ -1,0 +1,337 @@
+/* Products Page Styles */
+
+/* Page Container */
+.page-container {
+  padding: 24px;
+  background-color: var(--theme-bg);
+  min-height: calc(100vh - var(--topbar-height));
+}
+
+.page-header {
+  margin-bottom: 24px;
+}
+
+.breadcrumbs {
+  font-size: 14px;
+  color: var(--theme-text-secondary);
+}
+
+.breadcrumbs a {
+  color: var(--primary-color);
+  text-decoration: none;
+}
+
+.breadcrumbs a:hover {
+  text-decoration: underline;
+}
+
+/* Loading Spinner */
+.loading-spinner {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  font-size: 16px;
+  color: var(--theme-text-secondary);
+}
+
+/* Error Message */
+.error-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  color: var(--danger-color);
+  font-size: 16px;
+}
+
+/* Data Table Container */
+.data-table-container {
+  overflow-x: auto;
+  background-color: var(--theme-card-bg);
+  border-radius: 8px;
+  box-shadow: var(--theme-shadow);
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.data-table th,
+.data-table td {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--theme-border-color);
+}
+
+.data-table th {
+  background-color: var(--theme-bg);
+  font-weight: 600;
+  color: var(--theme-text-color);
+  white-space: nowrap;
+}
+
+.data-table tbody tr:hover {
+  background-color: var(--row-hover);
+}
+
+.data-table td {
+  color: var(--theme-text-color);
+}
+
+/* Status Badge */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 20px;
+}
+
+.status-badge.in-stock {
+  background-color: rgba(var(--success-color-rgb), 0.1);
+  color: var(--success-color);
+}
+
+.status-badge.low-stock {
+  background-color: rgba(var(--danger-color-rgb), 0.1);
+  color: var(--danger-color);
+}
+
+/* Pagination Container */
+.pagination-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background-color: var(--theme-card-bg);
+  border-radius: 8px;
+  box-shadow: var(--theme-shadow);
+  margin-top: 16px;
+}
+
+.pagination-info {
+  font-size: 14px;
+  color: var(--theme-text-secondary);
+}
+
+.pagination-controls {
+  display: flex;
+  gap: 8px;
+}
+
+/* Product Form Container */
+.product-form-container {
+  background-color: var(--theme-card-bg);
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: var(--theme-shadow);
+  margin-bottom: 24px;
+}
+
+.form-toggle-buttons {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 20px;
+}
+
+.form-grid.expanded {
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+
+.form-grid.two-column {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--theme-text-color);
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  padding: 10px 12px;
+  font-size: 14px;
+  border: 1px solid var(--theme-border-color);
+  border-radius: 6px;
+  background-color: var(--theme-bg);
+  color: var(--theme-text-color);
+  transition: all 0.3s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.1);
+}
+
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+  color: var(--theme-text-secondary);
+}
+
+/* Preview Table */
+.preview-table-container {
+  overflow-x: auto;
+  margin-top: 16px;
+}
+
+.preview-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.preview-table th,
+.preview-table td {
+  padding: 8px;
+  border: 1px solid var(--theme-border-color);
+  text-align: left;
+}
+
+.preview-table th {
+  background-color: var(--theme-bg);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.preview-table input,
+.preview-table select {
+  width: 100%;
+  padding: 8px;
+  font-size: 13px;
+  border: 1px solid var(--theme-border-color);
+  border-radius: 4px;
+  background-color: var(--theme-bg);
+  color: var(--theme-text-color);
+}
+
+.preview-table input:focus,
+.preview-table select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+}
+
+.modal-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.modal-container {
+  background-color: var(--theme-card-bg);
+  border-radius: 12px;
+  width: 90%;
+  max-width: 800px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--theme-shadow);
+}
+
+.modal-container.form-animate {
+  transform: translateY(-20px);
+  transition: transform 0.3s ease;
+}
+
+.modal-overlay.active .modal-container.form-animate {
+  transform: translateY(0);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--theme-border-color);
+}
+
+.modal-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--theme-text-color);
+}
+
+.modal-body {
+  padding: 24px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .page-container {
+    padding: 16px;
+  }
+
+  .page-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-filter {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .search-box {
+    width: 100%;
+  }
+
+  .search-box input {
+    width: 100%;
+  }
+
+  .action-buttons {
+    justify-content: stretch;
+  }
+
+  .action-buttons .btn {
+    flex: 1;
+  }
+
+  .form-grid.two-column {
+    grid-template-columns: 1fr;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+
+  .form-actions .btn {
+    width: 100%;
+  }
+}
