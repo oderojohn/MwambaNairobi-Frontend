@@ -162,6 +162,7 @@ const RecentActivityPanel = ({
   }, [currentShift?.id, currentShift?.has_active_shift]);
 
   // Event-driven: fetch when shift changes or when refreshKey changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     // Clear data when shift changes
     setRecentSales([]);

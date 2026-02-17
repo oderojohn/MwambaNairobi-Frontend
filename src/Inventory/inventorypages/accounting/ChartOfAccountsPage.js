@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { accountsAPI } from '../../../services/ApiService/apiAccounting';
 import { formatCurrency } from '../../../services/ApiService/api';
 
@@ -17,11 +17,7 @@ const ChartOfAccountsPage = () => {
     is_active: true
   });
 
-  useEffect(() => {
-    loadAccounts();
-  }, [filterType]);
-
-  const loadAccounts = async () => {
+  const loadAccounts = useCallback(async () => {
     try {
       setLoading(true);
       const params = filterType !== 'all' ? { account_type: filterType } : {};
@@ -33,7 +29,11 @@ const ChartOfAccountsPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filterType]);
+
+  useEffect(() => {
+    loadAccounts();
+  }, [loadAccounts]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

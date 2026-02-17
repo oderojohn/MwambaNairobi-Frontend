@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { reportsAPI } from '../../../services/ApiService/apiAccounting';
 import { formatCurrency } from '../../../services/ApiService/api';
 
@@ -11,11 +11,7 @@ const BalanceSheetPage = () => {
     end_date: new Date().toISOString().split('T')[0]
   });
 
-  useEffect(() => {
-    loadReport();
-  }, [dateRange]);
-
-  const loadReport = async () => {
+  const loadReport = useCallback(async () => {
     try {
       setLoading(true);
       const data = await reportsAPI.getBalanceSheet(dateRange);
@@ -26,7 +22,11 @@ const BalanceSheetPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [dateRange]);
+
+  useEffect(() => {
+    loadReport();
+  }, [loadReport]);
 
   return (
     <div className="page-container">

@@ -23,6 +23,7 @@ const JournalEntriesPage = () => {
   useEffect(() => {
     loadEntries();
     loadAccounts();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, dateRange]);
 
   const loadEntries = async () => {
@@ -41,15 +42,6 @@ const JournalEntriesPage = () => {
   };
 
   const loadAccounts = async () => {
-    try {
-      const data = await accountsAPI.getAccounts({ is_active: true });
-      setAccounts(data.results || data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       // Validate debits = credits

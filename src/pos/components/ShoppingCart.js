@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { toNumber, formatCurrency } from '../../services/ApiService/api';
 import '../data/ShoppingCart.css';
 
