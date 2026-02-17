@@ -1,0 +1,39 @@
+{
+  "name": "mwamba-pos",
+  "version": "1.0.0",
+  "description": "Mwamba POS Desktop Application",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win portable",
+    "build:dir": "electron-builder --win --dir"
+  },
+  "author": "Mwamba POS",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "dependencies": {
+    "electron-log": "^5.0.0"
+  },
+  "build": {
+    "appId": "com.mwambapos.app",
+    "productName": "MwambaPOS",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "build/**/*"
+    ],
+    "win": {
+      "target": "portable",
+      "icon": "public/logo192.png"
+    },
+    "portable": {
+      "artifactName": "MwambaPOS.exe"
+    }
+  }
+}

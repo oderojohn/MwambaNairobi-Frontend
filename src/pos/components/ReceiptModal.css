@@ -322,6 +322,38 @@
   margin: 20px 0;
 }
 
+/* Return Code Section */
+.receipt-return-code-section {
+  margin: 15px 0;
+  padding: 0 15px;
+}
+
+.receipt-return-code-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #059669;
+  font-weight: 700;
+  margin-bottom: 10px;
+  font-size: 18px;
+}
+
+.receipt-return-code-info i {
+  font-size: 20px;
+}
+
+.receipt-return-code-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-weight: 600;
+  font-size: 18px;
+}
+
+.receipt-return-code-row .credit {
+  color: #dc2626;
+}
+
 .text-center {
   text-align: center;
   font-weight: 600;

@@ -1,7 +1,19 @@
-import React from 'react';
-import { toNumber, formatCurrency } from '../../services/ApiService/api';
+import React, { useState, useEffect } from 'react';
+import { toNumber, formatCurrency, chitsAPI } from '../../services/ApiService/api';
 
-const ChitModal = ({ isOpen, onClose, chits, onLoadChit }) => {
+const ChitModal = ({ isOpen, onClose, onLoadChit }) => {
+  const [chits, setChits] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setLoading(true);
+      chitsAPI.getChits()
+        .then(data => setChits(data || []))
+        .catch(() => setChits([]))
+        .finally(() => setLoading(false));
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

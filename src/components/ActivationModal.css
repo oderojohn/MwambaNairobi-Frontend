@@ -1,0 +1,254 @@
+.activation-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 20px;
+}
+
+.activation-modal {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  max-width: 500px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.activation-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 24px 0 24px;
+  border-bottom: 1px solid #e1e5e9;
+  margin-bottom: 24px;
+}
+
+.activation-modal-header h2 {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.activation-modal-close {
+  background: none;
+  border: none;
+  font-size: 28px;
+  color: #6c757d;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.activation-modal-close:hover {
+  background: #f8f9fa;
+  color: #495057;
+}
+
+.activation-modal-body {
+  padding: 0 24px 24px 24px;
+}
+
+.activation-info {
+  background: #e7f3ff;
+  border: 1px solid #b8daff;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.activation-info p {
+  margin: 0 0 8px 0;
+  color: #004085;
+  font-size: 14px;
+}
+
+.activation-info p:last-child {
+  margin-bottom: 0;
+}
+
+.activation-form {
+  margin-bottom: 24px;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #495057;
+}
+
+.activation-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e1e5e9;
+  border-radius: 8px;
+  font-size: 16px;
+  font-family: monospace;
+  letter-spacing: 1px;
+  transition: border-color 0.2s;
+}
+
+.activation-input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.activation-input:disabled {
+  background: #f8f9fa;
+  cursor: not-allowed;
+}
+
+.activation-error {
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  color: #721c24;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.activation-validation {
+  background: #d4edda;
+  border: 1px solid #c3e6cb;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.activation-validation h3 {
+  margin: 0 0 12px 0;
+  color: #155724;
+  font-size: 16px;
+}
+
+.validation-details p {
+  margin: 4px 0;
+  font-size: 14px;
+  color: #155724;
+}
+
+.status-valid {
+  color: #28a745;
+  font-weight: 600;
+}
+
+.status-invalid {
+  color: #dc3545;
+  font-weight: 600;
+}
+
+.validation-message {
+  font-style: italic;
+  margin-top: 8px !important;
+}
+
+.activation-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.activation-actions button {
+  flex: 1;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-secondary {
+  background: #6c757d;
+  color: white;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #5a6268;
+}
+
+.btn-primary {
+  background: #007bff;
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #0056b3;
+}
+
+.activation-actions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.activation-help {
+  background: #f8f9fa;
+  border: 1px solid #e1e5e9;
+  border-radius: 8px;
+  padding: 16px;
+  text-align: center;
+}
+
+.activation-help p {
+  margin: 0 0 4px 0;
+  font-size: 14px;
+  color: #495057;
+}
+
+.activation-help p:first-child {
+  font-weight: 600;
+  color: #212529;
+}
+
+/* Responsive design */
+@media (max-width: 576px) {
+  .activation-modal-overlay {
+    padding: 10px;
+  }
+
+  .activation-modal {
+    max-width: none;
+  }
+
+  .activation-modal-header {
+    padding: 16px 16px 0 16px;
+  }
+
+  .activation-modal-header h2 {
+    font-size: 20px;
+  }
+
+  .activation-modal-body {
+    padding: 0 16px 16px 16px;
+  }
+
+  .activation-actions {
+    flex-direction: column;
+  }
+
+  .activation-actions button {
+    width: 100%;
+  }
+}

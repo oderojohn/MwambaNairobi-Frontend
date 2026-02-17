@@ -3,7 +3,9 @@ import React from 'react';
 import logo from '../../logo.png';
 import './Header.css';
 
-const Header = ({ onOpenHeldOrders, onShiftManagement, onPrint, onLogout, onOpenSalesSummary, onOpenOrderPreparation, currentShift, mode, onModeChange, onCustomerLookup, onCustomerClear, selectedCustomer }) => {
+const Header = ({ onOpenHeldOrders, onShiftManagement, onPrint, onLogout, onOpenSalesSummary, onOpenOrderPreparation, currentShift, mode, onModeChange, onCustomerLookup, onCustomerClear, selectedCustomer, onEndShift }) => {
+
+  const hasActiveShift = currentShift && currentShift.has_active_shift;
 
   return (
     <header className="pos-header">
@@ -17,9 +19,6 @@ const Header = ({ onOpenHeldOrders, onShiftManagement, onPrint, onLogout, onOpen
           {mode === 'wholesale' ? '🏪 WHOLESALE' : '🛒 RETAIL'}
         </span>
       </div>
-
-      {/* Shift Status */}
-      {/* {getShiftStatusDisplay()} */}
 
       {/* Header Controls */}
       <div className="pos-header__controls">
@@ -62,16 +61,31 @@ const Header = ({ onOpenHeldOrders, onShiftManagement, onPrint, onLogout, onOpen
           </button>
 
           <button className="pos-header__action-btn pos-header__action-btn--info" onClick={() => {
-            // Navigate to sales summary page
-            window.location.href = '/#/sales-summary';
+            // Navigate to sales summary page with current shift ID
+            const shiftId = currentShift?.id;
+            if (shiftId) {
+              window.location.href = `/#/sales-summary?shift_id=${shiftId}`;
+            } else {
+              window.location.href = '/#/sales-summary';
+            }
           }}>
             <i className="fas fa-chart-line pos-header__action-icon"></i>
             <span className="pos-header__action-text">Sales Summary</span>
           </button>
 
-          <button className="pos-header__action-btn pos-header__action-btn--warning" onClick={onShiftManagement}>
-            <i className="fas fa-user-clock pos-header__action-icon"></i>
-            <span className="pos-header__action-text">Shift</span>
+          <button 
+            className={`pos-header__action-btn ${hasActiveShift ? 'pos-header__action-btn--danger' : 'pos-header__action-btn--warning'}`}
+            onClick={() => {
+              console.log('Shift button clicked:', { hasActiveShift, currentShift: currentShift ? { id: currentShift.id, has_active_shift: currentShift.has_active_shift, status: currentShift.status } : null });
+              if (hasActiveShift) {
+                onEndShift();
+              } else {
+                onShiftManagement();
+              }
+            }}
+          >
+            <i className={`fas ${hasActiveShift ? 'fa-stop-circle' : 'fa-user-clock'} pos-header__action-icon`}></i>
+            <span className="pos-header__action-text">{hasActiveShift ? 'End Shift' : 'Shift'}</span>
           </button>
 
           <button className="pos-header__action-btn pos-header__action-btn--success" onClick={onOpenOrderPreparation}>

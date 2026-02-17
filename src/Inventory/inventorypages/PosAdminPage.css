@@ -1,137 +1,183 @@
-/* PosAdminPage.css - Modern Restyle */
+/* PosAdminPage.css - Excel-like Modern Restyle */
 .pos-admin-page {
-  padding: 24px;
-  max-width: 1400px;
-  margin: 0 auto;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  padding: 0;
+  max-width: 100%;
+  margin: 0;
+  background: #f5f5f5;
   min-height: 100vh;
 }
 
-.page-header {
+.pos-admin-page.excel-style {
+  background: white;
+}
+
+.pos-admin-page.excel-style .pos-admin-tab-content {
+  padding: 0;
+}
+
+/* Excel-style Section Header */
+.pos-admin-section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 32px;
-  padding: 24px;
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  border-left: 4px solid #007bff;
+  margin-bottom: 12px;
+  padding: 8px 16px;
+  border-bottom: 1px solid #e0e0e0;
+  background: #f9f9f9;
 }
 
-.back-btn {
-  background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
-  color: white;
+.pos-admin-section-header h3 {
+  margin: 0;
+  color: #333;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Excel-style Grid */
+.pos-admin-section-header .pos-admin-filters {
+  padding: 0;
+  background: transparent;
   border: none;
-  padding: 12px 20px;
-  border-radius: 10px;
-  cursor: pointer;
+}
+
+/* Excel-style Header - Single Top Bar */
+.excel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  background: #217346;
+  color: white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.excel-header-left {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(108, 117, 125, 0.3);
-}
-
-.back-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(108, 117, 125, 0.4);
-}
-
-.page-header-actions {
-  display: flex;
   gap: 12px;
 }
 
-.page-header h1 {
+.excel-header-left h1 {
   margin: 0;
-  color: #2c3e50;
+  color: white;
   display: flex;
   align-items: center;
-  gap: 16px;
-  font-size: 32px;
-  font-weight: 700;
-  background: linear-gradient(135deg, #007bff, #0056b3);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 600;
 }
 
-.pos-admin-logo {
-  height: 48px;
+.pos-admin-logo-mini {
+  height: 24px;
   width: auto;
-  filter: drop-shadow(0 2px 4px rgba(0, 123, 255, 0.3));
 }
 
-/* Enhanced Tabs */
-.pos-admin-tabs {
+.back-btn-mini {
+  background: rgba(255,255,255,0.2);
+  color: white;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.back-btn-mini:hover {
+  background: rgba(255,255,255,0.3);
+}
+
+.excel-header-right {
   display: flex;
-  margin-bottom: 32px;
-  background: white;
-  border-radius: 16px;
-  padding: 8px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  gap: 4px;
+  align-items: center;
+  gap: 12px;
 }
 
-.tab-button {
+.excel-tab-buttons {
+  display: flex;
+  gap: 2px;
+  background: rgba(0,0,0,0.1);
+  padding: 2px;
+  border-radius: 4px;
+}
+
+.excel-tab {
   background: transparent;
   border: none;
-  padding: 16px 24px;
+  padding: 6px 16px;
   cursor: pointer;
-  font-size: 15px;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.8);
+  border-radius: 3px;
+  transition: all 0.2s;
+}
+
+.excel-tab:hover {
+  background: rgba(255,255,255,0.15);
+  color: white;
+}
+
+.excel-tab.active {
+  background: white;
+  color: #217346;
   font-weight: 600;
-  color: #6c757d;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
 }
 
-.tab-button::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(0, 123, 255, 0.1), transparent);
-  transition: left 0.6s;
+.btn-refresh {
+  background: rgba(255,255,255,0.2);
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
 }
 
-.tab-button:hover::before {
-  left: 100%;
+.btn-refresh:hover {
+  background: rgba(255,255,255,0.3);
 }
 
-.tab-button:hover {
-  color: #007bff;
-  background: rgba(0, 123, 255, 0.05);
-  transform: translateY(-1px);
+.btn-refresh:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
-.tab-button.active {
-  color: #007bff;
-  background: linear-gradient(135deg, #007bff15, #007bff08);
-  box-shadow: 0 2px 12px rgba(0, 123, 255, 0.15);
-}
-
-.tab-button.active i {
-  color: #007bff;
-}
-
-/* Enhanced Tab Content */
+/* Excel-style Tab Content */
 .pos-admin-tab-content {
   background: white;
-  border-radius: 20px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  padding: 32px;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  margin: 0;
+  padding: 0;
+}
+
+/* Excel-style Filters */
+.pos-admin-filters {
+  display: flex;
+  gap: 12px;
+  padding: 12px 16px;
+  background: white;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.pos-admin-filters .filter-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pos-admin-filters .filter-group label {
+  font-weight: 500;
+  color: #333;
+  font-size: 12px;
+  text-transform: none;
+}
+
+.pos-admin-filters .filter-group input,
+.pos-admin-filters .filter-group select {
+  padding: 4px 8px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  font-size: 12px;
+  min-width: 120px;
 }
 
 .pos-admin-section-header {
@@ -202,165 +248,172 @@
   transform: translateY(-1px);
 }
 
-/* Enhanced Table Styles */
+/* Excel-style Compact Tables */
 .pos-admin-table-container {
   overflow-x: auto;
-  border-radius: 16px;
-  border: 1px solid #e9ecef;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+  border-radius: 0;
+  border: 1px solid #ccc;
   background: white;
 }
 
 .pos-admin-table {
   width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  font-size: 14px;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 .pos-admin-table thead th {
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-  padding: 18px 16px;
+  background: #f3f3f3;
+  padding: 6px 10px;
   text-align: left;
-  font-weight: 700;
-  color: #2c3e50;
-  border-bottom: 2px solid #007bff;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 2px solid #ccc;
   white-space: nowrap;
-  font-size: 13px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-size: 11px;
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 .pos-admin-table tbody td {
-  padding: 16px;
-  border-bottom: 1px solid #f8f9fa;
+  padding: 5px 10px;
+  border-bottom: 1px solid #e0e0e0;
   vertical-align: middle;
-  transition: all 0.3s ease;
 }
 
 .pos-admin-table tbody tr {
-  transition: all 0.3s ease;
+  transition: none;
 }
 
 .pos-admin-table tbody tr:hover {
-  background: linear-gradient(90deg, #f8f9fa 0%, #ffffff 100%);
-  transform: scale(1.01);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  background: #f5f5f5;
 }
 
 .pos-admin-table tbody tr:hover td {
-  border-color: #007bff;
-  color: #2c3e50;
+  border-color: #ccc;
 }
 
 .pos-admin-table tbody tr:last-child td {
   border-bottom: none;
 }
 
-/* Enhanced Status Badges */
-.status-badge {
-  padding: 8px 16px;
-  border-radius: 20px;
-  color: white;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+/* Excel-style Expanded Row Highlight */
+.pos-admin-table tbody tr.expanded {
+  background: #e3f2fd;
 }
 
-/* Enhanced Buttons */
-.btn {
-  padding: 12px 20px;
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
-  font-size: 14px;
+.pos-admin-table tbody tr.expanded:hover {
+  background: #bbdefb;
+}
+
+/* Excel-style Status Badges */
+.status-badge {
+  padding: 2px 8px;
+  border-radius: 3px;
+  color: white;
+  font-size: 10px;
   font-weight: 600;
+  text-transform: none;
+}
+
+/* Excel-style Action Buttons */
+.btn-icon {
+  padding: 4px 8px;
+  border: 1px solid #ccc;
+  background: white;
+  color: #333;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.btn-icon:hover {
+  background: #f5f5f5;
+  border-color: #217346;
+  color: #217346;
+}
+
+.btn-icon.expanded {
+  background: #217346;
+  color: white;
+  border-color: #217346;
+}
+
+.btn-icon.btn-outline-primary {
+  border-color: #217346;
+  color: #217346;
+}
+
+/* Excel-style Buttons */
+.btn {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
   text-decoration: none;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
-}
-
-.btn::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  transition: all 0.6s ease;
-  transform: translate(-50%, -50%);
-}
-
-.btn:hover::before {
-  width: 300px;
-  height: 300px;
+  gap: 4px;
 }
 
 .btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
-  transform: none !important;
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+  background: #217346;
   color: white;
-  box-shadow: 0 4px 16px rgba(0, 123, 255, 0.3);
 }
 
 .btn-primary:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 123, 255, 0.4);
+  background: #1e6b41;
 }
 
 .btn-danger {
-  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+  background: #d32f2f;
   color: white;
-  box-shadow: 0 4px 16px rgba(220, 53, 69, 0.3);
 }
 
 .btn-danger:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(220, 53, 69, 0.4);
+  background: #c62828;
 }
 
 .btn-warning {
-  background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
-  color: #212529;
-  box-shadow: 0 4px 16px rgba(255, 193, 7, 0.3);
-}
-
-.btn-warning:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(255, 193, 7, 0.4);
+  background: #f9a825;
+  color: #333;
 }
 
 .btn-sm {
-  padding: 10px 16px;
-  font-size: 13px;
-  border-radius: 10px;
+  padding: 3px 8px;
+  font-size: 11px;
 }
 
-/* Enhanced Loading and Empty States */
+/* Excel-style Status Badges */
+.status-badge {
+  padding: 2px 8px;
+  border-radius: 3px;
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: none;
+}
+
+/* Excel-style Loading and Empty States */
 .loading,
 .empty-state {
   text-align: center;
-  padding: 80px 20px;
-  color: #6c757d;
+  padding: 40px 20px;
+  color: #666;
 }
 
 .loading i,
 .empty-state i {
-  font-size: 64px;
-  margin-bottom: 24px;
+  font-size: 32px;
+  margin-bottom: 12px;
   display: block;
   opacity: 0.7;
 }
@@ -368,13 +421,13 @@
 .loading p,
 .empty-state h3,
 .empty-state p {
-  margin: 0 0 12px 0;
+  margin: 0 0 8px 0;
 }
 
 .empty-state h3 {
-  color: #495057;
-  margin-bottom: 12px;
-  font-size: 20px;
+  color: #333;
+  margin-bottom: 8px;
+  font-size: 14px;
   font-weight: 600;
 }
 
@@ -383,11 +436,11 @@
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 0.5; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.1); }
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
 }
 
-/* Enhanced Modal Styles */
+/* Excel-style Modal Styles */
 .modal {
   display: none;
   position: fixed;
@@ -396,93 +449,74 @@
   top: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(8px);
+  background: rgba(0, 0, 0, 0.5);
 }
 
 .modal.active {
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
 }
 
 .modal-content {
   background: white;
-  border-radius: 20px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   max-width: 90vw;
   max-height: 90vh;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-@keyframes slideUp {
-  from { transform: translateY(30px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
 }
 
 .modal-large {
-  width: 800px;
+  width: 600px;
 }
 
 .modal-header {
-  padding: 24px 32px;
-  border-bottom: 1px solid #f1f3f4;
+  padding: 10px 16px;
+  border-bottom: 1px solid #e0e0e0;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  background: #f5f5f5;
 }
 
 .modal-header h3 {
   margin: 0;
-  color: #2c3e50;
-  font-size: 22px;
-  font-weight: 700;
+  color: #333;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .close {
-  font-size: 28px;
+  font-size: 20px;
   font-weight: 300;
-  color: #6c757d;
+  color: #666;
   cursor: pointer;
   line-height: 1;
-  transition: all 0.3s ease;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
+  padding: 4px;
+  border-radius: 3px;
 }
 
 .close:hover {
-  color: #343a40;
-  background: rgba(108, 117, 125, 0.1);
-  transform: rotate(90deg);
+  background: #ddd;
+  color: #333;
 }
 
 .modal-body {
-  padding: 32px;
+  padding: 16px;
   overflow-y: auto;
   flex: 1;
 }
 
 .modal-footer {
-  padding: 24px 32px;
-  border-top: 1px solid #f1f3f4;
+  padding: 10px 16px;
+  border-top: 1px solid #e0e0e0;
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
-  background: #f8f9fa;
+  gap: 8px;
+  background: #f5f5f5;
 }
 
 /* Enhanced Grid and Cards */

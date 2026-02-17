@@ -12,6 +12,7 @@ import {
 } from 'react-icons/fi';
 import { Link } from 'react-router-dom';
 import { inventoryAPI } from '../../../services/ApiService/api';
+import '../../../assets/pagesStyles/categories.css';
 
 const CategoriesPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -161,16 +162,16 @@ const CategoriesPage = () => {
 
   if (loading) {
     return (
-      <div className="page-container">
-        <div className="loading-spinner">Loading categories...</div>
+      <div className="excel-page-container">
+        <div className="excel-loading-spinner">Loading categories...</div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="page-container">
-        <div className="error-message">
+      <div className="excel-page-container">
+        <div className="excel-error-message">
           <FiAlertTriangle size={24} />
           <span>{error}</span>
         </div>
@@ -179,15 +180,15 @@ const CategoriesPage = () => {
   }
 
   return (
-    <div className="page-container">
+    <div className="excel-page-container">
       {/* Add Category Modal */}
        {showAddModal && (
-              <div className="modal-overlay active">
-                <div className="modal-container form-animate">
-                  <div className="modal-header">
-                    <h3 className="modal-title">Add New Category</h3>
+              <div className="excel-modal-overlay excel-active">
+                <div className="excel-modal-container form-animate">
+                  <div className="excel-modal-header">
+                    <h3 className="excel-modal-title">Add New Category</h3>
                     <button 
-                      className="modal-close" 
+                      className="excel-modal-close" 
                       onClick={() => {
                         setShowAddModal(false);
                         setFormData({ name: '', description: '' });
@@ -196,9 +197,9 @@ const CategoriesPage = () => {
                       <FiX />
                     </button>
                   </div>
-                  <form onSubmit={handleAddCategory} className="category-form">
-                    <div className="modal-body">
-                      <div className="form-group">
+                  <form onSubmit={handleAddCategory} className="excel-category-form">
+                    <div className="excel-modal-body">
+                      <div className="excel-form-group">
                         <label htmlFor="name">Category Name</label>
                         <input
                           type="text"
@@ -211,7 +212,7 @@ const CategoriesPage = () => {
                         />
                       </div>
                       
-                      <div className="form-group">
+                      <div className="excel-form-group">
                         <label htmlFor="description">Description</label>
                         <textarea
                           id="description"
@@ -223,10 +224,10 @@ const CategoriesPage = () => {
                       </div>
                       
                     </div>
-                    <div className="modal-footer">
+                    <div className="excel-modal-footer">
                       <button 
                         type="button" 
-                        className="btn btn-secondary"
+                        className="excel-btn excel-btn-secondary"
                         onClick={() => {
                           setShowAddModal(false);
                           setFormData({ name: '', description: '' });
@@ -234,7 +235,7 @@ const CategoriesPage = () => {
                       >
                         Cancel
                       </button>
-                      <button type="submit" className="btn btn-primary">
+                      <button type="submit" className="excel-btn excel-btn-primary">
                         <FiCheck /> Add Category
                       </button>
                     </div>
@@ -306,39 +307,39 @@ const CategoriesPage = () => {
            )}
       {/* Delete Confirmation Modal */}
       {showDeleteModal && currentCategory && (
-        <div className="modal-overlay active delete-modal">
-          <div className="modal-container form-animate">
-            <div className="modal-header">
-              <h3 className="modal-title">Delete Category</h3>
+        <div className="excel-modal-overlay excel-active excel-delete-modal">
+          <div className="excel-modal-container form-animate">
+            <div className="excel-modal-header">
+              <h3 className="excel-modal-title">Delete Category</h3>
               <button 
-                className="modal-close" 
+                className="excel-modal-close" 
                 onClick={() => setShowDeleteModal(false)}
               >
                 <FiX />
               </button>
             </div>
-            <div className="delete-modal-content">
-              <div className="delete-icon">
+            <div className="excel-delete-modal-content">
+              <div className="excel-delete-icon">
                 <FiAlertTriangle />
               </div>
-              <div className="delete-text">
+              <div className="excel-delete-text">
                 <h4>Are you sure you want to delete this category?</h4>
                 <p>
                   This will permanently delete "{currentCategory.name}" and cannot be undone. 
                   Any products associated with this category will need to be reassigned.
                 </p>
               </div>
-              <div className="delete-actions">
+              <div className="excel-delete-actions">
                 <button 
-                  className="btn btn-secondary"
+                  className="excel-btn excel-btn-secondary"
                   onClick={() => setShowDeleteModal(false)}
                 >
                   Cancel
                 </button>
                 <button 
-                  className="btn btn-primary"
+                  className="excel-btn excel-btn-primary"
                   onClick={handleDeleteCategory}
-                  style={{ backgroundColor: 'var(--danger-color)', borderColor: 'var(--danger-color)' }}
+                  style={{ backgroundColor: '#d32f2f', borderColor: '#d32f2f' }}
                 >
                   <FiTrash2 /> Delete Permanently
                 </button>
@@ -350,37 +351,37 @@ const CategoriesPage = () => {
 
       {/* Export Options Modal */}
       {showExportModal && (
-        <div className="modal-overlay active options-modal">
-          <div className="modal-container form-animate">
-            <div className="modal-header">
-              <h3 className="modal-title">Export Options</h3>
+        <div className="excel-modal-overlay excel-active excel-options-modal">
+          <div className="excel-modal-container form-animate">
+            <div className="excel-modal-header">
+              <h3 className="excel-modal-title">Export Options</h3>
               <button 
-                className="modal-close" 
+                className="excel-modal-close" 
                 onClick={() => setShowExportModal(false)}
               >
                 <FiX />
               </button>
             </div>
-            <div className="options-tabs">
+            <div className="excel-options-tabs">
               <button 
-                className={`options-tab ${activeTab === 'export' ? 'active' : ''}`}
+                className={`excel-options-tab ${activeTab === 'export' ? 'excel-active' : ''}`}
                 onClick={() => setActiveTab('export')}
               >
                 <FiDownload /> Export
               </button>
               <button 
-                className={`options-tab ${activeTab === 'print' ? 'active' : ''}`}
+                className={`excel-options-tab ${activeTab === 'print' ? 'excel-active' : ''}`}
                 onClick={() => setActiveTab('print')}
               >
                 <FiPrinter /> Print
               </button>
             </div>
             
-            <div className={`options-tab-content ${activeTab === 'export' ? 'active' : ''}`}>
-              <div className="option-group">
+            <div className={`excel-options-tab-content ${activeTab === 'export' ? 'excel-active' : ''}`}>
+              <div className="excel-option-group">
                 <h5>Export Format</h5>
-                <div className="format-options">
-                  <label className="format-option">
+                <div className="excel-format-options">
+                  <label className="excel-format-option">
                     <input 
                       type="radio" 
                       name="exportFormat" 
@@ -389,7 +390,7 @@ const CategoriesPage = () => {
                     />
                     CSV
                   </label>
-                  <label className="format-option">
+                  <label className="excel-format-option">
                     <input 
                       type="radio" 
                       name="exportFormat" 
@@ -398,7 +399,7 @@ const CategoriesPage = () => {
                     />
                     Excel
                   </label>
-                  <label className="format-option">
+                  <label className="excel-format-option">
                     <input 
                       type="radio" 
                       name="exportFormat" 
@@ -410,7 +411,7 @@ const CategoriesPage = () => {
                 </div>
               </div>
               
-              <div className="option-group">
+              <div className="excel-option-group">
                 <h5>File Name</h5>
                 <input
                   type="text"
@@ -420,7 +421,7 @@ const CategoriesPage = () => {
                 />
               </div>
               
-              <div className="option-group">
+              <div className="excel-option-group">
                 <h5>Data Selection</h5>
                 <div className="option-row">
                   <label className="option-label">Include all categories</label>
@@ -435,7 +436,7 @@ const CategoriesPage = () => {
                 </div>
               </div>
               
-              <div className="option-group">
+              <div className="excel-option-group">
                 <h5>Columns to Export</h5>
                 {['id', 'name', 'description'].map(column => (
                   <div className="option-row" key={column}>
@@ -462,7 +463,7 @@ const CategoriesPage = () => {
                   Cancel
                 </button>
                 <button 
-                  className="btn btn-primary"
+                  className="excel-btn excel-btn-primary"
                   onClick={handleExport}
                 >
                   <FiDownload /> Export Data
@@ -470,11 +471,11 @@ const CategoriesPage = () => {
               </div>
             </div>
             
-            <div className={`options-tab-content ${activeTab === 'print' ? 'active' : ''}`}>
+            <div className={`excel-options-tab-content ${activeTab === 'print' ? 'active' : ''}`}>
               <div className="option-group">
                 <h5>Print Options</h5>
-                <div className="option-row">
-                  <label className="option-label">Orientation</label>
+                <div className="excel-option-row">
+                  <label className="excel-option-label">Orientation</label>
                   <div className="option-control">
                     <select
                       className="option-select"
@@ -487,7 +488,7 @@ const CategoriesPage = () => {
                   </div>
                 </div>
                 <div className="option-row">
-                  <label className="option-label">Include Headers</label>
+                  <label className="excel-option-label">Include Headers</label>
                   <div className="option-control">
                     <input 
                       type="checkbox" 
@@ -498,7 +499,7 @@ const CategoriesPage = () => {
                   </div>
                 </div>
                 <div className="option-row">
-                  <label className="option-label">Include Images</label>
+                  <label className="excel-option-label">Include Images</label>
                   <div className="option-control">
                     <input 
                       type="checkbox" 
@@ -510,7 +511,7 @@ const CategoriesPage = () => {
                 </div>
               </div>
               
-              <div className="danger-zone">
+              <div className="excel-excel-danger-zone">
                 <h5><FiAlertTriangle /> Warning</h5>
                 <p style={{ fontSize: '13px', color: 'var(--danger-color)' }}>
                   Printing large datasets may affect performance. Consider exporting instead for better results.
@@ -525,7 +526,7 @@ const CategoriesPage = () => {
                   Cancel
                 </button>
                 <button 
-                  className="btn btn-primary"
+                  className="excel-btn excel-btn-primary"
                   onClick={handlePrint}
                 >
                   <FiPrinter /> Print Now
@@ -537,34 +538,34 @@ const CategoriesPage = () => {
       )}
 
       {/* Page Content */}
-      <div className="page-header">
+      <div className="excel-page-header">
         {/* <h1>Categories</h1> */}
-        <div className="breadcrumbs">
+        <div className="excel-breadcrumbs">
           <Link to="/">Home</Link> / <span>Inventory</span> / <span>Categories</span>
         </div>
       </div>
 
-      <div className="page-actions">
-        <div className="search-filter">
-          <div className="search-box">
+      <div className="excel-page-actions">
+        <div className="excel-search-filter">
+          <div className="excel-search-box">
             <input
               type="text"
               placeholder="Search categories..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <FiSearch className="search-icon" />
+            <FiSearch className="excel-search-icon" />
           </div>
         </div>
         <div className="">
           <button 
-            className="btn btn-primary"
+            className="excel-btn excel-btn-primary"
             onClick={() => setShowAddModal(true)}
           >
             <FiPlus /> Add Category
           </button>
           <button 
-            className="btn btn-secondary"
+            className="excel-btn excel-btn-secondary"
             onClick={() => {
               setShowExportModal(true);
               setActiveTab('export');
@@ -573,7 +574,7 @@ const CategoriesPage = () => {
             <FiDownload /> Export
           </button>
           <button 
-            className="btn btn-secondary"
+            className="excel-btn excel-btn-secondary"
             onClick={() => {
               setShowExportModal(true);
               setActiveTab('print');
@@ -584,8 +585,8 @@ const CategoriesPage = () => {
         </div>
       </div>
 
-      <div className="data-table-container">
-        <table className="data-table">
+      <div className="excel-data-table-container">
+        <table className="excel-data-table">
           <thead>
             <tr>
               <th>ID</th>
@@ -599,22 +600,22 @@ const CategoriesPage = () => {
               <tr key={category.id}>
                 <td>{category.id}</td>
                 <td>
-                  <Link to={`/categories/${category.id}`} className="category-link">
+                  <Link to={`/categories/${category.id}`} className="excel-category-link">
                     {category.name}
                   </Link>
                 </td>
                 <td>{category.description}</td>
                 <td>
-                  <div className="action-buttons">
+                  <div className="excel-action-buttons">
                     <button
-                      className="btn-icon"
+                      className="excel-btn-icon"
                       title="Edit"
                       onClick={() => openEditModal(category)}
                     >
                       <FiEdit />
                     </button>
                     <button
-                      className="btn-icon"
+                      className="excel-btn-icon"
                       title="Delete"
                       onClick={() => openDeleteModal(category)}
                     >
@@ -628,14 +629,14 @@ const CategoriesPage = () => {
         </table>
       </div>
 
-      <div className="pagination-container">
-        <div className="pagination-info">
+      <div className="excel-pagination-container">
+        <div className="excel-pagination-info">
           Showing 1 to {filteredCategories.length} of {categories.length} entries
         </div>
-        <div className="pagination-controls">
-          <button className="btn-pagination" disabled>Previous</button>
-          <button className="btn-pagination active">1</button>
-          <button className="btn-pagination">Next</button>
+        <div className="excel-pagination-controls">
+          <button className="excel-btn-pagination" disabled>Previous</button>
+          <button className="excel-btn-pagination excel-active">1</button>
+          <button className="excel-btn-pagination">Next</button>
         </div>
       </div>
     </div>

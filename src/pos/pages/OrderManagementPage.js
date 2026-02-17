@@ -32,7 +32,8 @@ const OrderManagementPage = ({ suppliers }) => {
     try {
       setIsLoading(true);
       const ordersData = await purchaseOrdersAPI.getPurchaseOrders();
-      setOrders(ordersData || []);
+      // Limit to 20 most recent orders
+      setOrders((ordersData || []).slice(0, 20));
     } catch (error) {
       console.error('Error loading orders:', error);
       setOrders([]);
@@ -294,45 +295,42 @@ ${order.notes ? `Notes: ${order.notes}` : ''}
         <button className="back-btn" onClick={() => navigate('/')}>
           <i className="fas fa-arrow-left"></i> Back to POS
         </button>
+        
+        {/* Filters in header */}
+        <div className="header-filters">
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="header-filter-select"
+          >
+            <option value="all">All Status</option>
+            <option value="pending">Pending</option>
+            <option value="ordered">Ordered</option>
+            <option value="partially_received">Partial</option>
+            <option value="received">Received</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+          <input
+            type="text"
+            placeholder="Search..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="header-filter-input"
+          />
+        </div>
+
         <div className="page-header-actions">
           <button
             className="btn btn-primary"
             onClick={() => navigate('/order-preparation')}
           >
-            <i className="fas fa-plus"></i> Create New Order
+            <i className="fas fa-plus"></i> New Order
           </button>
         </div>
         <h1>
           <img src={logo} alt="Logo" className="order-management-logo-png" />
-          Purchase Order Management
+          Purchase Orders
         </h1>
-      </div>
-
-      {/* Filters */}
-      <div className="order-filters">
-        <div className="filter-group">
-          <label>Status:</label>
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-          >
-            <option value="all">All Statuses</option>
-            <option value="pending">Pending</option>
-            <option value="ordered">Ordered</option>
-            <option value="partially_received">Partially Received</option>
-            <option value="received">Received</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
-        </div>
-        <div className="filter-group">
-          <label>Search:</label>
-          <input
-            type="text"
-            placeholder="Search by order # or supplier..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
       </div>
 
       {/* Orders List */}

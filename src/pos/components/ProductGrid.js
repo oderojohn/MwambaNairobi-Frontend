@@ -3,10 +3,11 @@ import React, { useState, useRef, useEffect } from 'react';
 import "../data/ProductGrid.css";
 
 const ProductGrid = ({ products = [], categories = [], onAddToCart, loading = false, disabled = false }) => {
-  const [selectedCategory, setSelectedCategory] = useState(null); // null = All Products
+  const [selectedCategory, setSelectedCategory] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [displayMode, setDisplayMode] = useState('cards');
   const searchInputRef = useRef(null);
 
   // Predefined color palette for automatic assignment
@@ -28,13 +29,6 @@ const ProductGrid = ({ products = [], categories = [], onAddToCart, loading = fa
     { primary: '#7f8c8d', background: '#f8f9f9', hover: '#707b7c' }, // Gray
   ];
 
-  // Focus search input when it becomes visible
-  useEffect(() => {
-    if (isSearchVisible && searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
-  }, [isSearchVisible]);
-
   // Handle loading state changes
   useEffect(() => {
     if (loading) {
@@ -48,22 +42,6 @@ const ProductGrid = ({ products = [], categories = [], onAddToCart, loading = fa
       setIsLoadingProducts(false);
     }
   }, [loading]);
-
-  // Close search when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (isSearchVisible && searchInputRef.current && !searchInputRef.current.contains(event.target)) {
-        if (searchTerm === '') {
-          setIsSearchVisible(false);
-        }
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isSearchVisible, searchTerm]);
 
   // Function to get color for category ID
   const getCategoryColor = (categoryId) => {
@@ -99,43 +77,23 @@ const ProductGrid = ({ products = [], categories = [], onAddToCart, loading = fa
     }
   };
 
-
-  const handleSearchToggle = () => {
-    setIsSearchVisible(!isSearchVisible);
-    if (!isSearchVisible) {
-      setTimeout(() => {
-        if (searchInputRef.current) {
-          searchInputRef.current.focus();
-        }
-      }, 100);
-    }
-  };
-
-  const handleSearchClose = () => {
-    setSearchTerm('');
-    setIsSearchVisible(false);
-  };
-
-  if (loading) {
-    return (
-      <section className="pos-products-grid">
-        <div className="pos-products-grid__loading">
-          <div className="pos-products-grid__loading-spinner"></div>
-          <div className="pos-products-grid__loading-text">Loading products...</div>
-        </div>
-      </section>
-    );
-  }
-
   return (
     <section className="pos-products-grid">
+      {/* Sidebar Toggle Button - Always Visible */}
+      <div className="pos-products-grid__sidebar-toggle-container">
+        <button 
+          className="pos-products-grid__sidebar-toggle-btn" 
+          onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+          title={isSidebarCollapsed ? 'Show categories' : 'Hide categories'}
+        >
+          <i className={`fas ${isSidebarCollapsed ? 'fa-chevron-right' : 'fa-chevron-left'}`}></i>
+        </button>
+      </div>
+
       {/* Categories Sidebar */}
-      <div className="pos-products-grid__sidebar">
+      <div className={`pos-products-grid__sidebar ${isSidebarCollapsed ? 'pos-products-grid__sidebar--collapsed' : ''}`}>
         <div className="pos-products-grid__sidebar-header">
-          <h3 className="pos-products-grid__sidebar-title">Categories</h3>
-          <div className="pos-products-grid__sidebar-count">
-            {filteredProducts.length} items
-          </div>
+          <h3 className="pos-products-grid__sidebar-title">Cats</h3>
         </div>
         
         <div className="pos-products-grid__categories">
@@ -144,10 +102,10 @@ const ProductGrid = ({ products = [], categories = [], onAddToCart, loading = fa
             className={`pos-products-grid__category-item ${selectedCategory === null ? 'pos-products-grid__category-item--active' : ''}`}
             onClick={() => setSelectedCategory(null)}
           >
-            <div className="pos-products-grid__category-icon">
+            <div className="pos-products-grid__category-icon" style={{ background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)' }}>
               <i className="fas fa-th-large"></i>
             </div>
-            <span className="pos-products-grid__category-name">All</span>
+            <span className="pos-products-grid__category-name">All Products</span>
             <div className="pos-products-grid__category-badge">
               {products.length}
             </div>
@@ -190,63 +148,65 @@ const ProductGrid = ({ products = [], categories = [], onAddToCart, loading = fa
         <div className="pos-products-grid__header">
           <h2 className="pos-products-grid__title">
             {selectedCategory === null
-              ? 'All Products'
+              ? 'All'
               : categories.find(c => c.id === selectedCategory)?.name || 'Products'
             }
           </h2>
           
-          {/* Search Container */}
-          <div className="pos-products-grid__search-container">
-            {/* Search Toggle Button - Always Visible */}
-            <button 
-              className="pos-products-grid__search-toggle"
-              onClick={handleSearchToggle}
-              title="Search products"
-            >
-              <i className="fas fa-search"></i>
-            </button>
-
-            {/* Search Input - Hidden by default */}
-            <div className={`pos-products-grid__search ${isSearchVisible ? 'pos-products-grid__search--visible' : ''}`}>
-              <input
-                ref={searchInputRef}
-                type="text"
-                placeholder="Search products..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pos-products-grid__search-input"
-              />
-              {searchTerm && (
-                <button 
-                  className="pos-products-grid__search-clear"
-                  onClick={() => setSearchTerm('')}
-                  title="Clear search"
-                >
-                  <i className="fas fa-times"></i>
-                </button>
-              )}
+          {/* Search - Always Visible */}
+          <div className="pos-products-grid__search">
+            <i className="fas fa-search pos-products-grid__search-icon"></i>
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder="Search products..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pos-products-grid__search-input"
+            />
+            {searchTerm && (
               <button 
-                className="pos-products-grid__search-close"
-                onClick={handleSearchClose}
-                title="Close search"
+                className="pos-products-grid__search-clear"
+                onClick={() => setSearchTerm('')}
+                title="Clear search"
               >
                 <i className="fas fa-times"></i>
               </button>
-            </div>
+            )}
+          </div>
+
+          {/* Display Mode Toggle */}
+          <div className="pos-products-grid__display-toggle">
+            <button 
+              className={`pos-products-grid__display-btn ${displayMode === 'cards' ? 'pos-products-grid__display-btn--active' : ''}`}
+              onClick={() => setDisplayMode('cards')}
+              title="Card view"
+            >
+              <i className="fas fa-th"></i>
+            </button>
+            <button 
+              className={`pos-products-grid__display-btn ${displayMode === 'list' ? 'pos-products-grid__display-btn--active' : ''}`}
+              onClick={() => setDisplayMode('list')}
+              title="List view"
+            >
+              <i className="fas fa-list"></i>
+            </button>
           </div>
 
           <div className="pos-products-grid__stats">
-            Showing {filteredProducts.length} of {products.length} products
-            {searchTerm && (
-              <span className="pos-products-grid__search-term">
-                for "{searchTerm}"
-              </span>
-            )}
+            {filteredProducts.length} of {products.length} products
           </div>
         </div>
 
         <div className="pos-products-grid__container">
-          {filteredProducts.length === 0 ? (
+          {/* Loading overlay - keeps grid visible */}
+          {loading && (
+            <div className="pos-products-grid__loading-overlay">
+              <div className="pos-products-grid__loading-spinner"></div>
+            </div>
+          )}
+          
+          {filteredProducts.length === 0 && !loading ? (
             <div className="pos-products-grid__empty">
               <i className="fas fa-box-open pos-products-grid__empty-icon"></i>
               <h3 className="pos-products-grid__empty-title">No Products Found</h3>
@@ -268,7 +228,14 @@ const ProductGrid = ({ products = [], categories = [], onAddToCart, loading = fa
               )}
             </div>
           ) : (
-            <div className="pos-products-grid__products">
+            <div className={`pos-products-grid__products ${displayMode === 'list' ? 'pos-products-grid__products--list' : ''}`}>
+              {/* Loading overlay - keeps grid visible */}
+              {loading && (
+                <div className="pos-products-grid__loading-overlay">
+                  <div className="pos-products-grid__loading-spinner"></div>
+                </div>
+              )}
+              
               {filteredProducts.map((product, index) => {
                 const colors = getCategoryColors(product);
 
@@ -300,9 +267,6 @@ const ProductGrid = ({ products = [], categories = [], onAddToCart, loading = fa
                       <h3 className="pos-products-grid__product-name" title={product.name}>
                         {product.name}
                       </h3>
-                      <div className="pos-products-grid__product-category">
-                        {product.category_name || 'Uncategorized'}
-                      </div>
                     </div>
 
                     <div className="pos-products-grid__product-footer">

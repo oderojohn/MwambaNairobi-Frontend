@@ -1,6 +1,6 @@
 // api.js
 const API_BASE_URL = 'https://pos-iota-five.vercel.app';
-// const API_BASE_URL = 'http://127.0.0.1:8005';
+// const API_BASE_URL = 'http://localhost:8000';
 
 
 // Utility function to safely convert values to numbers
@@ -35,7 +35,11 @@ const REFRESH_THRESHOLD = 1 * 60 * 1000;
 
 const apiRequest = async (endpoint, method = 'GET', body = null, headers = {}, isRetry = false, queryParams = {}) => {
    try {
-     if (tokenService.isAuthenticated() && !endpoint.startsWith('/api/auth/') && !isRetry) {
+     // Only exempt login and refresh endpoints from authentication
+     const authExemptEndpoints = ['/api/auth/login/', '/api/auth/refresh/'];
+     const isAuthExempt = authExemptEndpoints.some(exempt => endpoint.startsWith(exempt));
+     
+     if (tokenService.isAuthenticated() && !isAuthExempt && !isRetry) {
        try {
          await tokenService.ensureValidAccessToken();
          headers.Authorization = `Bearer ${tokenService.getAccessToken()}`;
@@ -120,7 +124,16 @@ export const authService = {
   login: async (username, password) => {
     const response = await apiRequest('/api/auth/login/', 'POST', { username, password });
     tokenService.setTokens(response.access, response.refresh);
-    userService.setUserData({ roles: response.roles });
+    userService.setUserData({ 
+      username: response.username,
+      name: response.name,
+      roles: response.roles,
+      user_id: response.user_id,
+      shift_status: response.shift_status,
+      current_shift: response.current_shift,
+      branch: response.branch,
+      branch_id: response.branch_id
+    });
     return response;
   },
 
@@ -203,7 +216,9 @@ export const userService = {
   },
   setUserData: (userData) => localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(userData)),
   clearUserData: () => localStorage.removeItem(STORAGE_KEYS.USER_DATA),
-  getUserRole: () => userService.getUserData()?.roles?.[0] || null
+  getUserRole: () => userService.getUserData()?.roles?.[0] || null,
+  getShiftStatus: () => userService.getUserData()?.shift_status || null,
+  getCurrentShift: () => userService.getUserData()?.current_shift || null
 };
 
 export const tokenService = {
@@ -311,6 +326,7 @@ export const salesAPI = {
     return apiRequest(url);
   },
   getSale: (id) => apiRequest(`/api/sales/${id}/`),
+  searchByReceipt: (receiptNumber) => apiRequest(`/api/sales/by_receipt/?receipt_number=${receiptNumber}`),
   createSale: async (sale) => {
     try {
       console.log('Creating sale with data:', sale);
@@ -324,7 +340,12 @@ export const salesAPI = {
   deleteSale: (id) => apiRequest(`/api/sales/${id}/`, 'DELETE'),
   voidSale: (id, data) => apiRequest(`/api/sales/${id}/void_sale/`, 'POST', data),
   adminVoidSale: (id, data) => apiRequest(`/api/sales/${id}/admin_void_sale/`, 'POST', data),
-  getHeldOrders: () => apiRequest('/api/sales/held_orders/'),
+  voidItems: (id, data) => apiRequest(`/api/sales/${id}/void_items/`, 'POST', data),
+  getHeldOrders: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    const url = queryString ? `/api/sales/held_orders/?${queryString}` : '/api/sales/held_orders/';
+    return apiRequest(url);
+  },
   completeHeldOrder: (id, data) => apiRequest(`/api/sales/${id}/complete_held_order/`, 'POST', data),
   voidHeldOrder: async (id, data) => {
     console.log('Calling voidHeldOrder API:', id, data);
@@ -404,8 +425,41 @@ export const cartsAPI = {
 };
 
 export const returnsAPI = {
-  getReturns: () => apiRequest('/api/returns/'),
+  getReturns: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    const url = queryString ? `/api/returns/?${queryString}` : '/api/returns/';
+    return apiRequest(url);
+  },
   createReturn: (returnData) => apiRequest('/api/returns/', 'POST', returnData),
+  getReturnsSummary: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    const url = queryString ? `/api/reports/returns-summary/?${queryString}` : '/api/reports/returns-summary/';
+    return apiRequest(url);
+  },
+  
+  // Return Codes API
+  generateReturnCode: (returnRecordId, refundAmount) => 
+    apiRequest('/api/returns/return-codes/generate/', 'POST', { 
+      return_record_id: returnRecordId, 
+      refund_amount: refundAmount 
+    }),
+  
+  validateReturnCode: (code, expectedAmount = null) => {
+    const body = { code };
+    if (expectedAmount !== null) {
+      body.expected_amount = expectedAmount;
+    }
+    return apiRequest('/api/returns/return-codes/validate/', 'POST', body);
+  },
+  
+  useReturnCode: (code, saleId) => 
+    apiRequest('/api/returns/return-codes/use/', 'POST', { 
+      code, 
+      sale_id: saleId 
+    }),
+  
+  getReturnCodesByReceipt: (receiptNumber) => 
+    apiRequest(`/api/returns/return-codes/by_receipt/?receipt_number=${receiptNumber}`),
 };
 
 export const invoicesAPI = {
@@ -482,14 +536,23 @@ export const chitsAPI = {
 };
 
 export const shiftsAPI = {
-  getShifts: () => apiRequest('/api/shifts/'),
-  getShift: (id) => apiRequest(`/api/shifts/${id}/`),
-  getCurrentShift: () => apiRequest('/api/shifts/current/'),
+  getShifts: (limit = null) => {
+    const params = limit ? { limit } : {};
+    return apiRequest('/api/shifts/', 'GET', null, {}, false, params);
+  },
+  getCurrentShift: (userId = null) => {
+    const queryParams = userId ? { user_id: userId } : {};
+    return apiRequest('/api/shifts/current/', 'GET', null, {}, false, queryParams);
+  },
   startShift: (data) => apiRequest('/api/shifts/start/', 'POST', data),
   endShift: (data) => apiRequest('/api/shifts/end/', 'POST', data),
   getAllShifts: (params = {}) => apiRequest('/api/shifts/all/', 'GET', null, {}, false, params),
+  getShift: (shiftId) => apiRequest(`/api/shifts/${shiftId}/`),
   getShiftsSummary: () => apiRequest('/api/shifts/summary/'),
   getShiftSummary: () => apiRequest('/api/reports/shift-summary/'),
+  // Admin shift management
+  reopenShift: (shiftId, data) => apiRequest(`/api/shifts/${shiftId}/reopen/`, 'POST', data),
+  forceCloseShift: (shiftId, data) => apiRequest(`/api/shifts/${shiftId}/force_close/`, 'POST', data),
 };
 
 export const reportsAPI = {
@@ -602,6 +665,8 @@ export const inventoryAPI = {
       const url = queryString ? `/api/inventory/products/pos_products/?${queryString}` : '/api/inventory/products/pos_products/';
       return apiRequest(url);
     },
+    recalculateStock: () => apiRequest('/api/inventory/products/recalculate_stock/', 'POST'),
+    syncStock: (productId) => apiRequest(`/api/inventory/products/${productId}/sync_stock/`, 'POST'),
     create: (product) => apiRequest('/api/inventory/products/', 'POST', product),
     update: (id, product) => apiRequest(`/api/inventory/products/${id}/`, 'PUT', product),
     delete: (id) => apiRequest(`/api/inventory/products/${id}/`, 'DELETE'),
@@ -681,6 +746,46 @@ export const inventoryAPI = {
   getStockMovements: () => apiRequest('/api/inventory/stock-movements/'),
   createStockMovement: (movement) => apiRequest('/api/inventory/stock-movements/', 'POST', movement),
   getInventorySummary: () => apiRequest('/api/reports/inventory-summary/'),
+};
+
+// KRA eTIMS Integration API
+export const etimsAPI = {
+  // Configuration
+  getConfigs: () => apiRequest('/api/etims/config/'),
+  getConfig: (id) => apiRequest(`/api/etims/config/${id}/`),
+  createConfig: (data) => apiRequest('/api/etims/config/', 'POST', data),
+  updateConfig: (id, data) => apiRequest(`/api/etims/config/${id}/`, 'PUT', data),
+  deleteConfig: (id) => apiRequest(`/api/etims/config/${id}/`, 'DELETE'),
+  getActiveConfig: () => apiRequest('/api/etims/config/active/'),
+  setActiveConfig: (id) => apiRequest('/api/etims/config/set_active/', 'POST', { id }),
+
+  // Fiscal Receipts
+  getReceipts: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    return apiRequest(`/api/etims/receipts/?${queryString}`);
+  },
+  getReceipt: (id) => apiRequest(`/api/etims/receipts/${id}/`),
+  registerReceipt: (id) => apiRequest(`/api/etims/receipts/${id}/register/`, 'POST'),
+  registerAllPending: () => apiRequest('/api/etims/receipts/register_all_pending/', 'POST'),
+  voidReceipt: (id, reason) => apiRequest(`/api/etims/receipts/${id}/void/`, 'POST', { reason }),
+
+  // Offline Queue
+  getOfflineQueue: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    return apiRequest(`/api/etims/offline/?${queryString}`);
+  },
+  syncOfflineTransactions: () => apiRequest('/api/etims/offline/sync/', 'POST'),
+
+  // API Logs
+  getApiLogs: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    return apiRequest(`/api/etims/logs/?${queryString}`);
+  },
+  getRecentLogs: (limit = 50) => apiRequest(`/api/etims/logs/recent/?limit=${limit}`),
+
+  // Status
+  checkConnection: () => apiRequest('/api/etims/status/check/'),
+  getSummary: () => apiRequest('/api/etims/status/summary/'),
 };
 
 

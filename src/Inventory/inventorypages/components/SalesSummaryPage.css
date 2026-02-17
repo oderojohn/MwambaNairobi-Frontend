@@ -1,54 +1,118 @@
-/* SalesSummaryPage.css - Enhanced Compact Redesign */
+/* SalesSummaryPage.css - Excel-like Compact Redesign */
 .sales-summary-page {
-  padding: 16px;
-  max-width: 1400px;
-  margin: 0 auto;
+  padding: 0;
+  max-width: 100%;
+  margin: 0;
+  background: white;
 }
 
 .page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #e0e0e0;
+  display: none;  /* Hide the old header - using Excel header instead */
 }
 
 .page-header-actions {
-  display: flex;
-  gap: 8px;
+  display: none;
 }
 
 .date-filter {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   align-items: center;
-  margin-bottom: 16px;
-  padding: 12px;
-  background: #f8f9fa;
-  border-radius: 6px;
-  border: 1px solid #e0e0e0;
+  padding: 8px 16px;
+  background: #f5f5f5;
+  border-bottom: 1px solid #e0e0e0;
 }
 
 .date-filter label {
   font-weight: 500;
   color: #333;
-  margin-right: 8px;
+  margin-right: 4px;
+  font-size: 12px;
 }
 
 .date-filter input[type="date"] {
-  padding: 6px 12px;
+  padding: 4px 8px;
   border: 1px solid #ccc;
-  border-radius: 4px;
-  font-size: 14px;
+  border-radius: 3px;
+  font-size: 12px;
 }
 
-.status-badge {
-  padding: 4px 8px;
-  border-radius: 12px;
+/* Excel-style Summary Grid */
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+  padding: 12px 16px;
+  background: #f9f9f9;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.summary-item {
+  background: white;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+}
+
+.summary-item label {
+  display: block;
+  font-size: 11px;
+  color: #666;
+  margin-bottom: 2px;
+}
+
+.summary-item span {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.summary-item.return-total {
+  border-left: 3px solid #d32f2f;
+}
+
+.summary-item.return-total .negative {
+  color: #d32f2f;
+}
+
+/* Excel-style Tabs */
+.payment-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 0 16px;
+  background: #f5f5f5;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.payment-tabs .tab-button {
+  background: transparent;
+  border: none;
+  padding: 8px 16px;
+  cursor: pointer;
   font-size: 12px;
   font-weight: 500;
-  text-transform: uppercase;
+  color: #666;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+
+.payment-tabs .tab-button:hover {
+  color: #333;
+  background: #eee;
+}
+
+.payment-tabs .tab-button.active {
+  color: #217346;
+  border-bottom-color: #217346;
+  background: white;
+}
+
+/* Excel-style Status Badges */
+.status-badge {
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
 }
 
 .status-badge.open {
@@ -66,17 +130,25 @@
   color: #856404;
 }
 
+/* Excel-style Tables */
 .shift-sales-table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 10px;
+  margin-top: 0;
+  font-size: 12px;
 }
 
 .shift-sales-table th,
 .shift-sales-table td {
-  padding: 8px 12px;
+  padding: 5px 10px;
   text-align: left;
   border-bottom: 1px solid #e0e0e0;
+  font-size: 11px;
+}
+
+.shift-sales-table th {
+  background: #f3f3f3;
+  font-weight: 600;
 }
 
 .shift-sales-table th {
@@ -293,24 +365,121 @@
   width: 100%;
   border-collapse: collapse;
   background: white;
-  min-width: 800px;
+  font-size: 11px;
 }
 
 .official-data-table th {
-  background: #f8f9fa;
-  color: #495057;
+  background: #f3f3f3;
+  color: #333;
   font-weight: 600;
-  padding: 8px 6px;
+  padding: 5px 8px;
   text-align: left;
-  border-bottom: 1px solid #dee2e6;
-  font-size: 12px;
+  border-bottom: 2px solid #ccc;
+  font-size: 10px;
   white-space: nowrap;
 }
 
 .official-data-table td {
-  padding: 6px 6px;
-  border-bottom: 1px solid #dee2e6;
+  padding: 4px 8px;
+  border-bottom: 1px solid #e0e0e0;
   vertical-align: middle;
+  font-size: 11px;
+}
+
+.official-data-table tbody tr:hover {
+  background: #f5f5f5;
+}
+
+.official-data-table tbody tr.expanded {
+  background: #e3f2fd;
+}
+
+.official-data-table tbody tr.expanded:hover {
+  background: #bbdefb;
+}
+
+.official-data-table tbody tr.expanded td {
+  background: transparent;
+}
+
+.official-data-table .expanded-row {
+  background: #e3f2fd !important;
+}
+
+.official-data-table .expanded-row td {
+  background: #e3f2fd !important;
+  border-bottom: 1px solid #90caf9;
+}
+
+.official-data-table .expanded-details {
+  background: #e3f2fd;
+  padding: 12px;
+}
+
+.official-data-table .expanded-details h4 {
+  margin: 0 0 10px 0;
+  font-size: 12px;
+  color: #333;
+}
+
+/* Items displayed in shift details - reddish background */
+.shift-items-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  margin-top: 8px;
+}
+
+.shift-items-table th {
+  background: #c62828;
+  color: white;
+  font-weight: 600;
+  padding: 6px 8px;
+  text-align: left;
+  border-bottom: 1px solid #b71c1c;
+  font-size: 10px;
+}
+
+.shift-items-table td {
+  padding: 5px 8px;
+  border-bottom: 1px solid #ffcdd2;
+  background: #fff;
+}
+
+.shift-items-table tr:nth-child(even) td {
+  background: #ffebee;
+}
+
+.shift-items-table tr:hover td {
+  background: #ffcdd2;
+}
+
+.shift-items-table .item-name {
+  color: #333;
+  font-weight: 500;
+}
+
+.shift-items-table .item-qty {
+  color: #c62828;
+  font-weight: 600;
+}
+
+.shift-items-table .item-price {
+  color: #666;
+}
+
+.shift-items-table .item-total {
+  color: #c62828;
+  font-weight: 600;
+}
+
+/* Alternating row colors for main table */
+.official-data-table tbody tr:nth-child(even) {
+  background: #f9f9f9;
+}
+
+.official-data-table tbody tr:nth-child(odd) {
+  background: #fff;
 }
 
 .date-cell {
@@ -484,6 +653,108 @@
   border-top: 1px solid #dee2e6;
   background: white;
   animation: fadeIn 0.3s ease-out;
+}
+
+/* Return row styling */
+.return-row {
+  background-color: #fff3f3;
+}
+
+.return-row:hover {
+  background-color: #ffe0e0;
+}
+
+.amount-cell.negative {
+  color: #dc3545;
+  font-weight: 700;
+}
+
+/* Returns summary styling */
+.returns-summary {
+  display: flex;
+  gap: 20px;
+  padding: 10px 12px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  border-left: 3px solid #dc3545;
+}
+
+.returns-summary span {
+  font-size: 13px;
+  color: #495057;
+}
+
+.returns-summary strong {
+  color: #212529;
+  font-weight: 600;
+}
+
+.returns-total {
+  color: #dc3545;
+}
+
+.returns-count {
+  color: #6c757d;
+}
+
+/* Return type badge */
+.return-type-badge {
+  padding: 2px 6px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: capitalize;
+  display: inline-block;
+  min-width: 50px;
+  text-align: center;
+}
+
+.return-type-badge.refund {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.return-type-badge.exchange {
+  background-color: #cce5ff;
+  color: #004085;
+}
+
+.return-type-badge.store_credit {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.return-type-badge.unknown {
+  background-color: #f8f9fa;
+  color: #6c757d;
+}
+
+.product-cell {
+  min-width: 150px;
+}
+
+.quantity-cell {
+  min-width: 50px;
+  text-align: center;
+}
+
+/* Return total in summary grid */
+.summary-item.return-total {
+  border-left-color: #dc3545;
+}
+
+.summary-item.return-total .negative {
+  color: #dc3545;
+}
+
+.user-cell {
+  min-width: 100px;
+}
+
+.reason-cell {
+  max-width: 200px;
+  word-wrap: break-word;
 }
 
 @keyframes slideDown {

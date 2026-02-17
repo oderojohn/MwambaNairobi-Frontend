@@ -1,0 +1,683 @@
+/* Excel-like Categories Page Styles - Unique Classes */
+
+/* Page Container - Excel-like */
+.excel-page-container {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f3f3f3;
+  padding: 0;
+}
+
+/* Page Header - Excel Style */
+.excel-page-header {
+  background-color: #ffffff;
+  padding: 12px 20px;
+  border-bottom: 1px solid #d4d4d4;
+  margin-bottom: 0;
+}
+
+.excel-breadcrumbs {
+  font-size: 13px;
+  color: #444444;
+}
+
+.excel-breadcrumbs a {
+  color: #0066cc;
+  text-decoration: none;
+}
+
+.excel-breadcrumbs a:hover {
+  text-decoration: underline;
+}
+
+/* Page Actions - Excel Toolbar Style */
+.excel-page-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #ffffff;
+  padding: 12px 20px;
+  border-bottom: 1px solid #d4d4d4;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.excel-page-actions .excel-btn {
+  font-size: 13px;
+  padding: 6px 14px;
+  border-radius: 2px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.excel-page-actions .excel-btn-primary {
+  background-color: #107c41;
+  color: white;
+  border: 1px solid #107c41;
+}
+
+.excel-page-actions .excel-btn-primary:hover {
+  background-color: #0d6633;
+}
+
+.excel-page-actions .excel-btn-secondary {
+  background-color: #ffffff;
+  color: #333333;
+  border: 1px solid #d4d4d4;
+}
+
+.excel-page-actions .excel-btn-secondary:hover {
+  background-color: #f3f3f3;
+}
+
+/* Search Box - Excel Style */
+.excel-search-filter {
+  display: flex;
+  align-items: center;
+}
+
+.excel-search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.excel-search-box input {
+  padding: 6px 30px 6px 10px;
+  border: 1px solid #d4d4d4;
+  border-radius: 2px;
+  font-size: 13px;
+  width: 250px;
+  background-color: #ffffff;
+  transition: border-color 0.15s ease;
+}
+
+.excel-search-box input:focus {
+  outline: none;
+  border-color: #107c41;
+}
+
+.excel-search-box .excel-search-icon {
+  position: absolute;
+  right: 10px;
+  color: #666666;
+  font-size: 14px;
+}
+
+/* Data Table Container - Excel Spreadsheet Style */
+.excel-data-table-container {
+  background-color: #ffffff;
+  border: 1px solid #d4d4d4;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* Excel-like Data Table */
+.excel-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  table-layout: fixed;
+}
+
+/* Table Header - Excel Green Header */
+.excel-data-table thead tr {
+  background: linear-gradient(180deg, #107c41 0%, #0b5c30 100%);
+}
+
+.excel-data-table thead tr th {
+  background-color: #107c41;
+  border: 1px solid #0a5c2f;
+  padding: 8px 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+  position: relative;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+/* Column resize handle */
+.excel-data-table thead tr th::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background-color: #d4d4d4;
+}
+
+/* Table Body */
+.excel-data-table tbody tr {
+  background-color: #ffffff;
+}
+
+.excel-data-table tbody tr:hover {
+  background-color: #e8f4fd !important;
+}
+
+/* Alternating rows - Excel style */
+.excel-data-table tbody tr:nth-child(even) {
+  background-color: #fafafa;
+}
+
+.excel-data-table tbody tr:nth-child(even):hover {
+  background-color: #e8f4fd !important;
+}
+
+/* Table Cells */
+.excel-data-table tbody tr td {
+  border: 1px solid #d4d4d4;
+  padding: 8px 12px;
+  color: #333333;
+  vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Column-specific widths */
+.excel-data-table thead tr th:nth-child(1),
+.excel-data-table tbody tr td:nth-child(1) {
+  width: 80px;
+  text-align: center;
+}
+
+.excel-data-table thead tr th:nth-child(2),
+.excel-data-table tbody tr td:nth-child(2) {
+  width: 200px;
+}
+
+.excel-data-table thead tr th:nth-child(3),
+.excel-data-table tbody tr td:nth-child(3) {
+  width: auto;
+}
+
+.excel-data-table thead tr th:nth-child(4),
+.excel-data-table tbody tr td:nth-child(4) {
+  width: 100px;
+  text-align: center;
+}
+
+/* Category Link */
+.excel-category-link {
+  color: #0066cc;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.excel-category-link:hover {
+  text-decoration: underline;
+  color: #004499;
+}
+
+/* Action Buttons */
+.excel-action-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+
+.excel-action-buttons .excel-btn-icon {
+  background-color: transparent;
+  border: 1px solid transparent;
+  padding: 4px 8px;
+  border-radius: 2px;
+  cursor: pointer;
+  color: #666666;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.excel-action-buttons .excel-btn-icon:hover {
+  background-color: #f0f0f0;
+  border-color: #d4d4d4;
+}
+
+.excel-action-buttons .excel-btn-icon[title="Edit"] {
+  color: #107c41;
+}
+
+.excel-action-buttons .excel-btn-icon[title="Edit"]:hover {
+  background-color: #e8f5e9;
+}
+
+.excel-action-buttons .excel-btn-icon[title="Delete"] {
+  color: #d32f2f;
+}
+
+.excel-action-buttons .excel-btn-icon[title="Delete"]:hover {
+  background-color: #ffebee;
+}
+
+/* Pagination - Excel Style */
+.excel-pagination-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+  background-color: #ffffff;
+  border: 1px solid #d4d4d4;
+  border-top: none;
+  font-size: 12px;
+  color: #666666;
+}
+
+.excel-pagination-info {
+  color: #666666;
+}
+
+.excel-pagination-controls {
+  display: flex;
+  gap: 4px;
+}
+
+.excel-btn-pagination {
+  padding: 4px 10px;
+  border: 1px solid #d4d4d4;
+  background-color: #ffffff;
+  color: #333333;
+  cursor: pointer;
+  border-radius: 2px;
+  font-size: 12px;
+  transition: all 0.15s ease;
+}
+
+.excel-btn-pagination:hover:not(:disabled) {
+  background-color: #f3f3f3;
+}
+
+.excel-btn-pagination.excel-active {
+  background-color: #107c41;
+  color: white;
+  border-color: #107c41;
+}
+
+.excel-btn-pagination:disabled {
+  color: #999999;
+  cursor: not-allowed;
+}
+
+/* Loading State */
+.excel-loading-spinner {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 60px 20px;
+  color: #666666;
+  font-size: 14px;
+}
+
+/* Error Message */
+.excel-error-message {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px;
+  background-color: #fff2f2;
+  border: 1px solid #ffcccc;
+  border-radius: 4px;
+  color: #d32f2f;
+  margin: 20px;
+}
+
+/* Modal Styles - Excel-like */
+.excel-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 80px;
+  z-index: 1000;
+}
+
+.excel-modal-overlay.excel-active {
+  display: flex;
+}
+
+/* Modal Container */
+.excel-modal-container {
+  background-color: #ffffff;
+  border-radius: 4px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  width: 100%;
+  max-width: 480px;
+  border: 1px solid #d4d4d4;
+}
+
+/* Modal Header */
+.excel-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  background: linear-gradient(180deg, #f8f8f8 0%, #e8e8e8 100%);
+  border-bottom: 1px solid #d4d4d4;
+  border-radius: 4px 4px 0 0;
+}
+
+.excel-modal-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #333333;
+}
+
+.excel-modal-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: #666666;
+  padding: 0;
+  line-height: 1;
+}
+
+.excel-modal-close:hover {
+  color: #333333;
+}
+
+/* Modal Body */
+.excel-modal-body {
+  padding: 20px;
+}
+
+/* Form Group */
+.excel-form-group {
+  margin-bottom: 16px;
+}
+
+.excel-form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #333333;
+}
+
+.excel-form-group input,
+.excel-form-group textarea {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #d4d4d4;
+  border-radius: 2px;
+  font-size: 13px;
+  font-family: inherit;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease;
+}
+
+.excel-form-group input:focus,
+.excel-form-group textarea:focus {
+  outline: none;
+  border-color: #107c41;
+}
+
+.excel-form-group textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+/* Modal Footer */
+.excel-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 20px;
+  background-color: #f8f8f8;
+  border-top: 1px solid #d4d4d4;
+  border-radius: 0 0 4px 4px;
+}
+
+.excel-modal-footer .excel-btn {
+  padding: 8px 20px;
+  font-size: 13px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.excel-modal-footer .excel-btn-primary {
+  background-color: #107c41;
+  color: white;
+  border: 1px solid #107c41;
+}
+
+.excel-modal-footer .excel-btn-primary:hover {
+  background-color: #0d6633;
+}
+
+.excel-modal-footer .excel-btn-secondary {
+  background-color: #ffffff;
+  color: #333333;
+  border: 1px solid #d4d4d4;
+}
+
+.excel-modal-footer .excel-btn-secondary:hover {
+  background-color: #f3f3f3;
+}
+
+/* Delete Modal */
+.excel-delete-modal .excel-delete-modal-content {
+  padding: 24px 20px;
+  text-align: center;
+}
+
+.excel-delete-icon {
+  width: 60px;
+  height: 60px;
+  margin: 0 auto 16px;
+  background-color: #fff2f2;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #d32f2f;
+  font-size: 28px;
+}
+
+.excel-delete-text h4 {
+  margin: 0 0 10px;
+  font-size: 16px;
+  color: #333333;
+}
+
+.excel-delete-text p {
+  margin: 0;
+  font-size: 13px;
+  color: #666666;
+  line-height: 1.5;
+}
+
+.excel-delete-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+/* Options Modal */
+.excel-options-modal .excel-options-tabs {
+  display: flex;
+  border-bottom: 1px solid #d4d4d4;
+  padding: 0 20px;
+}
+
+.excel-options-tab {
+  padding: 12px 20px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-size: 13px;
+  color: #666666;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.excel-options-tab:hover {
+  color: #333333;
+}
+
+.excel-options-tab.excel-active {
+  color: #107c41;
+  border-bottom-color: #107c41;
+  font-weight: 600;
+}
+
+.excel-options-tab-content {
+  display: none;
+  padding: 20px;
+}
+
+.excel-options-tab-content.excel-active {
+  display: block;
+}
+
+.excel-option-group {
+  margin-bottom: 20px;
+}
+
+.excel-option-group h5 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #333333;
+}
+
+.excel-format-options {
+  display: flex;
+  gap: 20px;
+}
+
+.excel-format-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #333333;
+  cursor: pointer;
+}
+
+.excel-format-option input[type="radio"] {
+  accent-color: #107c41;
+}
+
+.excel-option-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.excel-option-label {
+  font-size: 13px;
+  color: #333333;
+}
+
+.excel-option-control {
+  display: flex;
+  align-items: center;
+}
+
+.excel-option-select {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid #d4d4d4;
+  border-radius: 2px;
+  font-size: 13px;
+  background-color: #ffffff;
+}
+
+.excel-option-checkbox {
+  accent-color: #107c41;
+  width: 16px;
+  height: 16px;
+}
+
+.excel-danger-zone {
+  padding: 12px;
+  background-color: #fff2f2;
+  border: 1px solid #ffcccc;
+  border-radius: 2px;
+  margin-top: 16px;
+}
+
+.excel-danger-zone h5 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: #d32f2f;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.excel-danger-zone p {
+  margin: 0;
+  font-size: 12px;
+  color: #666666;
+}
+
+/* Empty State */
+.excel-data-table tbody tr.excel-empty-row td {
+  text-align: center;
+  padding: 40px 20px;
+  color: #999999;
+}
+
+/* Selection highlight - Excel style */
+.excel-data-table tbody tr.excel-selected {
+  background-color: #cce4f7 !important;
+}
+
+/* Grid lines emphasis */
+.excel-data-table,
+.excel-data-table th,
+.excel-data-table td {
+  border: 1px solid #d4d4d4 !important;
+}
+
+/* Focus ring */
+.excel-data-table tr:focus-within td {
+  outline: 2px solid #107c41;
+  outline-offset: -2px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .excel-page-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .excel-search-box input {
+    width: 100%;
+  }
+  
+  .excel-data-table {
+    font-size: 12px;
+  }
+  
+  .excel-data-table th,
+  .excel-data-table td {
+    padding: 6px 8px;
+  }
+  
+  .excel-pagination-container {
+    flex-direction: column;
+    gap: 10px;
+  }
+}

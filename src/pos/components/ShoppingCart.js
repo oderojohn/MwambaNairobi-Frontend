@@ -1,8 +1,53 @@
-import React from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { toNumber, formatCurrency } from '../../services/ApiService/api';
 import '../data/ShoppingCart.css';
 
-const ShoppingCart = ({ cart, categories = [], onUpdateQuantity, onRemoveItem, onProcessPayment, onHoldOrder, disabled = false, selectedCustomer, mode, onCustomerClear }) => {
+const ShoppingCart = ({ 
+  cart, 
+  categories = [], 
+  onUpdateQuantity, 
+  onRemoveItem, 
+  onProcessPayment, 
+  onHoldOrder, 
+  onClearCart,
+  disabled = false, 
+  selectedCustomer, 
+  mode, 
+  onCustomerClear
+}) => {
+  const itemsRef = useRef(null);
+  const prevCartLengthRef = useRef(cart.length);
+
+  // Auto-scroll to bottom when items change
+  useEffect(() => {
+    if (cart.length !== prevCartLengthRef.current) {
+      if (itemsRef.current) {
+        itemsRef.current.scrollTop = itemsRef.current.scrollHeight;
+      }
+      prevCartLengthRef.current = cart.length;
+    }
+  }, [cart.length]);
+
+  // Keyboard shortcut for PAY button (Enter key)
+  const handleKeyPress = useCallback((e) => {
+    // Only trigger if Enter is pressed and cart has items and not disabled
+    if (e.key === 'Enter' && cart.length > 0 && !disabled) {
+      // Don't trigger if user is typing in an input field
+      const tagName = e.target.tagName.toLowerCase();
+      if (tagName === 'input' || tagName === 'textarea' || tagName === 'select') {
+        return;
+      }
+      e.preventDefault();
+      onProcessPayment();
+    }
+  }, [cart.length, disabled, onProcessPayment]);
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyPress);
+    };
+  }, [handleKeyPress]);
   // Professional color palette
   const colorPalette = [
     { primary: '#2563eb', background: '#dbeafe', hover: '#1d4ed8' }, // Professional Blue
@@ -54,10 +99,14 @@ const ShoppingCart = ({ cart, categories = [], onUpdateQuantity, onRemoveItem, o
             </div>
           )}
         </div>
+        <div className="pos-shopping-cart__total-display">
+          <span className="pos-shopping-cart__total-label">Total:</span>
+          <span className="pos-shopping-cart__total-amount">{formatCurrency(total)}</span>
+        </div>
       </div>
 
       {/* Cart Items */}
-      <div className="pos-shopping-cart__items">
+      <div className="pos-shopping-cart__items" ref={itemsRef}>
         {cart.length === 0 && !selectedCustomer ? (
           <div className="pos-shopping-cart__empty">
             <div className="pos-shopping-cart__empty-icon">
@@ -240,26 +289,62 @@ const ShoppingCart = ({ cart, categories = [], onUpdateQuantity, onRemoveItem, o
 
       {/* Cart Footer */}
       <div className="pos-shopping-cart__footer">
-        <div className="pos-shopping-cart__summary">
-          <div className="pos-shopping-cart__actions">
-            <button 
-              className="pos-shopping-cart__action-btn pos-shopping-cart__action-btn--secondary"
-              onClick={() => !disabled && onHoldOrder()} 
-              disabled={disabled || cart.length === 0}
-            >
-              <i className="fas fa-pause"></i>
-              <span>Hold Order</span>
-            </button>
-            <button 
-              className="pos-shopping-cart__action-btn pos-shopping-cart__action-btn--primary"
-              onClick={() => !disabled && onProcessPayment()} 
-              disabled={cart.length === 0 || disabled}
-            >
-              <i className="fas fa-credit-card"></i>
-              <span>Process Payment</span>
-              <span className="pos-shopping-cart__payment-amount">{formatCurrency(total)}</span>
-            </button>
-          </div>
+        <div className="pos-shopping-cart__quick-actions">
+          <button 
+            className="pos-shopping-cart__quick-btn pos-shopping-cart__quick-btn--secondary"
+            onClick={() => !disabled && onHoldOrder()} 
+            disabled={disabled || cart.length === 0}
+            title="Hold Order"
+          >
+            <i className="fas fa-pause"></i>
+            HOLD
+          </button>
+          <button 
+            className="pos-shopping-cart__quick-btn pos-shopping-cart__quick-btn--danger"
+            onClick={() => {
+              if (!disabled && cart.length > 0) {
+                import('sweetalert2').then(Swal => {
+                  Swal.default.fire({
+                    title: 'Clear Cart?',
+                    text: 'This will remove all items from the cart.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, Clear',
+                    cancelButtonText: 'Cancel',
+                    confirmButtonColor: '#dc2626',
+                    cancelButtonColor: '#6b7280',
+                    zIndex: 10000
+                  }).then((result) => {
+                    if (result.isConfirmed) {
+                      onClearCart();
+                    }
+                  });
+                });
+              }
+            }} 
+            disabled={disabled || cart.length === 0}
+            title="Clear Cart"
+          >
+            <i className="fas fa-trash"></i>
+            CLEAR
+          </button>
+          <button 
+            className="pos-shopping-cart__quick-btn pos-shopping-cart__quick-btn--info"
+            title="Quick Add"
+          >
+            <i className="fas fa-plus"></i>
+            ADD
+          </button>
+          <button 
+            className="pos-shopping-cart__quick-btn pos-shopping-cart__quick-btn--primary"
+            onClick={() => !disabled && onProcessPayment()} 
+            disabled={cart.length === 0 || disabled}
+            title="Process Payment (Enter)"
+          >
+            <i className="fas fa-credit-card"></i>
+            PAY
+            <span style={{ fontSize: '0.65rem', opacity: 0.8 }}>[Enter]</span>
+          </button>
         </div>
       </div>
     </section>

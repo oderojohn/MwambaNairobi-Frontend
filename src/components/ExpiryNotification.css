@@ -1,0 +1,194 @@
+.expiry-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  max-width: 400px;
+  width: 100%;
+  z-index: 999;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.expiry-content {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  padding: 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  position: relative;
+  border-left: 4px solid;
+}
+
+.expiry-critical {
+  border-left-color: #dc3545;
+}
+
+.expiry-critical .expiry-icon {
+  color: #dc3545;
+}
+
+.expiry-warning {
+  border-left-color: #ffc107;
+}
+
+.expiry-warning .expiry-icon {
+  color: #ffc107;
+}
+
+.expiry-info {
+  border-left-color: #007bff;
+}
+
+.expiry-info .expiry-icon {
+  color: #007bff;
+}
+
+.expiry-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.expiry-message {
+  flex: 1;
+}
+
+.expiry-message h4 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.expiry-message p {
+  margin: 0;
+  font-size: 14px;
+  color: #6c757d;
+  line-height: 1.4;
+}
+
+.expiry-message strong {
+  color: #495057;
+}
+
+.expiry-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.expiry-actions button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-activate {
+  background: #007bff;
+  color: white;
+}
+
+.btn-activate:hover {
+  background: #0056b3;
+}
+
+.btn-dismiss {
+  background: #6c757d;
+  color: white;
+}
+
+.btn-dismiss:hover {
+  background: #5a6268;
+}
+
+.expiry-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: #6c757d;
+  cursor: pointer;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.expiry-close:hover {
+  background: #f8f9fa;
+  color: #495057;
+}
+
+/* Responsive design */
+@media (max-width: 480px) {
+  .expiry-notification {
+    top: 10px;
+    right: 10px;
+    left: 10px;
+    max-width: none;
+  }
+
+  .expiry-content {
+    padding: 16px;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .expiry-actions {
+    flex-direction: column;
+  }
+
+  .expiry-actions button {
+    width: 100%;
+  }
+
+  .expiry-close {
+    top: 8px;
+    right: 8px;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .expiry-content {
+    background: #2d3748;
+    color: #e2e8f0;
+  }
+
+  .expiry-message h4 {
+    color: #f7fafc;
+  }
+
+  .expiry-message p {
+    color: #a0aec0;
+  }
+
+  .expiry-message strong {
+    color: #e2e8f0;
+  }
+
+  .expiry-close:hover {
+    background: #4a5568;
+    color: #e2e8f0;
+  }
+}

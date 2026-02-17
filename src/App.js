@@ -25,6 +25,13 @@ import SalesSummaryPage from './pos/pages/SalesSummaryPage';
 import ReportingPage from './Inventory/inventorypages/ReportingPage';
 import SettingsPage from './Inventory/inventorypages/settings/SettingsPage';
 import PosAdminPage from './Inventory/inventorypages/PosAdminPage';
+// Accounting pages
+import ChartOfAccountsPage from './Inventory/inventorypages/accounting/ChartOfAccountsPage';
+import JournalEntriesPage from './Inventory/inventorypages/accounting/JournalEntriesPage';
+import TrialBalancePage from './Inventory/inventorypages/accounting/TrialBalancePage';
+import ProfitLossPage from './Inventory/inventorypages/accounting/ProfitLossPage';
+import BalanceSheetPage from './Inventory/inventorypages/accounting/BalanceSheetPage';
+import RecurringExpensesPage from './Inventory/inventorypages/accounting/RecurringExpensesPage';
 import "./assets/main.css";
 const AppRoutes = () => {
   const { isAuthenticated, loading, role, logout } = useContext(AuthContext);
@@ -80,6 +87,12 @@ const AppRoutes = () => {
         <Route path="reporting" element={<ReportingPage />} />
         <Route path="users" element={<UserManagementPage />} />
         <Route path="pos-admin" element={<PosAdminPage />} />
+        <Route path="chart-of-accounts" element={<ChartOfAccountsPage />} />
+        <Route path="journal-entries" element={<JournalEntriesPage />} />
+        <Route path="trial-balance" element={<TrialBalancePage />} />
+        <Route path="profit-loss" element={<ProfitLossPage />} />
+        <Route path="balance-sheet" element={<BalanceSheetPage />} />
+        <Route path="recurring-expenses" element={<RecurringExpensesPage />} />
         <Route path="settings/*" element={<SettingsPage />} />
       </Route>
       <Route

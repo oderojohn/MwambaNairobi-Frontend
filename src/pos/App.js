@@ -4,6 +4,7 @@ import Swal from 'sweetalert2';
 import Header from './components/Header';
 import ProductGrid from './components/ProductGrid';
 import ShoppingCart from './components/ShoppingCart';
+import RecentActivityPanel from './components/RecentActivityPanel';
 import ShiftModal from './components/ShiftModal';
 import PaymentModal from './components/PaymentModal';
 import ChitModal from './components/ChitModal';
@@ -15,7 +16,8 @@ import ErrorModal from './components/ErrorModal';
 import OrderPreparationPage from './pages/OrderPreparationPage';
 import OrderManagementPage from './pages/OrderManagementPage';
 import ReceiptModal from './components/ReceiptModal';
-import { inventoryAPI, salesAPI, shiftsAPI, chitsAPI, customersAPI, suppliersAPI, toNumber, formatCurrency } from '../services/ApiService/api';
+import ReturnCodeModal from './components/ReturnCodeModal';
+import { inventoryAPI, salesAPI, shiftsAPI, customersAPI, suppliersAPI, toNumber, formatCurrency, userService } from '../services/ApiService/api';
 import { useAuth } from '../services/context/authContext';
 import './data/pos.css';
 import './data/Modal.css'
@@ -30,14 +32,15 @@ function PosApp() {
   const [customers, setCustomers] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [showShiftModal, setShowShiftModal] = useState(false);
+  const [showClosedShift, setShowClosedShift] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showChitModal, setShowChitModal] = useState(false);
   const [salesSummaryData, setSalesSummaryData] = useState({ shiftId: null, isOpen: false });
   const [showCustomerLookupModal, setShowCustomerLookupModal] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [currentShift, setCurrentShift] = useState(null);
+  const [activityRefreshKey, setActivityRefreshKey] = useState(0);
   const [initialPaymentMethod, setInitialPaymentMethod] = useState('cash');
-  const [chits, setChits] = useState([]);
   const [heldOrders, setHeldOrders] = useState([]);
   const [showHeldOrdersModal, setShowHeldOrdersModal] = useState(false);
   const [showHeldOrderDetailsModal, setShowHeldOrderDetailsModal] = useState(false);
@@ -50,32 +53,75 @@ function PosApp() {
   const [errorDetails, setErrorDetails] = useState({ title: '', message: '', details: '', errors: [] });
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [receiptData, setReceiptData] = useState(null);
+  const [showReturnCodeModal, setShowReturnCodeModal] = useState(false);
+  const [appliedReturnCode, setAppliedReturnCode] = useState(null);
 
   // Function to refresh shift data
   const refreshShiftData = async () => {
     try {
-      const currentShiftRes = await shiftsAPI.getCurrentShift().catch(() => null);
+      // Get user_id directly from userService to ensure it's always available
+      const userData = userService.getUserData();
+      const userId = userData?.user_id;
+      
+      if (!userId) {
+        console.log('No user_id available, cannot refresh shift data');
+        setCurrentShift(null);
+        return;
+      }
+      
+      const currentShiftRes = await shiftsAPI.getCurrentShift(userId).catch(() => null);
       if (currentShiftRes) {
         console.log('Refreshed shift data:', currentShiftRes);
 
-        let parsedDate = 'Unknown';
-        if (currentShiftRes.start_time) {
-          try {
-            const dateObj = new Date(currentShiftRes.start_time);
-            parsedDate = !isNaN(dateObj.getTime()) ? dateObj.toLocaleString() : 'Invalid Date';
-          } catch (dateError) {
-            console.error('Date parsing error:', dateError);
-            parsedDate = 'Parse Error';
+        // Check if shift has valid data and is active
+        if (currentShiftRes.has_active_shift && currentShiftRes.status === 'open') {
+          let parsedDate = 'Unknown';
+          if (currentShiftRes.start_time) {
+            try {
+              const dateObj = new Date(currentShiftRes.start_time);
+              parsedDate = !isNaN(dateObj.getTime()) ? dateObj.toLocaleString() : 'Invalid Date';
+            } catch (dateError) {
+              console.error('Date parsing error:', dateError);
+              parsedDate = 'Parse Error';
+            }
           }
-        }
 
-        setCurrentShift({
-          id: currentShiftRes.id,
-          startTime: parsedDate,
-          startingCash: parseFloat(currentShiftRes.opening_balance),
-          total_sales: parseFloat(currentShiftRes.total_sales || 0),
-          transaction_count: currentShiftRes.transaction_count || 0
-        });
+          setCurrentShift({
+            id: currentShiftRes.id,
+            startTime: parsedDate,
+            startingCash: parseFloat(currentShiftRes.opening_balance || 0),
+            total_sales: parseFloat(currentShiftRes.total_sales || 0),
+            transaction_count: currentShiftRes.transaction_count || 0,
+            status: currentShiftRes.status,
+            has_active_shift: true,
+            last_shift_info: null,
+            // Include all sales data from API response
+            cash_sales: parseFloat(currentShiftRes.cash_sales || 0),
+            card_sales: parseFloat(currentShiftRes.card_sales || 0),
+            mobile_sales: parseFloat(currentShiftRes.mobile_sales || 0),
+            mpesa_sales: parseFloat(currentShiftRes.mobile_sales || 0),
+            net_sales: parseFloat(currentShiftRes.net_sales || 0),
+            returns: currentShiftRes.returns || [],
+            return_count: currentShiftRes.return_count || 0,
+            total_returns: parseFloat(currentShiftRes.total_returns || 0),
+            sales: currentShiftRes.sales || [],
+            sales_by_payment_method: currentShiftRes.sales_by_payment_method || {},
+            opening_balance: parseFloat(currentShiftRes.opening_balance || 0),
+            end_time: currentShiftRes.end_time || null,
+            closing_balance: parseFloat(currentShiftRes.closing_balance || 0),
+            discrepancy: parseFloat(currentShiftRes.discrepancy || 0),
+            expected_cash: parseFloat(currentShiftRes.expected_cash || 0)
+          });
+        } else {
+          // No active shift - set currentShift with last shift info
+          console.log('No active shift, showing last shift info');
+          setCurrentShift({
+            id: null,
+            status: 'closed',
+            has_active_shift: false,
+            last_shift_info: currentShiftRes.last_shift_info || null
+          });
+        }
       } else {
         console.log('No active shift after refresh');
         setCurrentShift(null);
@@ -90,28 +136,34 @@ function PosApp() {
   const fetchData = useCallback(async (currentMode = mode) => {
     try {
       setLoading(true);
-      const [productsRes, categoriesRes, customersRes, suppliersRes, chitsRes, currentShiftRes] = await Promise.all([
+      
+      // First check if we have shift data from login response (no API call needed)
+      const loginShift = userService.getCurrentShift();
+      const loginShiftStatus = userService.getShiftStatus();
+      
+      console.log('Login shift data:', { loginShift, loginShiftStatus });
+      
+      const [productsRes, categoriesRes, customersRes, suppliersRes] = await Promise.all([
         inventoryAPI.products.getPosProducts({ mode: currentMode }),
         inventoryAPI.categories.getAll(),
         customersAPI.getCustomers({ mode: currentMode }),
-        suppliersAPI.getSuppliers(),
-        chitsAPI.getChits(),
-        shiftsAPI.getCurrentShift().catch(() => null)
+        suppliersAPI.getSuppliers()
       ]);
 
       setProducts(productsRes || []);
       setCategories(categoriesRes || []);
       setCustomers(customersRes.results || customersRes || []);
       setSuppliers(suppliersRes.results || suppliersRes || []);
-      setChits(chitsRes || []);
+      // Chits will be loaded on-demand when ChitModal is opened
 
-      if (currentShiftRes) {
-        console.log('Active shift found:', currentShiftRes);
+      // Use login shift data
+      if (loginShiftStatus === 'open' && loginShift) {
+        console.log('Using login shift data:', loginShift);
 
         let parsedDate = 'Unknown';
-        if (currentShiftRes.start_time) {
+        if (loginShift.start_time) {
           try {
-            const dateObj = new Date(currentShiftRes.start_time);
+            const dateObj = new Date(loginShift.start_time);
             parsedDate = !isNaN(dateObj.getTime()) ? dateObj.toLocaleString() : 'Invalid Date';
           } catch (dateError) {
             console.error('Date parsing error:', dateError);
@@ -120,15 +172,34 @@ function PosApp() {
         }
 
         setCurrentShift({
-          id: currentShiftRes.id,
+          id: loginShift.id,
           startTime: parsedDate,
-          startingCash: parseFloat(currentShiftRes.opening_balance),
-          total_sales: parseFloat(currentShiftRes.total_sales || 0),
-          transaction_count: currentShiftRes.transaction_count || 0
+          startingCash: parseFloat(loginShift.opening_balance || 0),
+          total_sales: parseFloat(loginShift.total_sales || 0),
+          transaction_count: loginShift.transaction_count || 0,
+          status: loginShift.status || 'open',
+          has_active_shift: true,
+          cash_sales: parseFloat(loginShift.cash_sales || 0),
+          card_sales: parseFloat(loginShift.card_sales || 0),
+          mobile_sales: parseFloat(loginShift.mobile_sales || 0),
+          mpesa_sales: parseFloat(loginShift.mobile_sales || 0),
+          net_sales: parseFloat(loginShift.net_sales || 0),
+          returns: loginShift.returns || [],
+          return_count: loginShift.return_count || 0,
+          total_returns: parseFloat(loginShift.total_returns || 0),
+          sales: loginShift.sales || [],
+          sales_by_payment_method: loginShift.sales_by_payment_method || {},
+          opening_balance: parseFloat(loginShift.opening_balance || 0),
+          end_time: loginShift.end_time || null,
+          closing_balance: parseFloat(loginShift.closing_balance || 0),
+          discrepancy: parseFloat(loginShift.discrepancy || 0),
+          expected_cash: parseFloat(loginShift.expected_cash || 0)
         });
-        setShowShiftModal(false);
+        
+        // Fetch held orders when shift is active
+        fetchHeldOrders();
       } else {
-        console.log('No active shift found - showing modal');
+        console.log('No active shift - showing start shift modal');
         setCurrentShift(null);
         setShowShiftModal(true);
       }
@@ -372,6 +443,31 @@ function PosApp() {
     }
   };
 
+  // Handle opening return code modal
+  const handleOpenReturnCodeModal = () => {
+    setShowReturnCodeModal(true);
+  };
+
+  // Handle applying a return code to the cart (as a discount)
+  const handleApplyReturnCode = (returnCode, refundAmount) => {
+    setAppliedReturnCode({ code: returnCode, amount: refundAmount });
+    
+    // Show confirmation
+    Swal.fire({
+      icon: 'success',
+      title: 'Return Code Applied',
+      text: `Refund of ${formatCurrency(refundAmount)} will be applied to this sale.`,
+      timer: 2000,
+      showConfirmButton: false,
+      zIndex: 99999
+    });
+  };
+
+  // Clear applied return code
+  const clearAppliedReturnCode = () => {
+    setAppliedReturnCode(null);
+  };
+
   const startShift = async (startingCash) => {
     try {
       // Show loading modal for starting shift
@@ -381,7 +477,6 @@ function PosApp() {
         allowOutsideClick: false,
         allowEscapeKey: false,
         showConfirmButton: false,
-        zIndex: 99999,
         didOpen: () => {
           Swal.showLoading();
         }
@@ -390,13 +485,28 @@ function PosApp() {
       const shiftData = {
         starting_cash: startingCash
       };
-      await shiftsAPI.startShift(shiftData);
+      const shiftResponse = await shiftsAPI.startShift(shiftData);
 
       // Close loading modal
       loadingSwal.close();
 
+      // Update localStorage with new shift data so it persists on refresh
+      const currentUserData = userService.getUserData() || {};
+      const updatedUserData = {
+        ...currentUserData,
+        shift_status: 'open',
+        current_shift: {
+          id: shiftResponse.id,
+          start_time: shiftResponse.start_time,
+          opening_balance: shiftResponse.opening_balance,
+          status: 'open'
+        }
+      };
+      userService.setUserData(updatedUserData);
+
       // Refresh shift data to get accurate information from backend
       await refreshShiftData();
+      setActivityRefreshKey(prev => prev + 1);
 
       setShowShiftModal(false);
 
@@ -439,7 +549,7 @@ function PosApp() {
         showCancelButton: true,
         confirmButtonText: 'End Shift',
         cancelButtonText: 'Cancel',
-        zIndex: 99999,
+        zIndex: 999999999,
         inputValidator: (value) => {
           if (!value || isNaN(parseFloat(value))) {
             return 'Please enter a valid number for ending cash.';
@@ -464,16 +574,70 @@ function PosApp() {
         }
       });
 
-      const response = await shiftsAPI.endShift({ ending_cash: endingCashAmount });
+      const response = await shiftsAPI.endShift({ 
+        ending_cash: endingCashAmount,
+        user_id: user?.user_id  // Include user_id in end shift request
+      });
 
       // Close loading modal
       loadingSwal.close();
 
+      // Check if shift is already closed
+      if (response.shift_status === 'closed' && !response.reconciliation) {
+        // Shift was already closed - show message and refresh data
+        await refreshShiftData();
+        setActivityRefreshKey(prev => prev + 1);
+        setShowShiftModal(false);
+        
+        Swal.fire({
+          title: 'Shift Already Closed',
+          text: 'This shift has already been closed.',
+          icon: 'info',
+          confirmButtonText: 'OK',
+          zIndex: 99999
+        });
+        return;
+      }
+
       // Refresh shift data to confirm shift is ended
       await refreshShiftData();
+      
+      // Keep modal open to show closed shift details
+      setCurrentShift({
+        id: response.reconciliation?.shift_id || null,
+        startTime: response.reconciliation?.start_time || 'Unknown',
+        startingCash: parseFloat(response.reconciliation?.opening_balance || 0),
+        total_sales: parseFloat(response.reconciliation?.total_sales || 0),
+        transaction_count: response.reconciliation?.transaction_count || 0,
+        status: 'closed',
+        has_active_shift: false,
+        // Closed shift details
+        cash_sales: parseFloat(response.reconciliation?.cash_sales || 0),
+        card_sales: parseFloat(response.reconciliation?.card_sales || 0),
+        mobile_sales: parseFloat(response.reconciliation?.mobile_sales || 0),
+        net_sales: parseFloat(response.reconciliation?.total_sales || 0),
+        returns: response.reconciliation?.returns || [],
+        return_count: response.reconciliation?.return_count || 0,
+        total_returns: parseFloat(response.reconciliation?.total_returns || 0),
+        opening_balance: parseFloat(response.reconciliation?.opening_balance || 0),
+        end_time: response.reconciliation?.end_time || new Date().toISOString(),
+        closing_balance: parseFloat(response.reconciliation?.actual_closing_balance || 0),
+        discrepancy: parseFloat(response.reconciliation?.discrepancy || 0),
+        expected_cash: parseFloat(response.reconciliation?.expected_closing_balance || 0)
+      });
 
-      setShowShiftModal(false);
-
+      // Update localStorage to reflect that shift is closed
+      const currentUserData = userService.getUserData() || {};
+      const updatedUserData = {
+        ...currentUserData,
+        shift_status: 'closed',
+        current_shift: null
+      };
+      userService.setUserData(updatedUserData);
+      
+      // Show closed shift view in modal
+      setShowClosedShift(true);
+      
       // Display detailed reconciliation information using Swal
       const recon = response.reconciliation;
       const discrepancyType = recon.discrepancy_type;
@@ -485,6 +649,7 @@ function PosApp() {
             <strong>📊 Shift Summary:</strong><br>
             • Opening Balance: KSh ${recon.opening_balance.toFixed(2)}<br>
             • Cash Sales: KSh ${recon.cash_sales.toFixed(2)}<br>
+            • Returns: KSh ${(recon.total_returns || 0).toFixed(2)}<br>
             • Card Sales: KSh ${recon.card_sales.toFixed(2)}<br>
             • Mobile Sales: KSh ${recon.mobile_sales.toFixed(2)}<br>
             • Total Sales: KSh ${recon.total_sales.toFixed(2)}
@@ -592,31 +757,10 @@ function PosApp() {
         return;
       }
 
-      // Show loading Swal in upper left
-      const loadingSwal = Swal.fire({
-        title: 'Processing Payment...',
-        text: 'Please wait while we process your payment',
-        allowOutsideClick: false,
-        allowEscapeKey: false,
-        showConfirmButton: false,
-        zIndex: 99999,
-        position: 'top-start',
-        toast: true,
-        showClass: {
-          popup: 'animate__animated animate__fadeInLeft'
-        },
-        hideClass: {
-          popup: 'animate__animated animate__fadeOutLeft'
-        },
-        didOpen: () => {
-          Swal.showLoading();
-        }
-      });
-
+      // Since PaymentModal has its own loading indicator, we don't need Swal here
       // Check if this is a held order being completed
       if (currentHeldOrderId) {
         await completeHeldOrder(currentHeldOrderId, paymentData);
-        loadingSwal.close();
         return;
       }
 
@@ -633,7 +777,6 @@ function PosApp() {
         discount_amount: Number(0),
         payment_method: paymentData.method,
         customer: selectedCustomer ? selectedCustomer.id : null,
-        receipt_number: `POS-${Date.now()}`,
         sale_type: mode
       };
 
@@ -653,7 +796,6 @@ function PosApp() {
 
       // Validate sale ID
       if (!sale.id) {
-        loadingSwal.close();
         Swal.fire({
           icon: 'error',
           title: 'Invalid Sale',
@@ -674,8 +816,7 @@ function PosApp() {
 
       // Refresh shift data to update totals
       await refreshShiftData();
-
-      loadingSwal.close();
+      setActivityRefreshKey(prev => prev + 1);
 
       // Prepare receipt data
       const receiptInfo = {
@@ -812,7 +953,6 @@ function PosApp() {
         tax_amount: Number(0),
         discount_amount: Number(0),
         customer: selectedCustomer ? selectedCustomer.id : null,
-        receipt_number: `HOLD-${Date.now()}`,
         sale_type: mode,
         hold_order: true
       };
@@ -822,8 +962,6 @@ function PosApp() {
       // Send to backend to create held cart
       const heldCart = await salesAPI.createSale(cartData);
       console.log('Order held successfully:', heldCart);
-
-      loadingSwal.close();
 
       // Clear cart and customer
       setCart([]);
@@ -913,7 +1051,12 @@ function PosApp() {
 
   const fetchHeldOrders = async () => {
     try {
-      const response = await salesAPI.getHeldOrders();
+      // Pass shift_id if there's an active shift
+      const shiftId = currentShift?.id;
+      console.log('Fetching held orders with shift_id:', shiftId);
+      const params = shiftId ? { shift_id: shiftId } : {};
+      console.log('Fetch held orders params:', params);
+      const response = await salesAPI.getHeldOrders(params);
       setHeldOrders(response || []);
     } catch (error) {
       console.error('Error fetching held orders:', error);
@@ -1045,7 +1188,6 @@ function PosApp() {
         discount_amount: 0,
         total_amount: total,
         payment_method: paymentData.method,
-        receipt_number: `POS-${Date.now()}`,
         sale_type: mode
       };
 
@@ -1068,6 +1210,7 @@ function PosApp() {
 
       // Refresh shift data to update totals
       await refreshShiftData();
+      setActivityRefreshKey(prev => prev + 1);
 
       // Update product stock quantities immediately
       setProducts(prevProducts => prevProducts.map(product => {
@@ -1305,6 +1448,7 @@ function PosApp() {
         }}
         onOpenSalesSummary={(shiftId) => setSalesSummaryData({ shiftId, isOpen: true })}
         onShiftManagement={() => setShowShiftModal(true)}
+        onEndShift={() => setShowShiftModal(true)}
         onPrint={() => window.print()}
         onLogout={logout}
         onOpenOrderPreparation={openOrderPreparation}
@@ -1331,30 +1475,48 @@ function PosApp() {
         </div>
       )} */}
 
-      <ProductGrid
-        products={products}
-        categories={categories}
-        onAddToCart={currentShift ? addToCart : () => {}}
-        loading={loading}
-        disabled={!currentShift}
-      />
+      <div className="pos-content">
+        <ProductGrid
+          products={products}
+          categories={categories}
+          onAddToCart={currentShift?.has_active_shift ? addToCart : () => {}}
+          loading={loading}
+          disabled={!currentShift?.has_active_shift}
+        />
 
-      <ShoppingCart
-        cart={cart}
-        categories={categories}
-        onUpdateQuantity={currentShift ? updateQuantity : () => {}}
-        onRemoveItem={currentShift ? removeItem : () => {}}
-        onProcessPayment={currentShift ? () => setShowPaymentModal(true) : () => {}}
-        onHoldOrder={currentShift ? holdOrder : () => {}}
-        disabled={!currentShift}
-        selectedCustomer={selectedCustomer}
-        mode={mode}
-        onCustomerClear={handleCustomerClear}
-      />
+        <ShoppingCart
+          cart={cart}
+          categories={categories}
+          onUpdateQuantity={currentShift?.has_active_shift ? updateQuantity : () => {}}
+          onRemoveItem={currentShift?.has_active_shift ? removeItem : () => {}}
+          onProcessPayment={currentShift?.has_active_shift ? () => setShowPaymentModal(true) : () => {}}
+          onHoldOrder={currentShift?.has_active_shift ? holdOrder : () => {}}
+          onClearCart={currentShift?.has_active_shift ? () => setCart([]) : () => {}}
+          disabled={!currentShift?.has_active_shift}
+          selectedCustomer={selectedCustomer}
+          mode={mode}
+          onCustomerClear={handleCustomerClear}
+          onOpenReturnCodeModal={handleOpenReturnCodeModal}
+          appliedReturnCode={appliedReturnCode}
+          onClearAppliedReturnCode={clearAppliedReturnCode}
+        />
+
+        <RecentActivityPanel
+          heldOrders={heldOrders}
+          onLoadHeldOrder={loadHeldOrder}
+          currentShift={currentShift}
+          refreshKey={activityRefreshKey}
+        />
+      </div>
 
       <ShiftModal
         isOpen={showShiftModal}
-        onClose={() => setShowShiftModal(false)}
+        showClosedShift={showClosedShift}
+        onClose={() => {
+          setShowShiftModal(false);
+          setShowClosedShift(false);
+        }}
+        onViewStartShift={() => setShowClosedShift(false)}
         onStartShift={startShift}
         onEndShift={endShift}
         onViewSalesSummary={(shiftId) => setSalesSummaryData({ shiftId, isOpen: true })}
@@ -1378,7 +1540,6 @@ function PosApp() {
       <ChitModal
         isOpen={showChitModal}
         onClose={() => setShowChitModal(false)}
-        chits={chits}
         onLoadChit={loadChit}
       />
 
@@ -1439,8 +1600,16 @@ function PosApp() {
         splitData={receiptData?.splitData}
         vatRate={0.16}
       />
+
+      <ReturnCodeModal
+        isOpen={showReturnCodeModal}
+        onClose={() => setShowReturnCodeModal(false)}
+        onApply={handleApplyReturnCode}
+      />
     </div>
   );
 }
 
 export default PosApp;
+
+

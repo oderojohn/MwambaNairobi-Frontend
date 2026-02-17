@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FiPlus, FiDownload, FiPrinter, FiSearch, FiEdit, FiTrash2, FiX, FiSave } from 'react-icons/fi';
 import { Link } from 'react-router-dom';
 import { suppliersAPI } from '../../../services/ApiService/api';
+import '../../../assets/pagesStyles/suppliers.css';
 
 const SuppliersPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -79,37 +80,37 @@ const SuppliersPage = () => {
   };
 
   return (
-    <div className="page-container">
-      <div className="page-header">
+    <div className="suppliers-xlsSuprPage">
+      <div className="suppliers-xlsSuprHeader">
         {/* <h1>Suppliers</h1> */}
-        <div className="breadcrumbs">
+        <div className="suppliers-xlsSuprBreadcrumbs">
           <Link to="/">Home</Link> / <span>Purchasing</span> / <span>Suppliers</span>
         </div>
       </div>
 
       {!loading && !error && (
-        <div className="supplier-stats">
-          <div className="stat-card">
-            <div className="stat-value">{suppliers.length}</div>
-            <div className="stat-label">Total Suppliers</div>
+        <div className="xlsSuprStats">
+          <div className="xlsSuprStatCard">
+            <div className="xlsSuprStatValue">{suppliers.length}</div>
+            <div className="xlsSuprStatLabel">Total Suppliers</div>
           </div>
-          <div className="stat-card">
-            <div className="stat-value">{suppliers.filter(s => s.is_active).length}</div>
-            <div className="stat-label">Active</div>
+          <div className="xlsSuprStatCard">
+            <div className="xlsSuprStatValue">{suppliers.filter(s => s.is_active).length}</div>
+            <div className="xlsSuprStatLabel">Active</div>
           </div>
-          <div className="stat-card">
-            <div className="stat-value">
+          <div className="xlsSuprStatCard">
+            <div className="xlsSuprStatValue">
               {suppliers.reduce((sum, supplier) => sum + (supplier.purchase_orders_count || 0), 0)}
             </div>
-            <div className="stat-label">Total Orders</div>
+            <div className="xlsSuprStatLabel">Total Orders</div>
           </div>
         </div>
       )}
 
-      <div className="page-actions">
-        <div className="search-filter">
-          <div className="search-box">
-            <FiSearch className="search-icon" />
+      <div className="suppliers-xlsSuprActions">
+        <div className="suppliers-xlsSuprSearchFilter">
+          <div className="suppliers-xlsSuprSearchBox">
+            <FiSearch className="suppliers-xlsSuprSearchIcon" />
             <input
               type="text"
               placeholder="Search suppliers..."
@@ -118,23 +119,23 @@ const SuppliersPage = () => {
             />
           </div>
         </div>
-        <div className="action-buttons">
+        <div className="xlsSuprActionButtons">
           <button
-            className="btn btn-primary"
+            className="xlsSuprBtn xlsSuprBtnPrimary"
             onClick={() => setShowAddModal(true)}
           >
             <FiPlus /> Add Supplier
           </button>
-          <button className="btn btn-secondary">
+          <button className="xlsSuprBtn xlsSuprBtnSecondary">
             <FiDownload /> Export
           </button>
-          <button className="btn btn-secondary">
+          <button className="xlsSuprBtn xlsSuprBtnSecondary">
             <FiPrinter /> Print
           </button>
         </div>
       </div>
 
-      <div className="data-table-container">
+      <div className="data-xlsSuprTableContainer">
         {loading ? (
           <div style={{ textAlign: 'center', padding: '40px' }}>
             <p>Loading suppliers...</p>
@@ -144,7 +145,7 @@ const SuppliersPage = () => {
             <p>{error}</p>
           </div>
         ) : (
-          <table className="data-table">
+          <table className="xlsSuprDataTable">
             <thead>
               <tr>
                 <th>ID</th>
@@ -162,7 +163,7 @@ const SuppliersPage = () => {
                 <tr key={supplier.id}>
                   <td>{supplier.id}</td>
                   <td>
-                    <Link to={`/suppliers/${supplier.id}`} className="supplier-link">
+                    <Link to={`/suppliers/${supplier.id}`} className="xlsSuprLink">
                       {supplier.name}
                     </Link>
                   </td>
@@ -171,12 +172,12 @@ const SuppliersPage = () => {
                   <td>{supplier.phone}</td>
                   <td>{supplier.purchase_orders_count || 0}</td>
                   <td>
-                    <span className={`status-badge ${supplier.is_active ? 'active' : 'inactive'}`}>
+                    <span className={`xlsSuprStatus ${supplier.is_active ? 'active' : 'inactive'}`}>
                       {supplier.is_active ? 'Active' : 'Inactive'}
                     </span>
                   </td>
                   <td>
-                    <div className="action-buttons">
+                    <div className="xlsSuprActionButtons">
                       <button className="btn-icon" title="Edit">
                         <FiEdit />
                       </button>
@@ -193,11 +194,11 @@ const SuppliersPage = () => {
       </div>
 
       {!loading && !error && (
-        <div className="pagination-container">
-          <div className="pagination-info">
+        <div className="xlsSuprPagination">
+          <div className="xlsSuprPaginationInfo">
             Showing 1 to {filteredSuppliers.length} of {suppliers.length} suppliers
           </div>
-          <div className="pagination-controls">
+          <div className="xlsSuprPaginationControls">
             <button className="btn-pagination" disabled>Previous</button>
             <button className="btn-pagination active">1</button>
             <button className="btn-pagination">Next</button>
@@ -207,19 +208,19 @@ const SuppliersPage = () => {
 
       {/* Add Supplier Modal */}
       {showAddModal && (
-        <div className="modal-overlay active">
-          <div className="modal-container">
-            <div className="modal-header">
-              <h3 className="modal-title">Add New Supplier</h3>
+        <div className="xlsSuprModalOverlay active">
+          <div className="suppliers-modal-container">
+            <div className="suppliers-modal-header">
+              <h3 className="suppliers-modal-title">Add New Supplier</h3>
               <button
-                className="modal-close"
+                className="suppliers-modal-close"
                 onClick={() => setShowAddModal(false)}
               >
                 <FiX />
               </button>
             </div>
 
-            <div className="modal-body">
+            <div className="suppliers-modal-body">
               <div className="form-group">
                 <label>Supplier Name*</label>
                 <input

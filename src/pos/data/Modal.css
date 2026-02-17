@@ -569,3 +569,348 @@
     display: none;
   }
 }
+
+/* ============================================
+   SHIFT MODAL STYLES
+   ============================================ */
+
+/* Shift Modal Overlay */
+.shift-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  backdrop-filter: blur(4px);
+}
+
+.shift-modal-overlay.shift-modal-required {
+  background: rgba(0, 0, 0, 0.85);
+}
+
+/* End Shift Confirmation Modal - appears on top */
+.shift-confirm-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100000;
+  backdrop-filter: blur(8px);
+}
+
+/* Shift Modal Container */
+.shift-modal-container {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  width: 90%;
+  max-width: 700px;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideUp {
+  from { transform: translateY(30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.shift-confirm-modal {
+  max-width: 500px;
+}
+
+/* Shift Modal Header */
+.shift-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid #f1f5f9;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.shift-modal-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.shift-modal-title h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.shift-modal-icon {
+  font-size: 1.5rem;
+}
+
+.shift-icon-cog::before { content: "\f013"; }
+.shift-icon-start::before { content: "\f017"; }
+.shift-icon-end::before { content: "\f057"; }
+
+.shift-modal-close {
+  font-size: 1.5rem;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  color: white;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+  padding: 4px 8px;
+}
+
+.shift-modal-close:hover {
+  opacity: 1;
+}
+
+/* Shift Modal Body */
+.shift-modal-body {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+  background: #ffffff;
+}
+
+/* Shift Sections */
+.shift-start-section,
+.shift-active-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Shift Alert */
+.shift-alert {
+  padding: 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.shift-alert-warning {
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  color: #92400e;
+}
+
+.shift-alert-info {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+}
+
+.shift-alert-icon {
+  font-size: 1.25rem;
+}
+
+/* Shift Description */
+.shift-description {
+  color: #6b7280;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Shift Input Group */
+.shift-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.shift-input-label {
+  font-weight: 600;
+  color: #374151;
+  font-size: 0.875rem;
+}
+
+.shift-input-field {
+  padding: 12px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: all 0.2s;
+}
+
+.shift-input-field:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Shift Stats Grid */
+.shift-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
+}
+
+.shift-stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.shift-stat-label {
+  font-size: 0.75rem;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.shift-stat-value {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #059669;
+}
+
+/* Shift Section Title */
+.shift-section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 8px 0;
+}
+
+/* Shift Reconciliation */
+.shift-reconciliation {
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+}
+
+.shift-reconciliation-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 12px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.shift-reconciliation-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.shift-reconciliation-item:last-child {
+  border-bottom: none;
+}
+
+.shift-reconciliation-label {
+  color: #6b7280;
+}
+
+.shift-reconciliation-value {
+  font-weight: 600;
+  color: #374151;
+}
+
+.shift-discrepancy-shortage {
+  color: #dc2626;
+}
+
+.shift-discrepancy-overage {
+  color: #f59e0b;
+}
+
+.shift-discrepancy-balanced {
+  color: #059669;
+}
+
+/* Shift Modal Actions */
+.shift-modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding-top: 16px;
+  border-top: 1px solid #e2e8f0;
+  margin-top: 16px;
+}
+
+/* Shift Buttons */
+.shift-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.shift-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.shift-btn-primary {
+  background: #3b82f6;
+  color: white;
+}
+
+.shift-btn-primary:hover:not(:disabled) {
+  background: #2563eb;
+  transform: translateY(-1px);
+}
+
+.shift-btn-info {
+  background: #06b6d4;
+  color: white;
+}
+
+.shift-btn-info:hover:not(:disabled) {
+  background: #0891b2;
+  transform: translateY(-1px);
+}
+
+.shift-btn-danger {
+  background: #ef4444;
+  color: white;
+}
+
+.shift-btn-danger:hover:not(:disabled) {
+  background: #dc2626;
+  transform: translateY(-1px);
+}
+
+.shift-btn-outline {
+  background: transparent;
+  border: 1px solid #d1d5db;
+  color: #374151;
+}
+
+.shift-btn-outline:hover:not(:disabled) {
+  background: #f3f4f6;
+}
+
+.shift-btn-icon {
+  font-size: 1rem;
+}

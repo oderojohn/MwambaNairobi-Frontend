@@ -4,9 +4,6 @@ import '../data/Modal.css';
 
 const ShiftModal = ({ isOpen, onClose, onStartShift, onEndShift, currentShift }) => {
   const [startingCash, setStartingCash] = useState('');
-  const [showEndShiftConfirm, setShowEndShiftConfirm] = useState(false);
-  const [shiftSummary, setShiftSummary] = useState(null);
-  const [loadingSummary] = useState(false); // setLoadingSummary is not used, so removed
 
   const handleRunEndOfDayReport = async () => {
     try {
@@ -171,9 +168,7 @@ const ShiftModal = ({ isOpen, onClose, onStartShift, onEndShift, currentShift })
   };
 
   const handleClose = () => {
-    if (currentShift) {
-      onClose();
-    }
+    onClose();
   };
 
   const handleStartShift = () => {
@@ -184,8 +179,7 @@ const ShiftModal = ({ isOpen, onClose, onStartShift, onEndShift, currentShift })
   };
 
   const handleEndShift = () => {
-    setShowEndShiftConfirm(false);
-    setShiftSummary(null);
+    onClose(); // Close the modal first so Swal is not hidden behind
     onEndShift();
   };
 
@@ -194,20 +188,18 @@ const ShiftModal = ({ isOpen, onClose, onStartShift, onEndShift, currentShift })
   return (
     <>
       {/* Main Shift Modal */}
-      <div className={`shift-modal-overlay ${!currentShift ? 'shift-modal-required' : ''}`}>
+      <div className={`shift-modal-overlay ${!currentShift || currentShift.status === 'closed' ? 'shift-modal-required' : ''}`}>
         <div className="shift-modal-container">
           <div className="shift-modal-header">
             <div className="shift-modal-title">
-              <i className={`shift-modal-icon ${currentShift ? 'shift-icon-cog' : 'shift-icon-start'}`}></i>
-              <h3>{currentShift ? 'Shift Management' : 'Start Your Shift'}</h3>
+              <i className={`shift-modal-icon ${currentShift && currentShift.has_active_shift && currentShift.status !== 'closed' ? 'shift-icon-cog' : 'shift-icon-start'}`}></i>
+              <h3>{currentShift && currentShift.has_active_shift && currentShift.status !== 'closed' ? 'Shift Management' : 'Start Your Shift'}</h3>
             </div>
-            {currentShift && (
-              <button className="shift-modal-close" onClick={handleClose}>&times;</button>
-            )}
+            <button className="shift-modal-close" onClick={handleClose}>&times;</button>
           </div>
           
           <div className="shift-modal-body">
-            {!currentShift ? (
+            {!currentShift || currentShift.status === 'closed' ? (
               <div className="shift-start-section">
                 <div className="shift-alert shift-alert-warning">
                   <i className="shift-alert-icon"></i>
@@ -237,6 +229,13 @@ const ShiftModal = ({ isOpen, onClose, onStartShift, onEndShift, currentShift })
                   >
                     <i className="shift-btn-icon"></i>
                     Start Shift
+                  </button>
+                  <button
+                    className="shift-btn shift-btn-outline"
+                    onClick={handleClose}
+                  >
+                    <i className="shift-btn-icon"></i>
+                    Close
                   </button>
                 </div>
               </div>
@@ -328,117 +327,6 @@ const ShiftModal = ({ isOpen, onClose, onStartShift, onEndShift, currentShift })
           </div>
         </div>
       </div>
-
-      {/* End Shift Confirmation Modal */}
-      {showEndShiftConfirm && (
-        <div className="shift-modal-overlay">
-          <div className="shift-modal-container shift-confirm-modal">
-            <div className="shift-modal-header">
-              <div className="shift-modal-title">
-                <i className="shift-modal-icon shift-icon-end"></i>
-                <h3>Confirm End Shift</h3>
-              </div>
-              <button 
-                className="shift-modal-close" 
-                onClick={() => { 
-                  setShowEndShiftConfirm(false); 
-                  setShiftSummary(null); 
-                }}
-              >
-                &times;
-              </button>
-            </div>
-            
-            <div className="shift-modal-body">
-              {loadingSummary ? (
-                <div className="shift-loading">
-                  <i className="shift-loading-spinner"></i>
-                  Loading shift summary...
-                </div>
-              ) : shiftSummary ? (
-                <div className="shift-summary-confirm">
-                  <h4 className="shift-summary-title">Shift Summary</h4>
-                  
-                  <div className="shift-summary-details">
-                    <div className="shift-summary-row">
-                      <span className="shift-summary-label">Starting Cash:</span>
-                      <span className="shift-summary-value">Ksh {currentShift.startingCash.toFixed(2)}</span>
-                    </div>
-                    
-                    <div className="shift-summary-row">
-                      <span className="shift-summary-label">Total Sales:</span>
-                      <span className="shift-summary-value">Ksh {(shiftSummary.total_sales || 0).toFixed(2)}</span>
-                    </div>
-                    
-                    {shiftSummary.sales_by_payment_method && Object.keys(shiftSummary.sales_by_payment_method).length > 0 ? (
-                      Object.entries(shiftSummary.sales_by_payment_method).map(([method, amount]) => (
-                        <div key={method} className="shift-summary-row">
-                          <span className="shift-summary-label">
-                            {method.charAt(0).toUpperCase() + method.slice(1)} Sales:
-                          </span>
-                          <span className="shift-summary-value">Ksh {(amount || 0).toFixed(2)}</span>
-                        </div>
-                      ))
-                    ) : (
-                      <>
-                        <div className="shift-summary-row">
-                          <span className="shift-summary-label">Cash Sales:</span>
-                          <span className="shift-summary-value">Ksh 0.00</span>
-                        </div>
-                        <div className="shift-summary-row">
-                          <span className="shift-summary-label">M-Pesa Sales:</span>
-                          <span className="shift-summary-value">Ksh 0.00</span>
-                        </div>
-                        <div className="shift-summary-row">
-                          <span className="shift-summary-label">Card Sales:</span>
-                          <span className="shift-summary-value">Ksh 0.00</span>
-                        </div>
-                      </>
-                    )}
-                    
-                    <div className="shift-summary-row">
-                      <span className="shift-summary-label">Total Transactions:</span>
-                      <span className="shift-summary-value">{shiftSummary.total_transactions || 0}</span>
-                    </div>
-                  </div>
-                  
-                  <div className="shift-alert shift-alert-warning">
-                    <i className="shift-alert-icon"></i>
-                    Are you sure you want to end this shift? You will be prompted to enter the ending cash amount.
-                  </div>
-                </div>
-              ) : (
-                <div className="shift-error">
-                  <i className="shift-error-icon"></i>
-                  Failed to load shift summary. Please try again.
-                </div>
-              )}
-            </div>
-            
-            <div className="shift-modal-actions">
-              <button 
-                className="shift-btn shift-btn-outline" 
-                onClick={() => { 
-                  setShowEndShiftConfirm(false); 
-                  setShiftSummary(null); 
-                }}
-                disabled={loadingSummary}
-              >
-                Cancel
-              </button>
-              
-              <button 
-                className="shift-btn shift-btn-danger" 
-                onClick={handleEndShift}
-                disabled={loadingSummary}
-              >
-                <i className="shift-btn-icon"></i>
-                Proceed to End Shift
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 };

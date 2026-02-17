@@ -247,6 +247,22 @@ const ReceiptModal = ({
               ` : ''}
             </div>
 
+            ${saleData?.return_code_used ? `
+              <div class="divider"></div>
+              <div class="receipt-return-code-info">
+                <i class="fas fa-undo-alt"></i>
+                <span>Return Code Applied</span>
+              </div>
+              <div class="receipt-return-code-row">
+                <span>Code:</span>
+                <span class="bold">${saleData.return_code_used}</span>
+              </div>
+              <div class="receipt-return-code-row">
+                <span>Credit:</span>
+                <span class="bold credit">-${formatCurrency(parseFloat(saleData.return_code_amount) || 0)}</span>
+              </div>
+            ` : ''}
+
             <div class="divider"></div>
 
             <div class="receipt-items-header">
@@ -259,10 +275,10 @@ const ReceiptModal = ({
             <div class="receipt-items">
               ${cart.map((item, idx) => `
                 <div class="receipt-item">
-                  <div class="item-name">${item.name}</div>
+                  <div class="item-name">${item.name || item.product_name || 'Unknown Item'}</div>
                   <div class="item-qty">${item.quantity}</div>
-                  <div class="item-price">${formatCurrency(item.price)}</div>
-                  <div class="item-total">${formatCurrency(item.price * item.quantity)}</div>
+                  <div class="item-price">${formatCurrency(parseFloat(item.price || item.unit_price || 0))}</div>
+                  <div class="item-total">${formatCurrency((parseFloat(item.price || item.unit_price || 0)) * item.quantity)}</div>
                 </div>
               `).join('')}
             </div>
@@ -401,6 +417,25 @@ const ReceiptModal = ({
                 )}
               </div>
 
+              {/* Return Code Applied Display */}
+              {saleData?.return_code_used && (
+                <div className="receipt-return-code-section">
+                  <div className="divider" />
+                  <div className="receipt-return-code-info">
+                    <i className="fas fa-undo-alt"></i>
+                    <span>Return Code Applied</span>
+                  </div>
+                  <div className="receipt-return-code-row">
+                    <span>Code:</span>
+                    <span className="bold">{saleData.return_code_used}</span>
+                  </div>
+                  <div className="receipt-return-code-row">
+                    <span>Credit:</span>
+                    <span className="bold credit">-{formatCurrency(parseFloat(saleData.return_code_amount) || 0)}</span>
+                  </div>
+                </div>
+              )}
+
               <div className="divider" />
 
               <div className="receipt-items-header">
@@ -411,19 +446,28 @@ const ReceiptModal = ({
               </div>
 
               <div className="receipt-items">
-                {cart.map((item, idx) => (
-                  <div key={idx} className="receipt-item">
-                    <div className="item-name">
-                      {item.name}
-                      {item.category_name && (
-                        <small className="item-category">({item.category_name})</small>
-                      )}
+                {cart && cart.length > 0 ? (
+                  cart.map((item, idx) => (
+                    <div key={idx} className="receipt-item">
+                      <div className="item-name">
+                        {item.name || item.product_name || 'Unknown Item'}
+                        {item.category_name && (
+                          <small className="item-category">({item.category_name})</small>
+                        )}
+                      </div>
+                      <div className="item-qty">{item.quantity}</div>
+                      <div className="item-price">{formatCurrency(parseFloat(item.price || item.unit_price || 0))}</div>
+                      <div className="item-total">{formatCurrency((parseFloat(item.price || item.unit_price || 0)) * item.quantity)}</div>
                     </div>
-                    <div className="item-qty">{item.quantity}</div>
-                    <div className="item-price">{formatCurrency(item.price)}</div>
-                    <div className="item-total">{formatCurrency(item.price * item.quantity)}</div>
+                  ))
+                ) : (
+                  <div className="receipt-item">
+                    <div className="item-name">No items</div>
+                    <div className="item-qty">-</div>
+                    <div className="item-price">-</div>
+                    <div className="item-total">-</div>
                   </div>
-                ))}
+                )}
               </div>
 
               <div className="divider" />
@@ -470,227 +514,6 @@ const ReceiptModal = ({
           </div>
         </div>
       </div>
-
-      {/* In‑app styles for modal & receipt preview */}
-      <style jsx>{`
-        .modal.active {
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          background: rgba(0, 0, 0, 0.5);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 1000;
-        }
-        .modal-content {
-          background: white;
-          border-radius: 8px;
-          max-height: 90vh;
-          overflow-y: auto;
-        }
-        .receipt-modal .modal-content {
-          max-width: 400px;
-          width: 100%;
-        }
-        .modal-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 15px 20px;
-          border-bottom: 1px solid #ddd;
-        }
-        .modal-body {
-          padding: 20px;
-        }
-        .modal-actions {
-          display: flex;
-          gap: 10px;
-          align-items: center;
-        }
-        .close {
-          font-size: 24px;
-          cursor: pointer;
-          margin-left: 15px;
-        }
-        .receipt {
-          font-family: 'Courier New', monospace;
-          font-size: 16px;
-          line-height: 1.3;
-          color: #000;
-          background: #fff;
-          padding: 20px;
-          max-width: 100%;
-          margin: 0 auto;
-          border: 1px solid #ddd;
-          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-          font-weight: bold;
-        }
-        .receipt-header {
-          text-align: center;
-          border-bottom: 3px solid #000;
-          padding-bottom: 10px;
-          margin-bottom: 10px;
-          font-weight: bold;
-        }
-        .logo-container {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 10px;
-          margin-bottom: 8px;
-          font-weight: bold;
-        }
-        .receipt-logo-png {
-          width: 50px;
-          height: 50px;
-          object-fit: contain;
-        }
-        .logo-text {
-          font-family: 'Courier New', monospace;
-          font-size: 28px;
-          font-weight: bold;
-          letter-spacing: 3px;
-        }
-        .receipt-title {
-          font-size: 22px;
-          font-weight: bold;
-          margin: 8px 0;
-          text-transform: uppercase;
-          letter-spacing: 2px;
-        }
-        .receipt-store-info h2 {
-          font-size: 20px;
-          margin: 5px 0;
-          font-weight: bold;
-        }
-        .receipt-store-info p {
-          margin: 3px 0;
-          font-size: 16px;
-          font-weight: bold;
-        }
-        .receipt-info {
-          margin-bottom: 15px;
-          padding: 0 8px;
-          font-weight: bold;
-        }
-        .receipt-info-row {
-          display: flex;
-          justify-content: space-between;
-          margin-bottom: 4px;
-          font-weight: bold;
-        }
-        .receipt-items-header {
-          display: flex;
-          justify-content: space-between;
-          border-bottom: 2px solid #000;
-          border-top: 2px solid #000;
-          padding: 6px 8px;
-          margin: 12px 0 8px 0;
-          font-weight: bold;
-          background: #f0f0f0;
-          font-size: 16px;
-        }
-        .item-name {
-          flex: 3;
-          text-align: left;
-          font-size: 15px;
-          font-weight: bold;
-        }
-        .item-qty {
-          width: 50px;
-          text-align: center;
-          font-size: 15px;
-          font-weight: bold;
-        }
-        .item-price {
-          width: 70px;
-          text-align: right;
-          font-size: 15px;
-          font-weight: bold;
-        }
-        .item-total {
-          width: 70px;
-          text-align: right;
-          font-size: 15px;
-          font-weight: bold;
-        }
-        .receipt-item {
-          display: flex;
-          justify-content: space-between;
-          margin-bottom: 6px;
-          padding: 0 8px;
-          align-items: flex-start;
-          font-weight: bold;
-        }
-        .item-category {
-          display: block;
-          font-size: 12px;
-          color: #000;
-          margin-top: 2px;
-          font-style: italic;
-          font-weight: bold;
-        }
-        .receipt-totals {
-          border-top: 3px solid #000;
-          border-bottom: 3px solid #000;
-          padding: 12px 8px;
-          margin: 15px 0;
-          font-weight: bold;
-        }
-        .receipt-total-row {
-          display: flex;
-          justify-content: space-between;
-          margin-bottom: 5px;
-          font-size: 16px;
-          font-weight: bold;
-        }
-        .receipt-grand-total {
-          border-top: 2px solid #000;
-          padding-top: 8px;
-          margin-top: 8px;
-          font-weight: bold;
-          font-size: 20px;
-        }
-        .receipt-footer {
-          text-align: center;
-          border-top: 2px dashed #000;
-          padding-top: 12px;
-          margin-top: 15px;
-          font-weight: bold;
-        }
-        .receipt-footer p {
-          margin: 5px 0;
-          font-size: 16px;
-          font-weight: bold;
-        }
-        .barcode-placeholder {
-          font-family: 'Courier New', monospace;
-          font-size: 18px;
-          letter-spacing: 2px;
-          margin: 12px 0;
-          padding: 4px;
-          border: 2px solid #000;
-          font-weight: bold;
-        }
-        .divider {
-          border-bottom: 2px dashed #000;
-          margin: 12px 0;
-        }
-        .text-center {
-          text-align: center;
-          font-weight: bold;
-        }
-        .text-right {
-          text-align: right;
-          font-weight: bold;
-        }
-        .bold {
-          font-weight: bold;
-        }
-      `}</style>
     </>
   );
 };

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { FiCheck, FiFilter, FiDownload, FiPrinter, FiSearch, FiTrendingUp, FiTrendingDown, FiPackage } from 'react-icons/fi';
 import { Link } from 'react-router-dom';
 import { inventoryAPI } from '../../../services/ApiService/api';
-import './ReceivingPage.css';
+import '../../../assets/pagesStyles/receiving.css';
 
 const ReceivingPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -162,11 +162,18 @@ const ReceivingPage = () => {
 
   return (
     <div className="page-container">
-      <div className="page-header">
-        <div className="breadcrumbs">
-          <Link to="/">Home</Link> / <span>Inventory</span> / <span>Purchasing</span> / <span>Receiving History</span>
+      {/* Header with Back button */}
+      <div className="page-header-with-back">
+        <Link to="/" className="page-back-btn">
+          <i className="fas fa-arrow-left"></i>
+          Back to POS
+        </Link>
+        <div className="page-header-title-area">
+          <div className="breadcrumbs">
+            <Link to="/">Home</Link> / <span>Inventory</span> / <span>Purchasing</span> / <span>Receiving History</span>
+          </div>
+          <h1>Receiving History & Reports</h1>
         </div>
-        <h1>Receiving History & Reports</h1>
       </div>
 
       {!loading && !error && (

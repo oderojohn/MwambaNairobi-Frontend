@@ -1,15 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { toNumber, formatCurrency } from '../../services/ApiService/api';
 import './PaymentModal.css';
 
-const PaymentModal = ({ isOpen, onClose, onProcessPayment, totalAmount, selectedCustomer, mode, initialMethod = 'cash' }) => {
+const PaymentModal = ({ 
+  isOpen, 
+  onClose, 
+  onProcessPayment, 
+  totalAmount, 
+  selectedCustomer, 
+  mode, 
+  initialMethod = 'cash'
+}) => {
   console.log('PaymentModal render - isOpen:', isOpen, 'totalAmount:', totalAmount, 'type:', typeof totalAmount);
 
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Set initial method when modal opens
-  React.useEffect(() => {
+  useEffect(() => {
     if (isOpen && initialMethod) {
       console.log('Setting initial payment method:', initialMethod);
       setPaymentMethod(initialMethod);
@@ -23,10 +31,19 @@ const PaymentModal = ({ isOpen, onClose, onProcessPayment, totalAmount, selected
   const [change, setChange] = useState(0);
   const [transactionId, setTransactionId] = useState('');
 
-  // Split payment states - commented out as they are not used
-  // const [splitCashAmount, setSplitCashAmount] = useState('');
-  // const [splitMpesaAmount, setSplitMpesaAmount] = useState('');
-  // const [splitMpesaNumber, setSplitMpesaNumber] = useState('');
+  // Quick cash denominations
+  const quickCashOptions = [100, 200, 500, 1000, 2000, 5000];
+
+  // Round up to next convenient amount
+  const roundUpAmount = (amount) => {
+    return Math.ceil(amount / 100) * 100;
+  };
+
+  const handleQuickCash = (amount) => {
+    const roundedAmount = roundUpAmount(amount);
+    setCashAmount(roundedAmount.toString());
+    calculateChange(roundedAmount);
+  };
 
   if (!isOpen) {
     console.log('PaymentModal not rendering because isOpen is false');
@@ -88,17 +105,15 @@ const PaymentModal = ({ isOpen, onClose, onProcessPayment, totalAmount, selected
       }
 
       const totalPaid = mpesaValue + cashValue;
-      if (Math.abs(totalPaid - totalAmount) > 0.01) { // Allow for small floating point differences
-        alert(`Total payment (${formatCurrency(totalPaid)}) does not match total due (${formatCurrency(totalAmount)})`);
+      if (Math.abs(totalPaid - totalAmount) > 0.01) {
+        alert(`Total payment (${formatCurrency(totalPaid)}) does not match total amount (${formatCurrency(totalAmount)})`);
         return;
       }
     }
 
-    // Credit payment validation removed
-
     if (paymentMethod === 'cash') {
-      const cashReceived = parseFloat(cashAmount);
-      if (cashReceived < totalAmount) {
+      const cashReceivedValue = parseFloat(cashAmount);
+      if (cashReceivedValue < totalAmount) {
         alert('Cash received is less than total amount');
         return;
       }
@@ -108,7 +123,6 @@ const PaymentModal = ({ isOpen, onClose, onProcessPayment, totalAmount, selected
     setIsProcessing(true);
 
     try {
-      // Determine the actual payment method based on amounts
       let actualMethod = paymentMethod;
       let paymentData = {
         amount: totalAmount,
@@ -120,7 +134,7 @@ const PaymentModal = ({ isOpen, onClose, onProcessPayment, totalAmount, selected
         paymentData = {
           ...paymentData,
           method: 'cash',
-          cashReceived: parseFloat(cashAmount),
+          cashReceived: parseFloat(cashAmount) || totalAmount,
           change: change
         };
       } else if (paymentMethod === 'mpesa') {
@@ -135,7 +149,6 @@ const PaymentModal = ({ isOpen, onClose, onProcessPayment, totalAmount, selected
         const cashAmt = parseFloat(cashAmount) || 0;
 
         if (mpesaAmt > 0 && cashAmt > 0) {
-          // True split payment
           actualMethod = 'split';
           paymentData = {
             ...paymentData,
@@ -149,7 +162,6 @@ const PaymentModal = ({ isOpen, onClose, onProcessPayment, totalAmount, selected
             change: change
           };
         } else if (mpesaAmt > 0) {
-          // Pure MPESA payment
           actualMethod = 'mpesa';
           paymentData = {
             ...paymentData,
@@ -157,12 +169,11 @@ const PaymentModal = ({ isOpen, onClose, onProcessPayment, totalAmount, selected
             mpesaNumber: mpesaNumber.trim()
           };
         } else if (cashAmt > 0) {
-          // Pure cash payment
           actualMethod = 'cash';
           paymentData = {
             ...paymentData,
             method: 'cash',
-            cashReceived: parseFloat(cashReceived) || 0,
+            cashReceived: parseFloat(cashReceived) || cashAmt,
             change: change
           };
         } else {
@@ -192,184 +203,211 @@ const PaymentModal = ({ isOpen, onClose, onProcessPayment, totalAmount, selected
           <span className="close" onClick={onClose}>&times;</span>
         </div>
         <div className="payment-modal-body">
-           <div className="payment-modal-total-line">
-             <span>Total Amount:</span>
-             <span>{formatCurrency(totalAmount)}</span>
-           </div>
+          <div className="payment-modal-total-line">
+            <span>Total Amount:</span>
+            <span className="total-amount">{formatCurrency(totalAmount)}</span>
+          </div>
 
-           <div className="payment-modal-options">
-             <button
-               type="button"
-               className={`payment-modal-option-btn ${paymentMethod === 'cash' ? 'active' : ''}`}
-               onClick={() => setPaymentMethod('cash')}
-             >
-               <i className="fas fa-money-bill-wave"></i>
-               <div>Cash</div>
-             </button>
-             <button
-               type="button"
-               className={`payment-modal-option-btn ${paymentMethod === 'mpesa' ? 'active' : ''}`}
-               onClick={() => setPaymentMethod('mpesa')}
-             >
-               <i className="fas fa-mobile-alt"></i>
-               <div>M-Pesa</div>
-             </button>
-             <button
-               type="button"
-               className={`payment-modal-option-btn ${paymentMethod === 'split' ? 'active' : ''}`}
-               onClick={() => setPaymentMethod('split')}
-             >
-               <i className="fas fa-exchange-alt"></i>
-               <div>Split</div>
-             </button>
-           </div>
+          <div className="payment-modal-options">
+            <button
+              type="button"
+              className={`payment-modal-option-btn ${paymentMethod === 'cash' ? 'active' : ''}`}
+              onClick={() => setPaymentMethod('cash')}
+            >
+              <i className="fas fa-money-bill-wave"></i>
+              <div>Cash</div>
+            </button>
+            <button
+              type="button"
+              className={`payment-modal-option-btn ${paymentMethod === 'mpesa' ? 'active' : ''}`}
+              onClick={() => setPaymentMethod('mpesa')}
+            >
+              <i className="fas fa-mobile-alt"></i>
+              <div>M-Pesa</div>
+            </button>
+            <button
+              type="button"
+              className={`payment-modal-option-btn ${paymentMethod === 'split' ? 'active' : ''}`}
+              onClick={() => setPaymentMethod('split')}
+            >
+              <i className="fas fa-exchange-alt"></i>
+              <div>Split</div>
+            </button>
+          </div>
 
-           {paymentMethod === 'cash' && (
-             <div className="payment-modal-form-group">
-               <label>Amount Received:</label>
-               <input
-                 type="number"
-                 value={cashAmount}
-                 onChange={(e) => calculateChange(e.target.value)}
-                 placeholder="Enter amount received"
-               />
-               {change > 0 && (
-                 <div className="payment-modal-cash-change">
-                   Change: {formatCurrency(change)}
-                 </div>
-               )}
-             </div>
-           )}
+          {paymentMethod === 'cash' && (
+            <div className="payment-modal-form-group">
+              <label>Quick Cash Selection:</label>
+              <div className="quick-cash-selection">
+                {quickCashOptions.map((amount) => (
+                  <button
+                    key={amount}
+                    type="button"
+                    className={`quick-cash-btn ${parseFloat(cashAmount) === amount ? 'selected' : ''}`}
+                    onClick={() => handleQuickCash(amount)}
+                  >
+                    {formatCurrency(amount)}
+                  </button>
+                ))}
+              </div>
+              <label>Amount Received:</label>
+              <input
+                type="number"
+                value={cashAmount}
+                onChange={(e) => calculateChange(e.target.value)}
+                placeholder={`Enter amount (min: ${formatCurrency(totalAmount)})`}
+                min={totalAmount}
+              />
+              {change > 0 && (
+                <div className="payment-modal-cash-change">
+                  Change: {formatCurrency(change)}
+                </div>
+              )}
+            </div>
+          )}
 
-           {paymentMethod === 'mpesa' && (
-             <div className="payment-modal-form-group">
-               <label>M-Pesa Phone Number:</label>
-               <input
-                 type="tel"
-                 value={mpesaNumber}
-                 onChange={(e) => setMpesaNumber(e.target.value)}
-                 placeholder="Enter phone number"
-               />
-             </div>
-           )}
+          {paymentMethod === 'mpesa' && (
+            <div className="payment-modal-form-group">
+              <label>M-Pesa Phone Number:</label>
+              <input
+                type="tel"
+                value={mpesaNumber}
+                onChange={(e) => setMpesaNumber(e.target.value)}
+                placeholder="Enter phone number"
+              />
+            </div>
+          )}
 
-           {paymentMethod === 'split' && (
-             <div className="payment-modal-split-section">
-               <div className="payment-modal-split-summary">
-                 <div className="split-total-due">
-                   <strong>Total Due: {formatCurrency(totalAmount)}</strong>
-                 </div>
-               </div>
+          {paymentMethod === 'split' && (
+            <div className="payment-modal-split-section">
+              <div className="payment-modal-split-summary">
+                <div className="split-total-due">
+                  <strong>Total Due: {formatCurrency(totalAmount)}</strong>
+                </div>
+              </div>
 
-               <div className="payment-modal-form-group">
-                 <label>M-Pesa Amount:</label>
-                 <input
-                   type="number"
-                   value={mpesaAmount}
-                   onChange={(e) => {
-                     const mpesaValue = parseFloat(e.target.value) || 0;
-                     setMpesaAmount(e.target.value);
-                     // Auto-calculate remaining cash needed with proper rounding
-                     const remaining = Math.max(0, Math.round((totalAmount - mpesaValue) * 100) / 100);
-                     setCashAmount(remaining.toString());
-                   }}
-                   placeholder="Enter M-Pesa amount"
-                   min="0"
-                   max={totalAmount}
-                   step="0.01"
-                 />
-               </div>
+              <div className="payment-modal-form-group">
+                <label>M-Pesa Amount:</label>
+                <input
+                  type="number"
+                  value={mpesaAmount}
+                  onChange={(e) => {
+                    const mpesaValue = parseFloat(e.target.value) || 0;
+                    setMpesaAmount(e.target.value);
+                    // Auto-calculate remaining cash needed with proper rounding
+                    const remaining = Math.max(0, Math.round((totalAmount - mpesaValue) * 100) / 100);
+                    setCashAmount(remaining.toString());
+                  }}
+                  placeholder="Enter M-Pesa amount"
+                  min="0"
+                  max={totalAmount}
+                  step="0.01"
+                />
+              </div>
 
-               <div className="payment-modal-form-group">
-                 <label>Cash Amount Required:</label>
-                 <input
-                   type="number"
-                   value={cashAmount}
-                   readOnly
-                   placeholder="Cash amount needed"
-                 />
-                 <small className="form-help">Auto-calculated based on M-Pesa amount</small>
-               </div>
+              <div className="payment-modal-form-group">
+                <label>Cash Amount Required:</label>
+                <input
+                  type="number"
+                  value={cashAmount}
+                  readOnly
+                  placeholder="Cash amount needed"
+                />
+                <small className="form-help">Auto-calculated based on M-Pesa amount</small>
+              </div>
 
-               <div className="payment-modal-form-group">
-                 <label>M-Pesa Phone Number:</label>
-                 <input
-                   type="tel"
-                   value={mpesaNumber}
-                   onChange={(e) => setMpesaNumber(e.target.value)}
-                   placeholder="Enter phone number"
-                   required={parseFloat(mpesaAmount) > 0}
-                 />
-               </div>
+              <div className="payment-modal-form-group">
+                <label>M-Pesa Phone Number:</label>
+                <input
+                  type="tel"
+                  value={mpesaNumber}
+                  onChange={(e) => setMpesaNumber(e.target.value)}
+                  placeholder="Enter phone number"
+                  required={parseFloat(mpesaAmount) > 0}
+                />
+              </div>
 
-               <div className="payment-modal-form-group">
-                 <label>Cash Received:</label>
-                 <input
-                   type="number"
-                   value={cashReceived}
-                   onChange={(e) => {
-                     setCashReceived(e.target.value);
-                     calculateChange(e.target.value);
-                   }}
-                   placeholder="Enter cash received"
-                   min={cashAmount}
-                   step="0.01"
-                 />
-                 {change > 0 && (
-                   <div className="payment-modal-cash-change">
-                     Change: {formatCurrency(change)}
-                   </div>
-                 )}
-                 {parseFloat(cashReceived) > 0 && parseFloat(cashReceived) < parseFloat(cashAmount) && (
-                   <small className="form-warning">
-                     Cash received is less than required amount
-                   </small>
-                 )}
-               </div>
+              {parseFloat(mpesaAmount) > 0 && parseFloat(cashAmount) > 0 && (
+                <div className="payment-modal-split-breakdown">
+                  <h5>Payment Breakdown</h5>
+                  <div className="breakdown-item">
+                    <span>M-Pesa</span>
+                    <span>{formatCurrency(parseFloat(mpesaAmount))}</span>
+                  </div>
+                  <div className="breakdown-item">
+                    <span>Cash</span>
+                    <span>{formatCurrency(parseFloat(cashAmount))}</span>
+                  </div>
+                  <div className="breakdown-item total">
+                    <span>Total</span>
+                    <span>{formatCurrency(parseFloat(mpesaAmount) + parseFloat(cashAmount))}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
-               <div className="payment-modal-split-breakdown">
-                 <h5>Payment Breakdown</h5>
-                 <div className="breakdown-item">
-                   <span>M-Pesa:</span>
-                   <span>{formatCurrency(parseFloat(mpesaAmount) || 0)}</span>
-                 </div>
-                 <div className="breakdown-item">
-                   <span>Cash:</span>
-                   <span>{formatCurrency(parseFloat(cashAmount) || 0)}</span>
-                 </div>
-                 <div className="breakdown-item total">
-                   <span><strong>Total:</strong></span>
-                   <span><strong>{formatCurrency((parseFloat(mpesaAmount) || 0) + (parseFloat(cashAmount) || 0))}</strong></span>
-                 </div>
-               </div>
-             </div>
-           )}
+          {/* Payment Summary */}
+          <div className="payment-summary-section">
+            <div className="payment-summary-row">
+              <span>Total Due:</span>
+              <span className="payment-summary-value">{formatCurrency(totalAmount)}</span>
+            </div>
+            {paymentMethod === 'cash' && parseFloat(cashAmount) > 0 && (
+              <div className="payment-summary-row">
+                <span>Received:</span>
+                <span className="payment-summary-value">{formatCurrency(parseFloat(cashAmount))}</span>
+              </div>
+            )}
+            {paymentMethod === 'split' && (
+              <>
+                {parseFloat(mpesaAmount) > 0 && (
+                  <div className="payment-summary-row">
+                    <span>M-Pesa:</span>
+                    <span className="payment-summary-value">{formatCurrency(parseFloat(mpesaAmount))}</span>
+                  </div>
+                )}
+                {parseFloat(cashAmount) > 0 && (
+                  <div className="payment-summary-row">
+                    <span>Cash:</span>
+                    <span className="payment-summary-value">{formatCurrency(parseFloat(cashAmount))}</span>
+                  </div>
+                )}
+              </>
+            )}
+            {change > 0 && (
+              <div className="payment-summary-row change">
+                <span>Change:</span>
+                <span className="payment-summary-value">{formatCurrency(change)}</span>
+              </div>
+            )}
+          </div>
+        </div>
 
-            {/* Credit and installment sections removed */}
-
-           <div className="payment-modal-form-group">
-             <label>Transaction ID (Optional):</label>
-             <input
-               type="text"
-               value={transactionId}
-               onChange={(e) => setTransactionId(e.target.value)}
-               placeholder="Enter transaction/reference ID"
-             />
-           </div>
-
-           <div className="payment-modal-footer">
-             <button className="payment-modal-btn payment-modal-btn-warning" onClick={onClose} disabled={isProcessing}>
-               Cancel
-             </button>
-             <button
-               className="payment-modal-btn payment-modal-btn-success"
-               onClick={handlePayment}
-               disabled={isProcessing}
-             >
-               {isProcessing ? 'Processing...' : 'Confirm Payment'}
-             </button>
-           </div>
-         </div>
+        <div className="payment-modal-footer">
+          <button
+            type="button"
+            className="payment-modal-btn payment-modal-btn-warning"
+            onClick={onClose}
+          >
+            <i className="fas fa-times"></i> Cancel
+          </button>
+          <button
+            type="button"
+            className="payment-modal-btn payment-modal-btn-success"
+            onClick={handlePayment}
+            disabled={isProcessing}
+          >
+            {isProcessing ? (
+              <div className="payment-loader-container">
+                <span className="Payment_loader"></span>
+                <span>Processing...</span>
+              </div>
+            ) : (
+              <><i className="fas fa-check"></i> Complete Payment</>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );

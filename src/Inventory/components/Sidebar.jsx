@@ -4,7 +4,7 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   FiHome, FiPackage, FiTruck, FiUsers,
   FiShoppingCart, FiBarChart2, FiSettings,
-  FiChevronDown, FiChevronRight, FiMonitor
+  FiChevronDown, FiChevronRight, FiMonitor, FiBook
 } from 'react-icons/fi';
 import { userService } from '../../services/ApiService/api';
 
@@ -60,6 +60,19 @@ const Sidebar = ({ sidebarOpen }) => {
     },
     { name: 'Reporting', icon: <FiBarChart2 />, path: 'reporting', roles: ['admin','storekeeper'] },
     { name: 'POS Admin', icon: <FiMonitor />, path: 'pos-admin', roles: ['admin'] },
+    {
+      name: 'General Ledger',
+      icon: <FiBook />,
+      roles: ['admin', 'manager'],
+      subModules: [
+        { name: 'Chart of Accounts', path: 'chart-of-accounts', roles: ['admin', 'manager'] },
+        { name: 'Journal Entries', path: 'journal-entries', roles: ['admin', 'manager'] },
+        { name: 'Trial Balance', path: 'trial-balance', roles: ['admin'] },
+        { name: 'Profit & Loss', path: 'profit-loss', roles: ['admin'] },
+        { name: 'Balance Sheet', path: 'balance-sheet', roles: ['admin'] },
+        { name: 'Recurring Expenses', path: 'recurring-expenses', roles: ['admin', 'manager'] }
+      ]
+    },
     { name: 'Users', icon: <FiUsers />, path: 'users', roles: ['admin', 'manager'] },
     {
       name: 'Settings',
@@ -97,11 +110,13 @@ const Sidebar = ({ sidebarOpen }) => {
   const modules = getFilteredModules();
 
   const isActive = (path) => {
-    // Handle nested routes for settings
+    // Handle nested routes for settings - these are already prefixed correctly
     if (path.startsWith('settings/')) {
       return location.pathname.includes('/settings/') && location.pathname.endsWith(path.replace('settings/', ''));
     }
-    return location.pathname === `/${path}` || location.pathname.endsWith(`/${path}`);
+    // Handle inventory nested routes - add inventory/ prefix if not present
+    const fullPath = path.startsWith('inventory/') ? `/${path}` : `/inventory/${path}`;
+    return location.pathname === fullPath || location.pathname === `/${path}` || location.pathname.endsWith(`/${path}`);
   };
 
   return (
@@ -137,7 +152,7 @@ const Sidebar = ({ sidebarOpen }) => {
                     .map((subModule, subIndex) => (
                       <Link 
                         key={subIndex} 
-                        to={subModule.path}
+                        to={`/inventory/${subModule.path}`}
                         className={`submenu-item ${isActive(subModule.path) ? 'active' : ''}`}
                       >
                         {subModule.name}
@@ -147,7 +162,7 @@ const Sidebar = ({ sidebarOpen }) => {
               </>
             ) : (
               <Link 
-                to={module.path}
+                to={`/inventory/${module.path}`}
                 className={`menu-item ${isActive(module.path) ? 'active' : ''}`}
               >
                 <div className="menu-icon">

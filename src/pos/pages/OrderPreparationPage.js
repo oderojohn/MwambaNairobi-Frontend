@@ -673,25 +673,25 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
   const renderOrderItemsTable = () => (
     <div className="order-prep-summary-panel">
       <div className="order-prep-panel-header">
-        <h3>
-          Order Items
-          <span className="order-prep-items-count">({orderItems.length})</span>
-        </h3>
-      </div>
-
-      {!selectedSupplier && (
-        <div className="order-prep-supplier-section">
-          <label>Select Supplier *</label>
+        <div className="order-prep-header-row">
+          <h3>
+            Order Items
+            <span className="order-prep-items-count">({orderItems.length})</span>
+          </h3>
           <select
             value={selectedSupplier?.id || ''}
             onChange={(e) => {
               const supplierId = e.target.value;
-              const supplier = suppliers.find(s => s.id === parseInt(supplierId));
-              setSelectedSupplier(supplier || null);
+              if (supplierId) {
+                const supplier = suppliers.find(s => s.id === parseInt(supplierId));
+                setSelectedSupplier(supplier || null);
+              } else {
+                setSelectedSupplier(null);
+              }
             }}
-            className="order-prep-supplier-select"
+            className="order-prep-supplier-select-header"
           >
-            <option value="">Choose a supplier...</option>
+            <option value="">Select Supplier...</option>
             {suppliers?.map(supplier => (
               <option key={supplier.id} value={supplier.id}>
                 {supplier.name}
@@ -699,23 +699,16 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
             ))}
           </select>
         </div>
-      )}
-
-      {selectedSupplier && (
-        <div className="order-prep-supplier-section">
-          <label>Supplier</label>
-          <div className="order-prep-supplier-info">
-            <h4>
-              <i className="fas fa-truck"></i>
-              {selectedSupplier.name}
-            </h4>
-            <p>{selectedSupplier.contact_info || 'No contact information'}</p>
-          </div>
-        </div>
-      )}
+      </div>
 
       <div className="order-prep-items-section">
-        {orderItems.length === 0 ? (
+        {!selectedSupplier ? (
+          <div className="order-prep-empty">
+            <i className="fas fa-truck"></i>
+            <h3>Select a Supplier</h3>
+            <p>Please select a supplier from the dropdown above to start adding items</p>
+          </div>
+        ) : orderItems.length === 0 ? (
           <div className="order-prep-empty">
             <i className="fas fa-shopping-cart"></i>
             <h3>No Items Added</h3>
@@ -774,7 +767,7 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
         )}
       </div>
 
-      {orderItems.length > 0 && (
+      {selectedSupplier && orderItems.length > 0 && (
         <>
           <div className="order-prep-total-section">
             <div className="order-prep-total-line">
@@ -783,6 +776,24 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
                 {formatCurrency(calculateTotal())}
               </span>
             </div>
+          </div>
+          <div className="order-prep-panel-actions">
+            <button
+              className="order-prep-btn order-prep-btn-secondary"
+              onClick={clearOrder}
+              disabled={orderItems.length === 0 || isClearingOrder}
+            >
+              <i className="fas fa-times"></i>
+              {isClearingOrder ? 'Clearing...' : 'Clear All'}
+            </button>
+            <button
+              className="order-prep-btn order-prep-btn-primary"
+              onClick={handleSaveOrder}
+              disabled={orderItems.length === 0 || !selectedSupplier || isLoading}
+            >
+              <i className="fas fa-save"></i>
+              {isLoading ? 'Saving...' : (editingOrderId ? 'Update Order' : 'Create Purchase Order')}
+            </button>
           </div>
         </>
       )}
@@ -800,13 +811,6 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
             Order Saved Successfully
           </h3>
           <div className="order-prep-saved-actions">
-            <button
-              className="order-prep-btn order-prep-btn-secondary"
-              onClick={() => copyOrderToWhatsApp(true)}
-            >
-              <i className="fab fa-whatsapp"></i>
-              Copy to WhatsApp
-            </button>
             <button
               className="order-prep-btn order-prep-btn-outline"
               onClick={() => navigate('/order-management')}
@@ -875,7 +879,7 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
     <div className="order-prep-page">
       {/* Header */}
       <header className="order-prep-header">
-        <div className="order-prep-header-content">
+        <div className="order-prep-header-row">
           <button className="order-prep-back-btn" onClick={handleBack}>
             <i className="fas fa-arrow-left"></i>
             Back to POS
@@ -885,34 +889,34 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
             <img src={logo} alt="Logo" className="order-prep-logo-png" />
             <h1>Create Purchase Order</h1>
           </div>
-        </div>
 
-        <div className="order-prep-mode-selector">
-          <button
-            className="order-prep-mode-btn order-prep-mode-active"
-          >
-            <i className="fas fa-plus-circle"></i>
-            Create Order
-          </button>
-          <button
-            className="order-prep-mode-btn"
-            onClick={handleDownloadPDF}
-          >
-            <i className="fas fa-download"></i>
-            Download PDF
-          </button>
-          <button
-            className="order-prep-mode-btn"
-            onClick={() => navigate('/order-management')}
-          >
-            <i className="fas fa-list"></i>
-            Manage Orders
-          </button>
+          <div className="order-prep-mode-selector">
+            <button
+              className="order-prep-mode-btn order-prep-mode-active"
+            >
+              <i className="fas fa-plus-circle"></i>
+              Create Order
+            </button>
+            <button
+              className="order-prep-mode-btn"
+              onClick={handleDownloadPDF}
+            >
+              <i className="fas fa-download"></i>
+              Download PDF
+            </button>
+            <button
+              className="order-prep-mode-btn"
+              onClick={() => navigate('/order-management')}
+            >
+              <i className="fas fa-list"></i>
+              Manage Orders
+            </button>
+          </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="order-prep-main-content" style={{ height: 'calc(100vh - 200px)', overflow: 'hidden' }}>
+      <main className="order-prep-main-content" style={{ height: 'calc(100vh - 150px)', overflow: 'hidden' }}>
         <div className="order-prep-layout">
           {renderProductsTable()}
           {renderOrderItemsTable()}
@@ -920,35 +924,6 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
         </div>
       </main>
 
-      {/* Footer Actions */}
-      <footer className="order-prep-actions-footer">
-        <div className="order-prep-actions-container">
-          <button
-            className="order-prep-btn order-prep-btn-secondary"
-            onClick={clearOrder}
-            disabled={orderItems.length === 0 || isClearingOrder}
-          >
-            <i className="fas fa-times"></i>
-            {isClearingOrder ? 'Clearing...' : 'Clear All'}
-          </button>
-          <button
-            className="order-prep-btn order-prep-btn-secondary"
-            onClick={copyOrderToWhatsApp}
-            disabled={orderItems.length === 0 || !selectedSupplier || isCopyingToWhatsApp}
-          >
-            <i className="fab fa-whatsapp"></i>
-            {isCopyingToWhatsApp ? 'Copying...' : 'Copy to WhatsApp'}
-          </button>
-          <button
-            className="order-prep-btn order-prep-btn-primary"
-            onClick={handleSaveOrder}
-            disabled={orderItems.length === 0 || !selectedSupplier || isLoading}
-          >
-            <i className="fas fa-save"></i>
-            {isLoading ? 'Saving...' : (editingOrderId ? 'Update Order' : 'Create Purchase Order')}
-          </button>
-        </div>
-      </footer>
 
     </div>
   );

@@ -81,23 +81,23 @@ const EndOfDayStockPage = () => {
 
 
   return (
-    <div className="page-container">
-      <div className="page-header">
+    <div className="eod-eod-page-container">
+      <div className="eod-eod-page-header">
         <h1>End of Day Stock Report</h1>
         <p>Daily stock levels and changes over time</p>
       </div>
 
-      {error && <div className="error-message">{error}</div>}
+      {error && <div className="eod-eod-error-message">{error}</div>}
 
       {/* Filters */}
-      <div className="filters-section">
-        <div className="filter-row">
+      <div className="eod-filters-section">
+        <div className="eod-filter-row">
           <div className="filter-group">
             <label>Product (Optional - leave empty for all products)</label>
             <select
               value={selectedProduct}
               onChange={(e) => setSelectedProduct(e.target.value)}
-              className="filter-select"
+              className="eod-filter-select"
             >
               <option value="">All Products</option>
               {products.map(product => (
@@ -141,8 +141,8 @@ const EndOfDayStockPage = () => {
 
       {/* Report Display */}
       {reportData && (
-        <div className="report-container">
-          <div className="report-header">
+        <div className="eod-report-container">
+          <div className="eod-report-header">
             <h3>End of Day Stock Report</h3>
             <p>Report Period: {reportData.date_range.from_date} to {reportData.date_range.to_date}</p>
             <p>Total Products: {reportData.products?.length || 0}</p>
@@ -152,7 +152,7 @@ const EndOfDayStockPage = () => {
             (() => {
               const allDates = [...new Set(reportData.products.flatMap(p => p.daily_stock.map(d => d.date)))].sort((a, b) => new Date(b) - new Date(a));
               return (
-                <table className="end-of-day-table">
+                <table className="eod-data-table">
                   <thead>
                     <tr>
                       <th>Product</th>
@@ -174,7 +174,7 @@ const EndOfDayStockPage = () => {
               );
             })()
           ) : (
-            <div className="no-data">
+            <div className="eod-no-data">
               <FiPackage className="no-data-icon" />
               <p>No stock data found for the selected period</p>
             </div>
@@ -184,10 +184,10 @@ const EndOfDayStockPage = () => {
 
       {/* Export/Print Modal */}
       {showExportModal && (
-        <div className="modal-overlay active options-modal">
-          <div className="modal-container form-animate">
-            <div className="modal-header">
-              <h3 className="modal-title">Export Options</h3>
+        <div className="eod-modal-overlay eod-active eod-options-modal">
+          <div className="eod-modal-container form-animate">
+            <div className="eod-modal-header">
+              <h3 className="eod-modal-title">Export Options</h3>
               <button
                 className="modal-close"
                 onClick={() => setShowExportModal(false)}
@@ -196,7 +196,7 @@ const EndOfDayStockPage = () => {
               </button>
             </div>
 
-            <div className="options-tabs">
+            <div className="eod-options-tabs">
               <button
                 className={`options-tab ${activeTab === 'export' ? 'active' : ''}`}
                 onClick={() => setActiveTab('export')}
