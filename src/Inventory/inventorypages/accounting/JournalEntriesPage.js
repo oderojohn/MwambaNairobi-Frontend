@@ -42,6 +42,15 @@ const JournalEntriesPage = () => {
   };
 
   const loadAccounts = async () => {
+    try {
+      const data = await accountsAPI.getAccounts({ is_active: true });
+      setAccounts(data.results || data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       // Validate debits = credits
