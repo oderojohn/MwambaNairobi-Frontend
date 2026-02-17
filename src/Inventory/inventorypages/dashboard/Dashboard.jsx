@@ -57,8 +57,7 @@ const InventoryDashboard = () => {
         setLoading(true);
         setError('');
 
-        const [movementsRes, lowStockRes, salesSummaryRes, inventorySummaryRes, customerSummaryRes, shiftSummaryRes, shiftsRes] = await Promise.all([
-          // eslint-disable-next-line no-unused-vars
+        const [/* _movements */, lowStockRes, salesSummaryRes, inventorySummaryRes, customerSummaryRes, shiftSummaryRes, shiftsRes] = await Promise.all([
           inventoryAPI.getStockMovements({ page_size: 10 }),
           inventoryAPI.getLowStock(),
           reportsAPI.getSalesSummary({}),

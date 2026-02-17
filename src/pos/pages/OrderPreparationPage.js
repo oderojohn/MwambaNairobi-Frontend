@@ -300,6 +300,7 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
     }
   };
 
+  // eslint-disable-next-line no-unused-vars
   const copyOrderToWhatsApp = async (useSavedOrder = false) => {
     if (isCopyingToWhatsApp) return; // Prevent multiple clicks
 

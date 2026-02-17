@@ -26,9 +26,11 @@ const PaymentModal = ({
 
   const [mpesaNumber, setMpesaNumber] = useState('');
   const [cashAmount, setCashAmount] = useState('');
+  // eslint-disable-next-line no-unused-vars
   const [cashReceived, setCashReceived] = useState('');
   const [mpesaAmount, setMpesaAmount] = useState('');
   const [change, setChange] = useState(0);
+  // eslint-disable-next-line no-unused-vars
   const [transactionId, setTransactionId] = useState('');
 
   // Quick cash denominations

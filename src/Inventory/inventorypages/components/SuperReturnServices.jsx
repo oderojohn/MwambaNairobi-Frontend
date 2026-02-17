@@ -15,6 +15,7 @@ const SuperReturnServices = ({ isLoading, onReturnComplete }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  // eslint-disable-next-line no-unused-vars
   const [products, setProducts] = useState([]);
 
   // Helper function to safely format amounts

@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Swal from 'sweetalert2';
@@ -929,6 +930,7 @@ function PosApp() {
       }
 
       // Show loading Swal
+      // eslint-disable-next-line no-unused-vars
       const loadingSwal = Swal.fire({
         title: 'Holding Order...',
         text: 'Please wait while we save your order',

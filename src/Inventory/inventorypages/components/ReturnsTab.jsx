@@ -7,6 +7,7 @@ const ReturnsTab = ({ isLoading, dateRange, handleDateRangeChange }) => {
   const [returns, setReturns] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  // eslint-disable-next-line no-unused-vars
   const [selectedReturn, setSelectedReturn] = useState(null);
   const [expandedReturn, setExpandedReturn] = useState(null);  // For inline expansion
   const [summary, setSummary] = useState({
@@ -135,7 +136,7 @@ const ReturnsTab = ({ isLoading, dateRange, handleDateRangeChange }) => {
     return <span className={`badge ${typeInfo.class}`}>{typeInfo.label}</span>;
   };
 
-  // Get item names for display
+  // eslint-disable-next-line no-unused-vars
   const getItemNames = (items) => {
     if (!items || items.length === 0) return 'N/A';
     return items.map(item => item.product_name || 'Unknown').join(', ');

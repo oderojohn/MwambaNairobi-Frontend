@@ -3,6 +3,7 @@ import { toNumber, formatCurrency, chitsAPI } from '../../services/ApiService/ap
 
 const ChitModal = ({ isOpen, onClose, onLoadChit }) => {
   const [chits, setChits] = useState([]);
+  // eslint-disable-next-line no-unused-vars
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {

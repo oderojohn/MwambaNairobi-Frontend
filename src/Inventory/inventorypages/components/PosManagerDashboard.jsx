@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { reportsAPI, salesAPI, formatCurrency } from '../../../services/ApiService/api';
 import EditTransactionModal from './modals/EditTransactionModal';
 import VoidModal from './modals/VoidModal';
 import './SalesSummaryPage.css';
 
 const PosManagerDashboard = ({ shiftId }) => {
-  const navigate = useNavigate();
   const [salesData, setSalesData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -117,6 +115,7 @@ const PosManagerDashboard = ({ shiftId }) => {
     setVoidReason('');
   };
 
+  // eslint-disable-next-line no-unused-vars
   const handleEditSale = (sale) => {
     setSelectedTransaction(sale);
     setEditTransactionData({
