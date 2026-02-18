@@ -299,14 +299,14 @@ const SalesSummaryPage = () => {
   }, [shiftId, fetchSalesSummary]);
 
   return (
-    <div className="sales-summary-page">
-      <div className="page-header">
+    <div className="pos-ssp-sales-summary-page">
+      <div className="pos-ssp-page-header">
         <h2>Sales Summary</h2>
-        <div className="page-header-actions">
-          <button className="btn btn-secondary" onClick={() => navigate('/')}>
+        <div className="pos-ssp-page-header-actions">
+          <button className="pos-ssp-btn pos-ssp-btn-secondary" onClick={() => navigate('/')}>
             <i className="fas fa-arrow-left"></i> Back to POS
           </button>
-          <button className="btn btn-primary" onClick={fetchSalesSummary} disabled={loading}>
+          <button className="pos-ssp-btn pos-ssp-btn-primary" onClick={fetchSalesSummary} disabled={loading}>
             <i className={`fas ${loading ? 'fa-spinner fa-spin' : 'fa-sync-alt'}`}></i>
             {loading ? ' Refreshing...' : ' Refresh Data'}
           </button>
@@ -314,9 +314,9 @@ const SalesSummaryPage = () => {
       </div>
 
       {/* Payment Method Tabs */}
-      <div className="payment-tabs">
+      <div className="pos-ssp-payment-tabs">
         <button
-          className={`tab-button ${activeTab === 'overview' ? 'active' : ''}`}
+          className={`pos-ssp-tab-button ${activeTab === 'overview' ? 'active' : ''}`}
           onClick={() => setActiveTab('overview')}
         >
           Overview
@@ -341,29 +341,29 @@ const SalesSummaryPage = () => {
         </button>
       </div>
 
-      <div className="page-content">
-        {loading && <div className="loading">Loading sales summary...</div>}
+      <div className="pos-ssp-page-content">
+        {loading && <div className="pos-ssp-loading">Loading sales summary...</div>}
 
-        {error && <div className="error-message">{error}</div>}
+        {error && <div className="pos-ssp-error-message">{error}</div>}
 
         {salesData && (
-          <div className="sales-summary">
+          <div className="pos-ssp-sales-summary">
             {activeTab === 'overview' && (
               <>
-                <div className="summary-grid">
-                  <div className="summary-item">
+                <div className="pos-ssp-summary-grid">
+                  <div className="pos-ssp-summary-item">
                     <label>Total Sales:</label>
                     <span>{formatCurrency(salesData.total_sales || 0)}</span>
                   </div>
-                  <div className="summary-item">
+                  <div className="pos-ssp-summary-item">
                     <label>Total Transactions:</label>
                     <span>{salesData.total_transactions || 0}</span>
                   </div>
-                  <div className="summary-item">
+                  <div className="pos-ssp-summary-item">
                     <label>Average Sale:</label>
                     <span>{formatCurrency(salesData.average_sale || 0)}</span>
                   </div>
-                  <div className="summary-item">
+                  <div className="pos-ssp-summary-item">
                     <label>Today's Sales:</label>
                     <span>{formatCurrency(salesData.today_sales || 0)}</span>
                   </div>
@@ -371,18 +371,18 @@ const SalesSummaryPage = () => {
 
                 {/* Return Summary */}
                 {(salesData.total_returns > 0 || salesData.return_transactions > 0) && (
-                  <div className="return-summary">
+                  <div className="pos-ssp-return-summary">
                     <h4>Returns Summary</h4>
-                    <div className="summary-grid">
-                      <div className="summary-item">
+                    <div className="pos-ssp-summary-grid">
+                      <div className="pos-ssp-summary-item">
                         <label>Total Refunds:</label>
                         <span>{formatCurrency(returnsData?.summary?.total_refund_amount || 0)}</span>
                       </div>
-                      <div className="summary-item">
+                      <div className="pos-ssp-summary-item">
                         <label>Return Transactions:</label>
                         <span>{returnsData?.summary?.total_returns || 0}</span>
                       </div>
-                      <div className="summary-item">
+                      <div className="pos-ssp-summary-item">
                         <label>Net Sales:</label>
                         <span>{formatCurrency((salesData.total_sales || 0) - (returnsData?.summary?.total_refund_amount || 0))}</span>
                       </div>
@@ -393,14 +393,14 @@ const SalesSummaryPage = () => {
             )}
 
             {activeTab === 'mpesa' && (
-              <div className="payment-detail">
+              <div className="pos-ssp-payment-detail">
                 <h4>M-Pesa Transactions</h4>
-                <div className="summary-grid">
-                  <div className="summary-item">
+                <div className="pos-ssp-summary-grid">
+                  <div className="pos-ssp-summary-item">
                     <label>Total M-Pesa:</label>
                     <span>{formatCurrency(salesData.sales_by_payment_method?.mpesa || 0)}</span>
                   </div>
-                  <div className="summary-item">
+                  <div className="pos-ssp-summary-item">
                     <label>M-Pesa Count:</label>
                     <span>{salesData.recent_sales?.filter(sale => sale.payment_method === 'mpesa' || (sale.payment_method === 'split' && sale.split_data?.mpesa)).length || 0}</span>
                   </div>
@@ -409,14 +409,14 @@ const SalesSummaryPage = () => {
             )}
 
             {activeTab === 'cash' && (
-              <div className="payment-detail">
+              <div className="pos-ssp-payment-detail">
                 <h4>Cash Transactions</h4>
-                <div className="summary-grid">
-                  <div className="summary-item">
+                <div className="pos-ssp-summary-grid">
+                  <div className="pos-ssp-summary-item">
                     <label>Total Cash:</label>
                     <span>{formatCurrency(salesData.sales_by_payment_method?.cash || 0)}</span>
                   </div>
-                  <div className="summary-item">
+                  <div className="pos-ssp-summary-item">
                     <label>Cash Count:</label>
                     <span>{salesData.recent_sales?.filter(sale => sale.payment_method === 'cash' || (sale.payment_method === 'split' && sale.split_data?.cash)).length || 0}</span>
                   </div>
@@ -425,24 +425,24 @@ const SalesSummaryPage = () => {
             )}
 
             {activeTab === 'split' && (
-              <div className="payment-detail">
+              <div className="pos-ssp-payment-detail">
                 <h4>Split Payment Transactions</h4>
-                <div className="summary-grid">
-                  <div className="summary-item">
+                <div className="pos-ssp-summary-grid">
+                  <div className="pos-ssp-summary-item">
                     <label>Split Cash:</label>
                     <span>{formatCurrency(
                       salesData.recent_sales?.filter(sale => sale.payment_method === 'split')
                         .reduce((total, sale) => total + (sale.split_data?.cash || 0), 0) || 0
                     )}</span>
                   </div>
-                  <div className="summary-item">
+                  <div className="pos-ssp-summary-item">
                     <label>Split M-Pesa:</label>
                     <span>{formatCurrency(
                       salesData.recent_sales?.filter(sale => sale.payment_method === 'split')
                         .reduce((total, sale) => total + (sale.split_data?.mpesa || 0), 0) || 0
                     )}</span>
                   </div>
-                  <div className="summary-item">
+                  <div className="pos-ssp-summary-item">
                     <label>Split Count:</label>
                     <span>{salesData.recent_sales?.filter(sale => sale.payment_method === 'split').length || 0}</span>
                   </div>
@@ -451,10 +451,10 @@ const SalesSummaryPage = () => {
             )}
 
             {salesData.recent_sales && salesData.recent_sales.length > 0 ? (
-              <div className="recent-sales">
+              <div className="pos-ssp-recent-sales">
                 <h4>Recent Sales ({salesData.recent_sales.length})</h4>
-                <div className="table-container">
-                  <table className="official-data-table">
+                <div className="pos-ssp-table-container">
+                  <table className="pos-ssp-official-data-table">
                     <thead>
                       <tr>
                         <th>Date & Time</th>
@@ -501,13 +501,13 @@ const SalesSummaryPage = () => {
                           })
                           .map((sale, index) => (
                           <React.Fragment key={sale.id || index}>
-                            <tr className={sale.is_return ? 'return-row' : ''}>
-                              <td className="date-cell">
+                            <tr className={sale.is_return ? 'pos-ssp-return-row' : ''}>
+                              <td className="pos-ssp-date-cell">
                                 {new Date(sale.created_at).toLocaleDateString()}
                                 <br />
                                 <small>{new Date(sale.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</small>
                               </td>
-                              <td className="receipt-cell">
+                              <td className="pos-ssp-receipt-cell">
                                 {sale.is_return ? (
                                   <span title={sale.original_sale ? `Original: ${sale.original_sale}` : ''}>
                                     {sale.receipt_number ? sale.receipt_number.split('-')[0] : 'RET-' + sale.id?.replace('return-', '')}
@@ -516,16 +516,16 @@ const SalesSummaryPage = () => {
                                   sale.receipt_number ? sale.receipt_number.replace('POS-', '').split('-')[0] : 'N/A'
                                 )}
                               </td>
-                              <td className="amount-cell">
+                              <td className="pos-ssp-amount-cell">
                                 {sale.is_return ? (
                                   <span style={{ color: '#dc3545' }}>-{formatCurrency(Math.abs(sale.total_amount))}</span>
                                 ) : (
                                   formatCurrency(sale.total_amount)
                                 )}
                               </td>
-                              <td className="payment-cell">
+                              <td className="pos-ssp-payment-cell">
                                 {sale.is_return ? (
-                                  <span className="payment-badge cash">
+                                  <span className="pos-ssp-payment-badge cash">
                                     Refund
                                   </span>
                                 ) : (
@@ -547,16 +547,16 @@ const SalesSummaryPage = () => {
                                   </span>
                                 )}
                               </td>
-                              <td className="sale-type-cell">
-                                <span className={`sale-type-badge ${sale.sale_type?.toLowerCase() || (sale.is_return ? 'return' : 'unknown')}`}>
+                              <td className="pos-ssp-sale-type-cell">
+                                <span className={`pos-ssp-sale-type-badge ${sale.sale_type?.toLowerCase() || (sale.is_return ? 'return' : 'unknown')}`}>
                                   {sale.is_return ? 'Return' : (sale.sale_type ? sale.sale_type.charAt(0).toUpperCase() : 'N/A')}
                                 </span>
                               </td>
-                              <td className="actions-cell">
-                                <div className="sales-summary-action-buttons">
+                              <td className="pos-ssp-actions-cell">
+                                <div className="pos-ssp-sales-summary-action-buttons">
                                   {sale.is_return ? (
                                     <button
-                                      className="btn btn-icon btn-outline-secondary"
+                                      className="pos-ssp-btn-icon pos-ssp-btn-outline-secondary"
                                       onClick={() => toggleRowExpansion(sale.id)}
                                       title={expandedRow === sale.id ? "Hide items" : "Show items"}
                                     >
@@ -572,14 +572,14 @@ const SalesSummaryPage = () => {
                                         <i className="fas fa-eye"></i>
                                       </button>
                                       <button
-                                        className="btn btn-icon btn-outline-secondary"
+                                        className="pos-ssp-btn-icon pos-ssp-btn-outline-secondary"
                                         onClick={() => handleReprintReceipt(sale.id)}
                                         title="Reprint Receipt"
                                       >
                                         <i className="fas fa-receipt"></i>
                                       </button>
                                       <button
-                                        className="btn btn-icon btn-outline-danger"
+                                        className="pos-ssp-btn-icon pos-ssp-btn-outline-danger"
                                         onClick={() => handleReturn(sale)}
                                         title="Process Return"
                                       >
@@ -592,9 +592,9 @@ const SalesSummaryPage = () => {
                               </td>
                             </tr>
                             {expandedRow === sale.id && (
-                              <tr className="expanded-row">
-                                <td colSpan="6" className="expanded-content">
-                                  <div className="sale-items-detail">
+                              <tr className="pos-ssp-expanded-row">
+                                <td colSpan="6" className="pos-ssp-expanded-content">
+                                  <div className="pos-ssp-sale-items-detail">
                                     {/* Return Edit Mode */}
                                     {returnEditMode === sale.id ? (
                                       <>
@@ -603,7 +603,7 @@ const SalesSummaryPage = () => {
                                         
                                         <h6>Select Items to Return</h6>
                                         {sale.items && sale.items.length > 0 ? (
-                                          <table className="items-table" style={{ marginBottom: '10px' }}>
+                                          <table className="pos-ssp-items-table" style={{ marginBottom: '10px' }}>
                                             <thead>
                                               <tr>
                                                 <th style={{ width: '30px' }}></th>
@@ -663,9 +663,9 @@ const SalesSummaryPage = () => {
                                                   </tr>
                                                 );
                                               })}
-                                              <tr className="items-total-row">
-                                                <td colSpan="4" className="items-total-label">Selected Refund:</td>
-                                                <td className="items-total-amount" style={{ color: '#dc3545' }}>
+                                              <tr className="pos-ssp-items-total-row">
+                                                <td colSpan="4" className="pos-ssp-items-total-label">Selected Refund:</td>
+                                                <td className="pos-ssp-items-total-amount" style={{ color: '#dc3545' }}>
                                                   -{formatCurrency(calculateReturnTotal(sale.id, sale.items))}
                                                 </td>
                                               </tr>
@@ -698,7 +698,7 @@ const SalesSummaryPage = () => {
                                         
                                         <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                                           <button
-                                            className="btn btn-secondary"
+                                            className="pos-ssp-btn pos-ssp-btn-secondary"
                                             onClick={() => {
                                               setReturnEditMode(null);
                                               setReturnSelections({});
@@ -709,7 +709,7 @@ const SalesSummaryPage = () => {
                                             Cancel
                                           </button>
                                           <button
-                                            className="btn btn-danger"
+                                            className="pos-ssp-btn"
                                             onClick={() => submitReturn(sale)}
                                             disabled={returnLoading || !returnSelections[sale.id] || Object.keys(returnSelections[sale.id]).length === 0 || !returnReason.trim()}
                                             style={{ 
@@ -735,7 +735,7 @@ const SalesSummaryPage = () => {
                                         {sale.items && sale.items.length > 0 ? (
                                           <>
                                             <h6>Returned Items ({sale.items.length})</h6>
-                                            <table className="items-table">
+                                            <table className="pos-ssp-items-table">
                                               <thead>
                                                 <tr>
                                                   <th>Product</th>
@@ -776,7 +776,7 @@ const SalesSummaryPage = () => {
                                       /* Normal sale items display */
                                       <>
                                         <h5>Items Sold ({sale.items.length})</h5>
-                                        <table className="items-table">
+                                        <table className="pos-ssp-items-table">
                                           <thead>
                                             <tr>
                                               <th>Product</th>
@@ -794,19 +794,19 @@ const SalesSummaryPage = () => {
                                                 <td>{formatCurrency(item.unit_price * item.quantity)}</td>
                                               </tr>
                                             ))}
-                                            <tr className="items-total-row">
-                                              <td colSpan="3" className="items-total-label">Total:</td>
-                                              <td className="items-total-amount">{formatCurrency(sale.total_amount)}</td>
+                                            <tr className="pos-ssp-items-total-row">
+                                              <td colSpan="3" className="pos-ssp-items-total-label">Total:</td>
+                                              <td className="pos-ssp-items-total-amount">{formatCurrency(sale.total_amount)}</td>
                                             </tr>
                                           </tbody>
                                         </table>
                                         {sale.split_data && (
-                                          <div className="split-payment-breakdown">
-                                            <div className="split-payment-row">
+                                          <div className="pos-ssp-split-payment-breakdown">
+                                            <div className="pos-ssp-split-payment-row">
                                               {Object.entries(sale.split_data).map(([method, amount]) => (
-                                                <div key={method} className="split-payment-item">
-                                                  <span className="split-payment-label">{method.charAt(0).toUpperCase() + method.slice(1)}:</span>
-                                                  <span className="split-payment-amount">{formatCurrency(amount)}</span>
+                                                <div key={method} className="pos-ssp-split-payment-item">
+                                                  <span className="pos-ssp-split-payment-label">{method.charAt(0).toUpperCase() + method.slice(1)}:</span>
+                                                  <span className="pos-ssp-split-payment-amount">{formatCurrency(amount)}</span>
                                                 </div>
                                               ))}
                                             </div>
@@ -849,7 +849,7 @@ const SalesSummaryPage = () => {
                 </div>
               </div>
             ) : (
-              <div className="no-data">
+              <div className="pos-ssp-no-data">
                 No sales data available for the selected period.
               </div>
             )}
