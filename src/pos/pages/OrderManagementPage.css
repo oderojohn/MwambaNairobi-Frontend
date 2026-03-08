@@ -1,11 +1,12 @@
-/* OrderManagementPage.css - COMPACT EXCEL-LIKE DESIGN */
+/* OrderManagementPage.css - FULL WIDTH MODERN DESIGN */
 .order-management-page {
   padding: 12px;
-  max-width: 900px;
+  max-width: 100%;
   margin: 0 auto;
   background-color: #f5f7fa;
   min-height: 100vh;
   font-family: 'Segoe UI', 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+  width: 100%;
 }
 
 /* Header Styles - Gradient Purple-Blue Theme */
@@ -216,27 +217,40 @@
   background: #e8f0fe;
 }
 
-/* Table Actions - Compact */
+/* Table Actions - Modern Button Styles */
 .table-actions {
   display: flex;
-  gap: 4px;
+  gap: 6px;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 .table-actions .btn {
-  font-size: 10px;
-  padding: 4px 8px;
-  display: flex;
+  font-size: 12px;
+  padding: 6px 12px;
+  display: inline-flex;
   align-items: center;
-  gap: 3px;
-  border-radius: 3px;
-  font-weight: 500;
-  transition: all 0.1s ease;
+  gap: 5px;
+  border-radius: 5px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  border: none;
+  cursor: pointer;
+  text-transform: capitalize;
+}
+
+.table-actions .btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+}
+
+.table-actions .btn:active {
+  transform: translateY(0);
 }
 
 .btn-sm {
-  padding: 4px 8px;
-  font-size: 10px;
+  padding: 6px 12px !important;
+  font-size: 12px !important;
 }
 
 /* Header Filters - Glassmorphism Style */
@@ -353,40 +367,51 @@
 .btn-success {
   background: #10b981 !important;
   color: white !important;
-  border-color: #10b981 !important;
+  border: none !important;
   padding: 6px 12px;
   font-size: 12px;
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
 }
 
 .btn-success:hover {
   background: #059669 !important;
-  border-color: #059669 !important;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
 .btn-warning {
   background: #f59e0b !important;
   color: white !important;
-  border-color: #f59e0b !important;
+  border: none !important;
+  box-shadow: 0 2px 4px rgba(245, 158, 11, 0.2);
 }
 
 .btn-warning:hover {
   background: #d97706 !important;
-  border-color: #d97706 !important;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(217, 119, 6, 0.2);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
 }
 
 .btn-danger {
   background: #ef4444 !important;
   color: white !important;
-  border-color: #ef4444 !important;
+  border: none !important;
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
 }
 
 .btn-danger:hover {
   background: #dc2626 !important;
-  border-color: #dc2626 !important;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.btn-primary {
+  background: #3b82f6 !important;
+  color: white !important;
+  border: none !important;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+}
+
+.btn-primary:hover {
+  background: #2563eb !important;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
 .btn:disabled {

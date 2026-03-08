@@ -1,9 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { reportsAPI, formatCurrency } from '../../services/ApiService/api';
 import '../data/Modal.css';
 
 const ShiftModal = ({ isOpen, onClose, onStartShift, onEndShift, currentShift }) => {
   const [startingCash, setStartingCash] = useState('');
+  const [shiftSalesData, setShiftSalesData] = useState(null);
+  const [, setLoadingSales] = useState(false);
+
+  // Fetch sales data when modal opens with an active shift
+  useEffect(() => {
+    const fetchShiftSalesData = async () => {
+      if (isOpen && currentShift && currentShift.id && currentShift.status !== 'closed') {
+        setLoadingSales(true);
+        try {
+          const salesData = await reportsAPI.getSalesReport({ shift_id: currentShift.id });
+          console.log('Shift sales data fetched:', salesData);
+          setShiftSalesData(salesData);
+        } catch (error) {
+          console.error('Error fetching shift sales data:', error);
+        } finally {
+          setLoadingSales(false);
+        }
+      }
+    };
+
+    fetchShiftSalesData();
+  }, [isOpen, currentShift]);
 
   const handleRunEndOfDayReport = async () => {
     try {
@@ -244,33 +266,49 @@ const ShiftModal = ({ isOpen, onClose, onStartShift, onEndShift, currentShift })
                 <h4 className="shift-section-title">Shift Information</h4>
                 
                 <div className="shift-stats-grid">
-                  <div className="shift-stat-item">
+                  <div className="shift-stat-item shift-stat-sales">
                     <label className="shift-stat-label">Started</label>
                     <span className="shift-stat-value">{currentShift.startTime}</span>
                   </div>
-                  <div className="shift-stat-item">
+                  <div className="shift-stat-item shift-stat-sales">
                     <label className="shift-stat-label">Starting Cash</label>
                     <span className="shift-stat-value">Ksh {currentShift.startingCash.toFixed(2)}</span>
                   </div>
-                  <div className="shift-stat-item">
+                  <div className="shift-stat-item shift-stat-payment">
                     <label className="shift-stat-label">Cash Sales</label>
-                    <span className="shift-stat-value">Ksh {((currentShift.cash_sales || 0) + (currentShift.sales_by_payment_method?.cash || 0)).toFixed(2)}</span>
+                    <span className="shift-stat-value">Ksh {((shiftSalesData?.sales_by_payment_method?.cash) || 0).toFixed(2)}</span>
                   </div>
-                  <div className="shift-stat-item">
+                  <div className="shift-stat-item shift-stat-payment">
                     <label className="shift-stat-label">M-Pesa Sales</label>
-                    <span className="shift-stat-value">Ksh {((currentShift.mpesa_sales || 0) + (currentShift.sales_by_payment_method?.mpesa || 0)).toFixed(2)}</span>
+                    <span className="shift-stat-value">Ksh {((shiftSalesData?.sales_by_payment_method?.mpesa) || 0).toFixed(2)}</span>
                   </div>
-                  <div className="shift-stat-item">
+                  <div className="shift-stat-item shift-stat-payment">
                     <label className="shift-stat-label">Card Sales</label>
-                    <span className="shift-stat-value">Ksh {((currentShift.card_sales || 0) + (currentShift.sales_by_payment_method?.card || 0)).toFixed(2)}</span>
+                    <span className="shift-stat-value">Ksh {((shiftSalesData?.sales_by_payment_method?.card) || 0).toFixed(2)}</span>
                   </div>
-                  <div className="shift-stat-item">
+                  <div className="shift-stat-item shift-stat-sales">
                     <label className="shift-stat-label">Total Sales</label>
-                    <span className="shift-stat-value">Ksh {(currentShift.total_sales || currentShift.totalSales || 0).toFixed(2)}</span>
+                    <span className="shift-stat-value">Ksh {(shiftSalesData?.total_sales || 0).toFixed(2)}</span>
                   </div>
-                  <div className="shift-stat-item">
-                    <label className="shift-stat-label">Total Transactions</label>
-                    <span className="shift-stat-value">{currentShift.transaction_count || currentShift.transactionCount || 0}</span>
+                  <div className="shift-stat-item shift-stat-transaction">
+                    <label className="shift-stat-label">Transactions</label>
+                    <span className="shift-stat-value">{shiftSalesData?.total_transactions || 0}</span>
+                  </div>
+                  {(shiftSalesData?.total_returns > 0 || shiftSalesData?.return_transactions > 0) && (
+                    <>
+                      <div className="shift-stat-item shift-stat-return">
+                        <label className="shift-stat-label">Returns</label>
+                        <span className="shift-stat-value">{shiftSalesData?.return_transactions || 0}</span>
+                      </div>
+                      <div className="shift-stat-item shift-stat-return">
+                        <label className="shift-stat-label">Refunds</label>
+                        <span className="shift-stat-value">Ksh {(shiftSalesData?.total_returns || 0).toFixed(2)}</span>
+                      </div>
+                    </>
+                  )}
+                  <div className="shift-stat-item shift-stat-net">
+                    <label className="shift-stat-label">Net Sales</label>
+                    <span className="shift-stat-value">Ksh {(shiftSalesData?.net_sales || ((shiftSalesData?.total_sales || 0) - (shiftSalesData?.total_returns || 0))).toFixed(2)}</span>
                   </div>
                 </div>
 

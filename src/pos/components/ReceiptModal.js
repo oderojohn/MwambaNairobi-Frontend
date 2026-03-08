@@ -3,6 +3,12 @@ import logo from '../../logo.png';
 import { formatCurrency } from '../../services/ApiService/api';
 import './ReceiptModal.css';
 
+// Custom format function without currency symbol for receipts
+const formatNumber = (amount) => {
+  const numericAmount = typeof amount === 'number' ? amount : parseFloat(amount) || 0;
+  return numericAmount.toFixed(2);
+};
+
 const ReceiptModal = ({
   isOpen,
   onClose,
@@ -14,7 +20,8 @@ const ReceiptModal = ({
   customer = null,
   mode = 'retail',
   splitData = null,
-  vatRate = 0.16 // Default VAT rate of 16%
+  vatRate = 0.16, // Default VAT rate of 16%
+  isReprint = false
 }) => {
   if (!isOpen) return null;
 
@@ -47,7 +54,8 @@ const ReceiptModal = ({
               line-height: 1.2;
               color: #000;
               background: #fff;
-              width: 58mm;
+              width: 80mm;
+              min-height: 100%;
               margin: 0 auto;
               padding: 2mm;
               -webkit-print-color-adjust: exact;
@@ -101,6 +109,7 @@ const ReceiptModal = ({
               margin: 3px 0;
               font-weight: bold;
               font-size: 10px;
+              min-width: 180px;
             }
             .item-name {
               flex: 2;
@@ -115,13 +124,13 @@ const ReceiptModal = ({
               font-weight: bold;
             }
             .item-price {
-              width: 30px;
+              width: 50px;
               text-align: right;
               font-size: 10px;
               font-weight: bold;
             }
             .item-total {
-              width: 30px;
+              width: 55px;
               text-align: right;
               font-size: 10px;
               font-weight: bold;
@@ -129,9 +138,10 @@ const ReceiptModal = ({
             .receipt-item {
               display: flex;
               justify-content: space-between;
-              margin-bottom: 2px;
+              margin-bottom: 3px;
               font-weight: bold;
               font-size: 10px;
+              min-width: 180px;
             }
             .receipt-totals {
               border-top: 1px solid #000;
@@ -173,17 +183,29 @@ const ReceiptModal = ({
             .bold {
               font-weight: bold;
             }
+            .reprinted-label {
+              color: #dc2626;
+              font-size: 14px;
+              font-weight: 900;
+              text-transform: uppercase;
+              margin: 5px 0;
+              padding: 3px;
+              border: 2px solid #dc2626;
+              display: inline-block;
+            }
             @media print {
               body {
                 margin: 0;
                 padding: 2mm;
-                width: 58mm;
-                font-size: 12px;
+                width: 80mm;
+                font-size: 11px;
                 font-weight: bold !important;
               }
               .receipt {
                 width: 100%;
                 font-weight: bold !important;
+                page-break-inside: avoid;
+                page-break-after: auto;
               }
               * {
                 font-weight: bold !important;
@@ -195,6 +217,18 @@ const ReceiptModal = ({
             @page {
               margin: 0;
               size: 58mm auto;
+              min-height: auto;
+            }
+            .receipt-container {
+              width: 58mm;
+              page-break-inside: avoid;
+              page-break-before: avoid;
+              page-break-after: avoid;
+            }
+            .receipt-header, .receipt-info, .receipt-items-header, .receipt-items, .receipt-item, .receipt-totals, .receipt-footer, .divider {
+              page-break-inside: avoid;
+              page-break-before: avoid;
+              page-break-after: avoid;
             }
           </style>
         </head>
@@ -203,6 +237,7 @@ const ReceiptModal = ({
             <div class="receipt-header">
               <div class="logo-text">MWAMBA</div>
               <div class="receipt-title">RECEIPT</div>
+              ${isReprint ? '<div class="reprinted-label">REPRINTED</div>' : ''}
               <div class="receipt-store-info">
                 MWAMBA LIQUOR STORES<br>
                 RONGO<br>
@@ -277,8 +312,8 @@ const ReceiptModal = ({
                 <div class="receipt-item">
                   <div class="item-name">${item.name || item.product_name || 'Unknown Item'}</div>
                   <div class="item-qty">${item.quantity}</div>
-                  <div class="item-price">${formatCurrency(parseFloat(item.price || item.unit_price || 0))}</div>
-                  <div class="item-total">${formatCurrency((parseFloat(item.price || item.unit_price || 0)) * item.quantity)}</div>
+                  <div class="item-price">${formatNumber(parseFloat(item.price || item.unit_price || 0))}</div>
+                  <div class="item-total">${formatNumber((parseFloat(item.price || item.unit_price || 0)) * item.quantity)}</div>
                 </div>
               `).join('')}
             </div>
@@ -322,7 +357,7 @@ const ReceiptModal = ({
     `;
 
     // Create a new window for printing with thermal printer dimensions
-    const printWindow = window.open('', '_blank', 'width=300,height=600,scrollbars=yes');
+    const printWindow = window.open('', '_blank', 'width=250,height=400,scrollbars=no,toolbar=no,menubar=no');
     if (!printWindow) {
       alert('Please allow popups for this site to print receipts.');
       return;
@@ -332,15 +367,13 @@ const ReceiptModal = ({
     printWindow.document.write(printContent);
     printWindow.document.close();
 
-    // Wait for content to load then trigger print
+    // Print directly without waiting
     printWindow.onload = () => {
+      printWindow.print();
+      // Close the window after printing
       setTimeout(() => {
-        printWindow.print();
-        // Close the window after printing attempt
-        setTimeout(() => {
-          printWindow.close();
-        }, 1000);
-      }, 300);
+        printWindow.close();
+      }, 500);
     };
   };
 
@@ -351,10 +384,10 @@ const ReceiptModal = ({
       <div className="receipt-modal-overlay">
         <div className="receipt-modal-content">
           <div className="modal-header">
-            <h3>Sale Receipt</h3>
+            <h3>{isReprint ? 'Reprint Receipt' : 'Sale Receipt'}</h3>
             <div className="modal-actions">
-              <button className="receipt-modal-btn receipt-modal-btn-secondary" onClick={handlePrint}>
-                <i className="fas fa-print" /> Print
+              <button className="receipt-modal-btn receipt-modal-btn-primary" onClick={handlePrint}>
+                <i className="fas fa-print" /> Print Receipt
               </button>
               <span className="close" onClick={onClose}>&times;</span>
             </div>
@@ -367,6 +400,7 @@ const ReceiptModal = ({
                   <div className="logo-text">MWAMBA</div>
                 </div>
                 <h1 className="receipt-title">RECEIPT</h1>
+                {isReprint && <div className="reprinted-label">REPRINTED</div>}
                 <div className="receipt-store-info">
                   <h2>MWAMBA LIQUOR STORES</h2>
                   <p>RONGO</p>
@@ -456,8 +490,8 @@ const ReceiptModal = ({
                         )}
                       </div>
                       <div className="item-qty">{item.quantity}</div>
-                      <div className="item-price">{formatCurrency(parseFloat(item.price || item.unit_price || 0))}</div>
-                      <div className="item-total">{formatCurrency((parseFloat(item.price || item.unit_price || 0)) * item.quantity)}</div>
+                      <div className="item-price">{formatNumber(parseFloat(item.price || item.unit_price || 0))}</div>
+                      <div className="item-total">{formatNumber((parseFloat(item.price || item.unit_price || 0)) * item.quantity)}</div>
                     </div>
                   ))
                 ) : (
@@ -519,3 +553,4 @@ const ReceiptModal = ({
 };
 
 export default ReceiptModal;
+

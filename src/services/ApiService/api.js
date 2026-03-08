@@ -347,6 +347,7 @@ export const salesAPI = {
     return apiRequest(url);
   },
   completeHeldOrder: (id, data) => apiRequest(`/api/sales/${id}/complete_held_order/`, 'POST', data),
+  updateHeldOrder: (id, data) => apiRequest(`/api/sales/${id}/update_held_order/`, 'POST', data),
   voidHeldOrder: async (id, data) => {
     console.log('Calling voidHeldOrder API:', id, data);
     try {

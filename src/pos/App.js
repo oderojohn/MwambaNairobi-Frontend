@@ -1170,8 +1170,8 @@ function PosApp() {
     try {
       console.log('Completing held order:', heldOrderId, 'with payment:', paymentData);
 
-      // Validate cart for held order completion
-      const cartErrors = validateCartForSale(cart, mode, selectedCustomer);
+      // Validate cart for held order completion (skip stock validation - held orders may have out-of-stock items)
+      const cartErrors = validateCartForSale(cart, mode, selectedCustomer, true);
       if (cartErrors.length > 0) {
         showError('Held Order Validation Failed', 'Cannot complete held order due to validation errors:', cartErrors);
         return;
@@ -1298,7 +1298,7 @@ function PosApp() {
   };
 
   // Validation functions
-  const validateCartForSale = (cartItems, mode, selectedCustomer) => {
+  const validateCartForSale = (cartItems, mode, selectedCustomer, skipStockCheck = false) => {
     const errors = [];
 
     if (!cartItems || cartItems.length === 0) {
@@ -1326,8 +1326,8 @@ function PosApp() {
         errors.push(`Item ${index + 1} (${item.name}): Price must be greater than 0`);
       }
 
-      // Check stock availability
-      if (item.stock_quantity !== undefined && item.stock_quantity < quantity) {
+      // Check stock availability (skip for held orders that may have out-of-stock items)
+      if (!skipStockCheck && item.stock_quantity !== undefined && item.stock_quantity < quantity) {
         errors.push(`Item ${index + 1} (${item.name}): Insufficient stock. Available: ${item.stock_quantity}, Requested: ${quantity}`);
       }
 
@@ -1563,7 +1563,16 @@ function PosApp() {
         onProceedToPayment={proceedToPayment}
         heldOrder={selectedHeldOrder}
         products={products}
+        categories={categories}
         onOrderVoided={() => fetchHeldOrders()}
+        onOrderUpdated={(updatedOrder) => {
+          setSelectedHeldOrder({
+            ...selectedHeldOrder,
+            items: updatedOrder.items,
+            total: updatedOrder.total
+          });
+          fetchHeldOrders();
+        }}
       />
 
 

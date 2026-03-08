@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { reportsAPI, returnsAPI, formatCurrency } from '../../services/ApiService/api';
 import './SalesSummaryPage.css';
+import ReceiptModal from '../components/ReceiptModal';
 
 
 const SalesSummaryPage = () => {
@@ -18,6 +19,10 @@ const SalesSummaryPage = () => {
   const [returnSelections, setReturnSelections] = useState({});
   const [returnReason, setReturnReason] = useState('');
   const [returnLoading, setReturnLoading] = useState(false);
+  
+  // Reprint modal state
+  const [showReprintModal, setShowReprintModal] = useState(false);
+  const [reprintData, setReprintData] = useState(null);
 
   // Get shiftId from URL query params
   const searchParams = new URLSearchParams(location.search);
@@ -160,138 +165,29 @@ const SalesSummaryPage = () => {
     }
   };
 
-  const handleReprintReceipt = async (saleId) => {
+  const handleReprintReceipt = async (sale) => {
     try {
-      console.log('Reprinting receipt for sale ID:', saleId);
-
-      // Get the sale chit details which includes all receipt information
-      const chitDetails = await reportsAPI.getSaleChitDetails(saleId);
-      console.log('Chit details received:', chitDetails);
-
-      // Create a printable receipt format
-      const receiptContent = generateReceiptContent(chitDetails);
-      console.log('Receipt content generated');
-
-      // Print the receipt
-      printReceipt(receiptContent);
-    } catch (error) {
-      console.error('Error reprinting receipt:', error);
-      // Show more detailed error message
-      const errorMessage = error.message || 'Unknown error occurred';
-      alert(`Failed to reprint receipt: ${errorMessage}`);
-    }
-  };
-
-  const generateReceiptContent = (chitDetails) => {
-    const items = chitDetails.items || [];
-    const payments = chitDetails.payments || [];
-
-    let content = `
-      <div style="font-family: monospace; font-size: 12px; max-width: 300px; margin: 0 auto;">
-        <div style="text-align: center; margin-bottom: 10px;">
-          <h3 style="margin: 0;">RECEIPT</h3>
-          <p style="margin: 5px 0;">Receipt #: ${chitDetails.receipt_number || 'N/A'}</p>
-          <p style="margin: 5px 0;">Date: ${new Date(chitDetails.sale_date).toLocaleString()}</p>
-        </div>
-
-        <div style="border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 5px 0; margin: 10px 0;">
-          <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-            <span>Customer:</span>
-            <span>${chitDetails.customer?.name || 'Walk-in'}</span>
-          </div>
-          <div style="display: flex; justify-content: space-between;">
-            <span>Type:</span>
-            <span>${chitDetails.sale_type?.toUpperCase() || 'N/A'}</span>
-          </div>
-        </div>
-
-        <div style="margin: 10px 0;">
-          <div style="display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 5px;">
-            <span>Item</span>
-            <span>Qty</span>
-            <span>Total</span>
-          </div>`;
-
-    items.forEach(item => {
-      content += `
-          <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
-            <span style="flex: 1;">${item.product_name || item.name}</span>
-            <span style="width: 30px; text-align: center;">${item.quantity}</span>
-            <span style="width: 60px; text-align: right;">${formatCurrency(item.line_total || (item.unit_price * item.quantity))}</span>
-          </div>`;
-    });
-
-    content += `
-        </div>
-
-        <div style="border-top: 1px solid #000; padding-top: 5px; margin: 10px 0;">
-          <div style="display: flex; justify-content: space-between; font-weight: bold;">
-            <span>TOTAL:</span>
-            <span>${formatCurrency(chitDetails.summary?.final_amount || chitDetails.final_amount)}</span>
-          </div>
-        </div>`;
-
-    if (payments.length > 0) {
-      content += `
-        <div style="margin: 10px 0;">
-          <div style="font-weight: bold; margin-bottom: 5px;">Payment Details:</div>`;
-
-      payments.forEach(payment => {
-        content += `
-          <div style="display: flex; justify-content: space-between;">
-            <span>${payment.payment_type?.toUpperCase() || 'N/A'}:</span>
-            <span>${formatCurrency(payment.amount)}</span>
-          </div>`;
+      console.log('Preparing receipt for reprint, sale:', sale);
+      
+      // Set the sale data for reprint
+      setReprintData({
+        saleData: sale,
+        cart: sale.items || [],
+        total: sale.total_amount || sale.final_amount || 0,
+        paymentMethod: sale.payment_method || 'cash',
+        change: sale.change || 0,
+        customer: sale.customer || null,
+        mode: sale.sale_type || 'retail',
+        splitData: sale.split_data || null,
+        isReprint: true
       });
-
-      content += `
-        </div>`;
+      
+      setShowReprintModal(true);
+    } catch (error) {
+      console.error('Error preparing reprint:', error);
+      const errorMessage = error.message || 'Unknown error occurred';
+      alert(`Failed to prepare receipt: ${errorMessage}`);
     }
-
-    content += `
-        <div style="text-align: center; margin-top: 20px; font-size: 10px;">
-          <p>Thank you for your business!</p>
-          <p>Reprinted: ${new Date().toLocaleString()}</p>
-        </div>
-      </div>`;
-
-    return content;
-  };
-
-  const printReceipt = (content) => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      alert('Please allow popups for this website to print receipts.');
-      return;
-    }
-
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Receipt</title>
-          <style>
-            body { margin: 0; padding: 20px; }
-            @media print {
-              body { margin: 0; }
-            }
-          </style>
-        </head>
-        <body>
-          ${content}
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
-
-    // Wait for content to load before printing
-    printWindow.onload = () => {
-      printWindow.focus();
-      printWindow.print();
-      // Don't close immediately to allow print dialog
-      setTimeout(() => {
-        printWindow.close();
-      }, 1000);
-    };
   };
 
   useEffect(() => {
@@ -349,47 +245,36 @@ const SalesSummaryPage = () => {
         {salesData && (
           <div className="pos-ssp-sales-summary">
             {activeTab === 'overview' && (
-              <>
-                <div className="pos-ssp-summary-grid">
-                  <div className="pos-ssp-summary-item">
-                    <label>Total Sales:</label>
-                    <span>{formatCurrency(salesData.total_sales || 0)}</span>
-                  </div>
-                  <div className="pos-ssp-summary-item">
-                    <label>Total Transactions:</label>
-                    <span>{salesData.total_transactions || 0}</span>
-                  </div>
-                  <div className="pos-ssp-summary-item">
-                    <label>Average Sale:</label>
-                    <span>{formatCurrency(salesData.average_sale || 0)}</span>
-                  </div>
-                  <div className="pos-ssp-summary-item">
-                    <label>Today's Sales:</label>
-                    <span>{formatCurrency(salesData.today_sales || 0)}</span>
-                  </div>
+              <div className="pos-ssp-summary-grid">
+                <div className="pos-ssp-summary-item">
+                  <label>Total Sales:</label>
+                  <span>{formatCurrency(salesData.total_sales || 0)}</span>
                 </div>
-
-                {/* Return Summary */}
+                <div className="pos-ssp-summary-item">
+                  <label>Transactions:</label>
+                  <span>{salesData.total_transactions || 0}</span>
+                </div>
                 {(salesData.total_returns > 0 || salesData.return_transactions > 0) && (
-                  <div className="pos-ssp-return-summary">
-                    <h4>Returns Summary</h4>
-                    <div className="pos-ssp-summary-grid">
-                      <div className="pos-ssp-summary-item">
-                        <label>Total Refunds:</label>
-                        <span>{formatCurrency(returnsData?.summary?.total_refund_amount || 0)}</span>
-                      </div>
-                      <div className="pos-ssp-summary-item">
-                        <label>Return Transactions:</label>
-                        <span>{returnsData?.summary?.total_returns || 0}</span>
-                      </div>
-                      <div className="pos-ssp-summary-item">
-                        <label>Net Sales:</label>
-                        <span>{formatCurrency((salesData.total_sales || 0) - (returnsData?.summary?.total_refund_amount || 0))}</span>
-                      </div>
+                  <>
+                    <div className="pos-ssp-summary-item">
+                      <label>Refunds:</label>
+                      <span>{formatCurrency(salesData.total_returns || 0)}</span>
                     </div>
-                  </div>
+                    <div className="pos-ssp-summary-item">
+                      <label>Returns:</label>
+                      <span>{salesData.return_transactions || 0}</span>
+                    </div>
+                  </>
                 )}
-              </>
+                <div className="pos-ssp-summary-item">
+                  <label>Net Sales:</label>
+                  <span>{formatCurrency(
+                    salesData.net_sales !== undefined 
+                      ? salesData.net_sales 
+                      : (salesData.total_sales || 0) - (salesData.total_returns || 0)
+                  )}</span>
+                </div>
+              </div>
             )}
 
             {activeTab === 'mpesa' && (
@@ -573,7 +458,7 @@ const SalesSummaryPage = () => {
                                       </button>
                                       <button
                                         className="pos-ssp-btn-icon pos-ssp-btn-outline-secondary"
-                                        onClick={() => handleReprintReceipt(sale.id)}
+                                        onClick={() => handleReprintReceipt(sale)}
                                         title="Reprint Receipt"
                                       >
                                         <i className="fas fa-receipt"></i>
@@ -856,6 +741,26 @@ const SalesSummaryPage = () => {
           </div>
         )}
       </div>
+
+      {/* Reprint Receipt Modal */}
+      {showReprintModal && reprintData && (
+        <ReceiptModal
+          isOpen={showReprintModal}
+          onClose={() => {
+            setShowReprintModal(false);
+            setReprintData(null);
+          }}
+          saleData={reprintData.saleData}
+          cart={reprintData.cart}
+          total={reprintData.total}
+          paymentMethod={reprintData.paymentMethod}
+          change={reprintData.change}
+          customer={reprintData.customer}
+          mode={reprintData.mode}
+          splitData={reprintData.splitData}
+          isReprint={true}
+        />
+      )}
     </div>
   );
 };

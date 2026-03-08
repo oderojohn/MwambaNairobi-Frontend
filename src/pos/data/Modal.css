@@ -770,6 +770,57 @@
   border: 1px solid #e2e8f0;
 }
 
+/* Sales stats - green theme */
+.shift-stat-item.shift-stat-sales {
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+  border-color: #6ee7b7;
+}
+
+.shift-stat-item.shift-stat-sales .shift-stat-value {
+  color: #059669;
+}
+
+/* Payment stats - blue theme */
+.shift-stat-item.shift-stat-payment {
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  border-color: #93c5fd;
+}
+
+.shift-stat-item.shift-stat-payment .shift-stat-value {
+  color: #2563eb;
+}
+
+/* Return/Refund stats - red theme */
+.shift-stat-item.shift-stat-return {
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  border-color: #fca5a5;
+}
+
+.shift-stat-item.shift-stat-return .shift-stat-value {
+  color: #dc2626;
+}
+
+/* Net Sales stats - purple theme */
+.shift-stat-item.shift-stat-net {
+  background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+  border-color: #a78bfa;
+}
+
+.shift-stat-item.shift-stat-net .shift-stat-value {
+  color: #7c3aed;
+  font-size: 1.25rem;
+}
+
+/* Transaction stats - orange theme */
+.shift-stat-item.shift-stat-transaction {
+  background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+  border-color: #fdba74;
+}
+
+.shift-stat-item.shift-stat-transaction .shift-stat-value {
+  color: #ea580c;
+}
+
 .shift-stat-label {
   font-size: 0.75rem;
   color: #6b7280;
