@@ -5,8 +5,10 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder --win portable",
-    "build:dir": "electron-builder --win --dir"
+    "build": "npm run build:react && electron-builder --win --dir",
+    "build:react": "cd ../pos && npm run build",
+    "build:dir": "npm run build:react && electron-builder --win --dir",
+    "build:portable": "npm run build:react && electron-builder --win portable"
   },
   "author": "Mwamba POS",
   "license": "MIT",
@@ -26,14 +28,46 @@
     "files": [
       "main.js",
       "preload.js",
-      "build/**/*"
+      "python/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "../POS-BACKEND",
+        "to": "POS-BACKEND",
+        "filter": [
+          "**/*",
+          "!*.pyc",
+          "!__pycache__",
+          "!**/node_modules",
+          "!**/*.sqlite3"
+        ]
+      },
+      {
+        "from": "../pos/build",
+        "to": "build",
+        "filter": ["**/*"]
+      }
     ],
     "win": {
-      "target": "portable",
-      "icon": "public/logo192.png"
+      "target": [
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        },
+        {
+          "target": "dir",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "../pos/public/logo192.png"
     },
     "portable": {
       "artifactName": "MwambaPOS.exe"
-    }
+    },
+    "asar": true,
+    "asarUnpack": [
+      "**/POS-BACKEND/**/*",
+      "**/python/**/*"
+    ]
   }
 }

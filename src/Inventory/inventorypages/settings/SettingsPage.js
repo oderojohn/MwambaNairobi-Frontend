@@ -1,6 +1,7 @@
-import {  useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { FiSettings } from 'react-icons/fi';
 import { userService } from '../../../services/ApiService/api';
+import { normalizeRole } from '../../../utils/roleAccess';
 import GeneralSettings from './GeneralSettings';
 import BusinessSettings from './BusinessSettings';
 import InventorySettings from './InventorySettings';
@@ -11,7 +12,7 @@ import './SettingsPage.css';
 
 const SettingsPage = () => {
   const location = useLocation();
-  const userRole = userService.getUserRole();
+  const userRole = normalizeRole(userService.getUserRole());
 
   const allSettingsComponents = {
     general: GeneralSettings,
@@ -26,22 +27,20 @@ const SettingsPage = () => {
     const pathParts = location.pathname.split('/');
     const lastPart = pathParts[pathParts.length - 1];
 
-    // Define role-based access
     const roleAccess = {
-      general: ['admin', 'manager', 'storekeeper'],
+      general: ['admin', 'manager'],
       business: ['admin', 'manager'],
-      inventory: ['admin', 'manager', 'storekeeper'],
-      pos: ['admin', 'manager', 'storekeeper'],
+      inventory: ['admin', 'manager'],
+      pos: ['admin', 'manager'],
       users: ['admin', 'manager'],
       system: ['admin']
     };
 
-    // Check if user has access to this component
     if (roleAccess[lastPart] && roleAccess[lastPart].includes(userRole)) {
       return allSettingsComponents[lastPart] || GeneralSettings;
     }
 
-    return GeneralSettings; // Default fallback
+    return GeneralSettings;
   };
 
   const CurrentComponent = getCurrentComponent();

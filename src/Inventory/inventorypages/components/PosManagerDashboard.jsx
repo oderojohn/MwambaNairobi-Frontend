@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { reportsAPI, salesAPI, formatCurrency } from '../../../services/ApiService/api';
+import { reportsAPI, salesAPI, formatCurrency, userService } from '../../../services/ApiService/api';
 import EditTransactionModal from './modals/EditTransactionModal';
 import VoidModal from './modals/VoidModal';
 import './SalesSummaryPage.css';
 
 const PosManagerDashboard = ({ shiftId }) => {
+  const canVoidSales = userService.getUserRole() === 'supervisor';
   const [salesData, setSalesData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -622,13 +623,15 @@ const PosManagerDashboard = ({ shiftId }) => {
                                                       >
                                                         <i className="fas fa-receipt"></i>
                                                       </button>
-                                                      <button
-                                                        className="btn btn-icon btn-outline-danger"
-                                                        onClick={() => handleVoidSale(sale)}
-                                                        title="Void Sale"
-                                                      >
-                                                        <i className="fas fa-ban"></i>
-                                                      </button>
+                                                      {canVoidSales && (
+                                                        <button
+                                                          className="btn btn-icon btn-outline-danger"
+                                                          onClick={() => handleVoidSale(sale)}
+                                                          title="Void Sale"
+                                                        >
+                                                          <i className="fas fa-ban"></i>
+                                                        </button>
+                                                      )}
                                                     </div>
                                                   </td>
                                                 </tr>

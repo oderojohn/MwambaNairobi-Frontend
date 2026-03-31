@@ -1,11 +1,30 @@
 // Header.js
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import logo from '../../logo.png';
 import './Header.css';
 
-const Header = ({ onOpenHeldOrders, onShiftManagement, onPrint, onLogout, onOpenSalesSummary, onOpenOrderPreparation, currentShift, mode, onModeChange, onCustomerLookup, onCustomerClear, selectedCustomer, onEndShift }) => {
+const Header = ({ onOpenHeldOrders, onShiftManagement, onPrint, onLogout, onOpenSalesSummary, onOpenOrderPreparation, currentShift, mode, onModeChange, onCustomerLookup, onCustomerClear, selectedCustomer, onEndShift, permissions = { pending_orders: true, sales_summary: true, shift: true, order_prep: true, logout: true, global_sales: false } }) => {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const hasActiveShift = currentShift && currentShift.has_active_shift;
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 768) {
+        setMobileMenuOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const handleActionClick = (action) => {
+    if (mobileMenuOpen) {
+      setMobileMenuOpen(false);
+    }
+    action();
+  };
 
   return (
     <header className="pos-header">
@@ -53,68 +72,83 @@ const Header = ({ onOpenHeldOrders, onShiftManagement, onPrint, onLogout, onOpen
           </button>
         )}
 
+        <button
+          className="pos-header__mobile-menu-btn"
+          onClick={() => setMobileMenuOpen((prev) => !prev)}
+          aria-expanded={mobileMenuOpen}
+          aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+        >
+          <i className={`fas ${mobileMenuOpen ? 'fa-times' : 'fa-bars'}`}></i>
+          <span>Menu</span>
+        </button>
+
         {/* Action Buttons */}
-        <div className="pos-header__action-buttons">
-          <button className="pos-header__action-btn pos-header__action-btn--secondary" onClick={onOpenHeldOrders}>
-            <i className="fas fa-clock pos-header__action-icon"></i>
-            <span className="pos-header__action-text">Held Orders</span>
-          </button>
+        <div className={`pos-header__action-buttons ${mobileMenuOpen ? 'pos-header__action-buttons--open' : ''}`}>
+          {permissions.pending_orders && (
+            <button
+              className="pos-header__action-btn pos-header__action-btn--secondary"
+              onClick={() => handleActionClick(onOpenHeldOrders)}
+            >
+              <i className="fas fa-clock pos-header__action-icon"></i>
+              <span className="pos-header__action-text">Pending Orders</span>
+            </button>
+          )}
 
-          <button className="pos-header__action-btn pos-header__action-btn--info" onClick={() => {
-            // Navigate to sales summary page with current shift ID
-            const shiftId = currentShift?.id;
-            if (shiftId) {
-              window.location.href = `/#/sales-summary?shift_id=${shiftId}`;
-            } else {
-              window.location.href = '/#/sales-summary';
-            }
-          }}>
-            <i className="fas fa-chart-line pos-header__action-icon"></i>
-            <span className="pos-header__action-text">Sales Summary</span>
-          </button>
-
-          <button 
-            className={`pos-header__action-btn ${hasActiveShift ? 'pos-header__action-btn--danger' : 'pos-header__action-btn--warning'}`}
-            onClick={() => {
-              console.log('Shift button clicked:', { hasActiveShift, currentShift: currentShift ? { id: currentShift.id, has_active_shift: currentShift.has_active_shift, status: currentShift.status } : null });
-              if (hasActiveShift) {
-                onEndShift();
+          {permissions.sales_summary && (
+            <button
+              className="pos-header__action-btn pos-header__action-btn--info"
+              onClick={() => handleActionClick(() => {
+              // Navigate to sales summary page with current shift ID
+              const shiftId = currentShift?.id;
+              if (shiftId) {
+                window.location.href = `/#/sales-summary?shift_id=${shiftId}`;
               } else {
-                onShiftManagement();
+                window.location.href = '/#/sales-summary';
               }
-            }}
-          >
-            <i className={`fas ${hasActiveShift ? 'fa-stop-circle' : 'fa-user-clock'} pos-header__action-icon`}></i>
-            <span className="pos-header__action-text">{hasActiveShift ? 'End Shift' : 'Shift'}</span>
-          </button>
+            })}
+            >
+              <i className="fas fa-chart-line pos-header__action-icon"></i>
+              <span className="pos-header__action-text">Sales Summary</span>
+            </button>
+          )}
 
-          <button className="pos-header__action-btn pos-header__action-btn--success" onClick={onOpenOrderPreparation}>
-            <i className="fas fa-clipboard-list pos-header__action-icon"></i>
-            <span className="pos-header__action-text">Order Prep</span>
-          </button>
 
-          <button className="pos-header__action-btn pos-header__action-btn--danger" onClick={() => {
-            import('sweetalert2').then(Swal => {
-              Swal.default.fire({
-                title: 'Confirm Logout',
-                text: 'Are you sure you want to logout?',
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonText: 'Yes, logout',
-                cancelButtonText: 'Cancel',
-                zIndex: 10000,
-                confirmButtonColor: '#dc3545',
-                cancelButtonColor: '#6c757d'
-              }).then((result) => {
-                if (result.isConfirmed) {
-                  onLogout();
+          {permissions.shift && (
+            <button 
+              className={`pos-header__action-btn ${hasActiveShift ? 'pos-header__action-btn--danger' : 'pos-header__action-btn--warning'}`}
+              onClick={() => handleActionClick(() => {
+                console.log('Shift button clicked:', { hasActiveShift, currentShift: currentShift ? { id: currentShift.id, has_active_shift: currentShift.has_active_shift, status: currentShift.status } : null });
+                if (hasActiveShift) {
+                  onEndShift();
+                } else {
+                  onShiftManagement();
                 }
-              });
-            });
-          }}>
-            <i className="fas fa-sign-out-alt pos-header__action-icon"></i>
-            <span className="pos-header__action-text">Logout</span>
-          </button>
+              })}
+            >
+              <i className={`fas ${hasActiveShift ? 'fa-stop-circle' : 'fa-user-clock'} pos-header__action-icon`}></i>
+              <span className="pos-header__action-text">{hasActiveShift ? 'End Shift' : 'Shift'}</span>
+            </button>
+          )}
+
+          {permissions.order_prep && (
+            <button
+              className="pos-header__action-btn pos-header__action-btn--success"
+              onClick={() => handleActionClick(onOpenOrderPreparation)}
+            >
+              <i className="fas fa-clipboard-list pos-header__action-icon"></i>
+              <span className="pos-header__action-text">Order Prep</span>
+            </button>
+          )}
+
+          {permissions.logout && (
+            <button
+              className="pos-header__action-btn pos-header__action-btn--danger"
+              onClick={() => handleActionClick(onLogout)}
+            >
+              <i className="fas fa-sign-out-alt pos-header__action-icon"></i>
+              <span className="pos-header__action-text">Logout</span>
+            </button>
+          )}
         </div>
       </div>
     </header>

@@ -2,6 +2,7 @@
 .pos-container {
   position: relative;
   min-height: 100vh;
+  min-height: 100dvh;
   background: #f8fafc;
 }
 
@@ -9,6 +10,7 @@
 .pos-content {
   display: flex;
   height: calc(100vh - 50px);
+  height: calc(100dvh - 50px);
   overflow: hidden;
   gap: 0;
   width: 100%;
@@ -26,6 +28,14 @@
 /* Ensure modals appear above everything */
 .modal {
   z-index: 10000 !important;
+}
+
+/* Elevate SweetAlert dialogs above mobile overlays */
+.swal2-container {
+  z-index: 15000 !important;
+}
+.swal2-popup {
+  z-index: 15001 !important;
 }
 
 /* Make sure the overlay doesn't interfere */
@@ -193,6 +203,199 @@
   
   .table-container {
     overflow-x: auto;
+  }
+}
+
+/* Mobile POS Layout - Stack panels vertically */
+@media (max-width: 768px) {
+  html, body, .pos-container {
+    height: 100vh;
+    min-height: 100vh;
+    overflow: hidden;
+  }
+
+  .pos-content {
+    flex-direction: column;
+    height: calc(100vh - 50px);
+    min-height: calc(100vh - 50px);
+    overflow: hidden;
+    /* Prevent pull-to-refresh on mobile */
+    overscroll-behavior: contain;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+  
+  /* Disable text selection for better touch experience */
+  .pos-products-grid__product-card,
+  .pos-shopping-cart__item,
+  .pos-shopping-cart__action-btn,
+  .header-controls .btn {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* Mobile: Products Grid - Full width */
+  .pos-products-grid {
+    width: 100% !important;
+    min-width: 100% !important;
+    flex: none !important;
+    height: 100%;
+  }
+  
+  /* Allow only products grid to scroll */
+  .pos-products-grid__container {
+    max-height: calc(100vh - 190px);
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  
+  /* Mobile: Shopping Cart - Full width, collapsible */
+  .pos-shopping-cart {
+    width: 100% !important;
+    min-width: 100% !important;
+    flex: none !important;
+    height: 100vh;
+    max-height: 100vh;
+    overflow-y: auto;
+  }
+  
+  /* Mobile: Recent Activity - Hidden by default */
+  .recent-activity-panel {
+    display: none;
+  }
+  
+  /* Mobile Bottom Navigation Bar for Cart */
+  .mobile-bottom-bar {
+    display: flex !important;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 70px;
+    background: white;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 9999;
+    padding: 0 16px;
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+  .mobile-bottom-bar__cart-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .mobile-bottom-bar__item-count {
+    font-size: 0.85rem;
+    color: #6b7280;
+    font-weight: 500;
+  }
+  
+  .mobile-bottom-bar__total {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1f2937;
+  }
+  
+  .mobile-bottom-bar__actions {
+    display: flex;
+    gap: 12px;
+  }
+  
+  .mobile-bottom-bar__btn {
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  
+  .mobile-bottom-bar__btn--clear {
+    background: #fee2e2;
+    color: #dc2626;
+  }
+  
+  .mobile-bottom-bar__btn--undo {
+    background: #fef3c7;
+    color: #d97706;
+  }
+  
+  .mobile-bottom-bar__btn--pay {
+    background: #10b981;
+    color: white;
+  }
+
+  .pos-mobile-cart-toggle {
+    display: flex;
+    position: fixed;
+    right: 12px;
+    bottom: 12px;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: #111827;
+    color: #ffffff;
+    border: none;
+    border-radius: 999px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+    font-weight: 700;
+    font-size: 0.85rem;
+    z-index: 9997;
+    cursor: pointer;
+  }
+
+  .pos-mobile-cart-toggle__label {
+    font-weight: 800;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+  }
+
+  .pos-mobile-cart-toggle__count {
+    background: #2563eb;
+    color: white;
+    border-radius: 999px;
+    padding: 2px 8px;
+    font-size: 0.9rem;
+    font-weight: 800;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+  }
+
+  .pos-mobile-cart-toggle__total {
+    font-weight: 600;
+    color: #facc15;
+    font-size: 0.95rem;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.35);
+  }
+
+  .pos-mobile-cart-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.6);
+    z-index: 9998;
+  }
+
+  .pos-mobile-cart-toggle--hidden {
+    display: none;
+  }
+}
+
+/* Mobile Bottom Navigation Bar - Hidden on Desktop */
+.mobile-bottom-bar {
+  display: none;
+}
+
+/* Hide cart toggle/backdrop only on larger screens so mobile can see it */
+@media (min-width: 769px) {
+  .pos-mobile-cart-toggle {
+    display: none;
+  }
+
+  .pos-mobile-cart-backdrop {
+    display: none;
   }
 }
 
@@ -517,35 +720,157 @@
   flex-shrink: 0;
 }
   
-/* POS Layout with Recent Activity Panel */  
-.pos-content {  
-  gap: 12px;  
-  padding: 12px;  
-}  
+/* POS Layout with Recent Activity Panel (large screens only) */
+@media (min-width: 1400px) {
+  .pos-content {
+    gap: 12px;
+    padding: 12px;
+  }
 
-/* Product Grid - left side fixed width */
-.pos-content > .pos-product-grid {  
-  width: 400px;  
-  min-width: 400px;  
-  flex-shrink: 0;  
-}  
+  .pos-content > .pos-products-grid {
+    width: 420px;
+    min-width: 380px;
+    flex-shrink: 0;
+  }
 
-/* Shopping Cart - center fixed width */  
-.pos-content > .pos-shopping-cart {  
-  width: 420px;  
-  min-width: 420px;  
-  flex-shrink: 0;  
-}  
+  .pos-content > .pos-shopping-cart {
+    width: 420px;
+    min-width: 380px;
+    flex-shrink: 0;
+  }
 
-/* Recent Activity Panel - right side, fills remaining space */  
-.pos-content > .recent-activity-panel {  
-  flex: 1;  
-  min-width: 300px;  
-  max-width: 400px;  
-} 
-/* Recent Activity Panel - right side, fixed width matching cart */  
-.pos-content > .recent-activity-panel {  
-  width: 420px;  
-  min-width: 420px;  
-  flex-shrink: 0;  
-} 
+  .pos-content > .recent-activity-panel {
+    flex: 1;
+    min-width: 300px;
+    max-width: 420px;
+  }
+}
+
+/* Auto-logout countdown overlay */
+.countdown-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10001;
+  backdrop-filter: blur(4px);
+}
+
+.countdown-modal {
+  background: white;
+  border-radius: 16px;
+  padding: 40px;
+  text-align: center;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  max-width: 400px;
+  width: 90%;
+  animation: countdownPopIn 0.3s ease-out;
+}
+
+@keyframes countdownPopIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.countdown-icon {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 20px;
+  background: #fef3c7;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #f59e0b;
+  animation: countdownPulse 1s ease-in-out infinite;
+}
+
+@keyframes countdownPulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+.countdown-icon svg {
+  width: 40px;
+  height: 40px;
+}
+
+.countdown-modal h3 {
+  margin: 0 0 16px;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.countdown-modal p {
+  margin: 0 0 8px;
+  color: #4b5563;
+  font-size: 1rem;
+}
+
+.countdown-modal p strong {
+  color: #dc2626;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.countdown-message {
+  font-size: 0.875rem !important;
+  color: #6b7280 !important;
+  margin-bottom: 24px !important;
+}
+
+.countdown-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.countdown-stay-button {
+  background: #10b981;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.countdown-stay-button:hover {
+  background: #059669;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.countdown-logout-button {
+  background: #f3f4f6;
+  color: #4b5563;
+  border: 1px solid #e5e7eb;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.countdown-logout-button:hover {
+  background: #e5e7eb;
+}

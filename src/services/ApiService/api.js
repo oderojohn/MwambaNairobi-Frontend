@@ -1,7 +1,6 @@
 // api.js
-const API_BASE_URL = 'https://pos-iota-five.vercel.app';
-// const API_BASE_URL = 'http://localhost:8000';
-
+// const API_BASE_URL = 'https://pos-iota-five.vercel.app';
+const API_BASE_URL = "http://localhost:8000";
 
 // Utility function to safely convert values to numbers
 export const toNumber = (value) => {
@@ -18,6 +17,25 @@ export const formatCurrency = (amount) => {
   const numericAmount = toNumber(amount);
   return `Ksh ${numericAmount.toFixed(2)}`;
 };
+
+// Default top bar permissions (used when backend hasn't stored any yet)
+export const DEFAULT_TOPBAR_PERMISSIONS = {
+  pending_orders: true,
+  sales_summary: true,
+  shift: true,
+  order_prep: true,
+  logout: true,
+  global_sales: false,
+};
+
+export const normalizeTopbarPermissions = (perms = {}) => ({
+  pending_orders: perms?.pending_orders ?? true,
+  sales_summary: perms?.sales_summary ?? true,
+  shift: perms?.shift ?? true,
+  order_prep: perms?.order_prep ?? true,
+  logout: perms?.logout ?? true,
+  global_sales: perms?.global_sales ?? false,
+});
 
 // Storage keys
 const STORAGE_KEYS = {
@@ -121,18 +139,21 @@ const apiRequest = async (endpoint, method = 'GET', body = null, headers = {}, i
 };
 
 export const authService = {
-  login: async (username, password) => {
-    const response = await apiRequest('/api/auth/login/', 'POST', { username, password });
+  login: async (pin) => {
+    const response = await apiRequest('/api/auth/login/', 'POST', { pin });
     tokenService.setTokens(response.access, response.refresh);
+    const roles = response.roles?.length ? response.roles : (response.role ? [response.role] : []);
     userService.setUserData({ 
       username: response.username,
       name: response.name,
-      roles: response.roles,
+      roles,
+      role: response.role || roles[0] || null,
       user_id: response.user_id,
       shift_status: response.shift_status,
       current_shift: response.current_shift,
       branch: response.branch,
-      branch_id: response.branch_id
+      branch_id: response.branch_id,
+      topbar_permissions: normalizeTopbarPermissions(response.topbar_permissions || DEFAULT_TOPBAR_PERMISSIONS)
     });
     return response;
   },
@@ -189,9 +210,6 @@ export const authService = {
         tokenService.clearTokens();
         userService.clearUserData();
         console.log('Logout process completed');
-
-        // Refresh the page to show login
-        window.location.reload();
       } catch (cleanupError) {
         console.error('Error during client cleanup:', {
           error: cleanupError,
@@ -216,9 +234,13 @@ export const userService = {
   },
   setUserData: (userData) => localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(userData)),
   clearUserData: () => localStorage.removeItem(STORAGE_KEYS.USER_DATA),
-  getUserRole: () => userService.getUserData()?.roles?.[0] || null,
+  getUserRole: () => {
+    const data = userService.getUserData();
+    return data?.roles?.[0] || data?.role || null;
+  },
   getShiftStatus: () => userService.getUserData()?.shift_status || null,
-  getCurrentShift: () => userService.getUserData()?.current_shift || null
+  getCurrentShift: () => userService.getUserData()?.current_shift || null,
+  getTopbarPermissions: () => normalizeTopbarPermissions(userService.getUserData()?.topbar_permissions || DEFAULT_TOPBAR_PERMISSIONS),
 };
 
 export const tokenService = {
@@ -284,10 +306,70 @@ export const authAPI = {
   refresh: () => apiRequest('/api/auth/refresh/', 'POST'),
 };
 
+const cleanObject = (obj = {}) =>
+  Object.fromEntries(Object.entries(obj).filter(([, value]) => value !== undefined));
+
+const buildUserPayload = (input = {}, options = { allowPartial: false }) => {
+  const allowPartial = options.allowPartial || false;
+  const userBlock = input.user || {};
+
+  const user = cleanObject({
+    username: input.username ?? userBlock.username,
+    email: input.email ?? userBlock.email,
+    first_name: input.first_name ?? userBlock.first_name,
+    last_name: input.last_name ?? userBlock.last_name,
+    password: input.password ?? userBlock.password,
+    is_staff: input.is_staff ?? userBlock.is_staff,
+    is_superuser: input.is_superuser ?? userBlock.is_superuser,
+    group_ids: input.group_ids ?? userBlock.group_ids,
+  });
+
+  const payload = {};
+  if (Object.keys(user).length || !allowPartial) {
+    payload.user = user;
+  }
+
+  if (!allowPartial || input.role !== undefined) {
+    payload.role = input.role ?? 'cashier';
+  }
+
+  if (!allowPartial || input.branch !== undefined) {
+    payload.branch = input.branch || null;
+  }
+
+  if (!allowPartial || input.pin !== undefined) {
+    payload.pin = input.pin;
+  }
+
+  if (!allowPartial || input.is_active !== undefined) {
+    payload.is_active = input.is_active ?? true;
+  }
+
+  if (!allowPartial || input.topbar_permissions !== undefined) {
+    payload.topbar_permissions = normalizeTopbarPermissions(
+      input.topbar_permissions || DEFAULT_TOPBAR_PERMISSIONS
+    );
+  }
+
+  return cleanObject(payload);
+};
+
 export const usersAPI = {
   getUsers: () => apiRequest('/api/users/'),
-  createUser: (user) => apiRequest('/api/users/', 'POST', user),
-  updateUser: (id, user) => apiRequest(`/api/users/${id}/`, 'PUT', user),
+  getRoles: () => apiRequest('/api/users/roles/'),
+  getGroups: () => apiRequest('/api/users/groups/'),
+  createGroup: (group) => apiRequest('/api/users/groups/', 'POST', group),
+  updateGroup: (id, group) => apiRequest(`/api/users/groups/${id}/`, 'PATCH', group),
+  deleteGroup: (id) => apiRequest(`/api/users/groups/${id}/`, 'DELETE'),
+  getTopbarPermissions: (userId) => apiRequest(`/api/users/topbar-permissions/${userId}/`),
+  updateTopbarPermissions: (userId, allowedButtons) =>
+    apiRequest(`/api/users/topbar-permissions/${userId}/`, 'PUT', {
+      user_profile: userId,
+      allowed_buttons: normalizeTopbarPermissions(allowedButtons),
+    }),
+  createUser: (user) => apiRequest('/api/users/', 'POST', buildUserPayload(user)),
+  updateUser: (id, user) =>
+    apiRequest(`/api/users/${id}/`, 'PATCH', buildUserPayload(user, { allowPartial: true })),
   deleteUser: (id) => apiRequest(`/api/users/${id}/`, 'DELETE'),
 };
 
@@ -788,5 +870,3 @@ export const etimsAPI = {
   checkConnection: () => apiRequest('/api/etims/status/check/'),
   getSummary: () => apiRequest('/api/etims/status/summary/'),
 };
-
-

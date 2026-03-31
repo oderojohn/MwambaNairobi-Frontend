@@ -1,7 +1,8 @@
 // SalesSummaryPage.js - Compact Redesign
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { reportsAPI, returnsAPI, formatCurrency } from '../../services/ApiService/api';
+import { reportsAPI, returnsAPI, salesAPI, formatCurrency, shiftsAPI, userService } from '../../services/ApiService/api';
+import { useAuth } from '../../services/context/authContext';
 import './SalesSummaryPage.css';
 import ReceiptModal from '../components/ReceiptModal';
 
@@ -9,31 +10,63 @@ import ReceiptModal from '../components/ReceiptModal';
 const SalesSummaryPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
   const [salesData, setSalesData] = useState(null);
   const [returnsData, setReturnsData] = useState(null);
+  const [shiftData, setShiftData] = useState([]);
+  const [shiftLoading, setShiftLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [expandedRow, setExpandedRow] = useState(null);
+  const [expandedShiftId, setExpandedShiftId] = useState(null);
+  const [expandedShiftSaleId, setExpandedShiftSaleId] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [returnEditMode, setReturnEditMode] = useState(null); // Track which sale is being returned
   const [returnSelections, setReturnSelections] = useState({});
   const [returnReason, setReturnReason] = useState('');
   const [returnLoading, setReturnLoading] = useState(false);
+  const [todayAllSales, setTodayAllSales] = useState(null);
+  const [personalSalesData, setPersonalSalesData] = useState(null);
+  const [expandedPersonalSaleId, setExpandedPersonalSaleId] = useState(null);
   
   // Reprint modal state
   const [showReprintModal, setShowReprintModal] = useState(false);
   const [reprintData, setReprintData] = useState(null);
+  const [voidModal, setVoidModal] = useState(null);
+  const [voidSubmitting, setVoidSubmitting] = useState(false);
+  const [voidModalError, setVoidModalError] = useState('');
 
   // Get shiftId from URL query params
   const searchParams = new URLSearchParams(location.search);
   const shiftIdFromUrl = searchParams.get('shift_id');
+  const scopeFromUrl = searchParams.get('scope') || 'mine';
+  const [scope, setScope] = useState(scopeFromUrl);
   const shiftId = shiftIdFromUrl || null;
+  const [dateRange, setDateRange] = useState({
+    start: searchParams.get('start') || '',
+    end: searchParams.get('end') || ''
+  });
+  const [userFilter, setUserFilter] = useState(searchParams.get('user') || '');
+  const [shiftStatus, setShiftStatus] = useState(searchParams.get('shift_status') || 'open');
+  const topbarPerms = user?.topbar_permissions || userService.getTopbarPermissions();
+  const isSupervisor = user?.role === 'supervisor';
+  const allowAll = topbarPerms.global_sales || ['admin', 'manager', 'supervisor'].includes(user?.role);
+  const leadLabel = isSupervisor ? 'User' : 'Cashier';
+  const showScopeBar = isSupervisor;
+  const useTeamView = allowAll && scope === 'all';
+  const applyShiftFilter = shiftId && !useTeamView;
 
   const fetchSalesSummary = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const params = shiftId ? { shift_id: shiftId } : {};
+      const params = {};
+      if (applyShiftFilter) params.shift_id = shiftId;
+      if (useTeamView) params.all_users = true;
+      if (dateRange.start) params.date_from = dateRange.start;
+      if (dateRange.end) params.date_to = dateRange.end;
+      if (userFilter) params.user = userFilter;
+      if (shiftStatus && shiftStatus !== 'all') params.status = shiftStatus;
       
       // Fetch both sales and returns data
       const [sales, returns] = await Promise.all([
@@ -49,7 +82,88 @@ const SalesSummaryPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [shiftId]);
+  }, [applyShiftFilter, shiftId, useTeamView, dateRange.start, dateRange.end, userFilter, shiftStatus]);
+
+  const fetchShiftData = useCallback(async () => {
+    if (!useTeamView) {
+      setShiftData([]);
+      return;
+    }
+    try {
+      setShiftLoading(true);
+      const params = {};
+      if (dateRange.start) params.start_date = dateRange.start;
+      if (dateRange.end) params.end_date = dateRange.end;
+      if (userFilter) params.user = userFilter;
+      if (isSupervisor) params.role = 'waiter';
+      if (shiftStatus === 'all') params.all_shifts = true;
+      else if (shiftStatus) params.status = shiftStatus;
+      params.page_size = 50;
+      const res = await shiftsAPI.getAllShifts(params);
+      let rows = res?.results || res || [];
+      rows = rows.filter((row) => !isSupervisor || (row?.cashier_role || row?.cashier?.role || '').toLowerCase() === 'waiter');
+      setShiftData(rows);
+    } catch (err) {
+      console.error('Error loading shift data:', err);
+      setError('Failed to load shifts');
+    } finally {
+      setShiftLoading(false);
+    }
+  }, [useTeamView, dateRange.start, dateRange.end, userFilter, shiftStatus, isSupervisor]);
+
+  const fetchTodayAllSales = useCallback(async () => {
+    if (!isSupervisor) {
+      setTodayAllSales(null);
+      return;
+    }
+    try {
+      const summary = await reportsAPI.getSalesSummary({ today_summary: true });
+      setTodayAllSales(Number(summary?.today_sales || summary?.total_sales || 0));
+    } catch (err) {
+      console.error('Error loading all-user daily sales total:', err);
+      setTodayAllSales(null);
+    }
+  }, [isSupervisor]);
+
+  const fetchPersonalSalesSummary = useCallback(async () => {
+    if (!isSupervisor) {
+      setPersonalSalesData(null);
+      return;
+    }
+    try {
+      const params = {};
+      if (dateRange.start) params.date_from = dateRange.start;
+      if (dateRange.end) params.date_to = dateRange.end;
+      const summary = await reportsAPI.getSalesReport(params);
+      setPersonalSalesData(summary);
+    } catch (err) {
+      console.error('Error loading supervisor personal summary:', err);
+      setPersonalSalesData(null);
+    }
+  }, [isSupervisor, dateRange.start, dateRange.end]);
+
+  const getPaymentLabel = (sale) => {
+    if (!sale || sale.is_return) return 'Refund';
+    if (sale.is_voided || sale.voided) return 'Voided';
+    if (sale.payment_method === 'mpesa') return 'M-Pesa';
+    if (sale.payment_method === 'cash') return 'Cash';
+    if (sale.payment_method === 'split') {
+      if (sale.split_data && 'mpesa' in sale.split_data && 'cash' in sale.split_data) return 'M-Pesa & Cash';
+      if (sale.split_data && 'mpesa' in sale.split_data) return 'M-Pesa';
+      if (sale.split_data && 'cash' in sale.split_data) return 'Cash';
+      return 'Split';
+    }
+    return sale.payment_method ? sale.payment_method.charAt(0).toUpperCase() + sale.payment_method.slice(1) : 'N/A';
+  };
+
+  const toggleShiftExpansion = (shiftId) => {
+    setExpandedShiftId((prev) => (prev === shiftId ? null : shiftId));
+    setExpandedShiftSaleId(null);
+  };
+
+  const toggleShiftSaleExpansion = (saleId) => {
+    setExpandedShiftSaleId((prev) => (prev === saleId ? null : saleId));
+  };
 
   const toggleRowExpansion = (saleId) => {
     // If in return mode, cancel it
@@ -62,6 +176,10 @@ const SalesSummaryPage = () => {
   };
 
   const handleReturn = (sale) => {
+    if (scope === 'all' && user?.role && !['admin', 'manager', 'supervisor'].includes(user.role)) {
+      alert('Returns across users are restricted to admin, manager, or supervisor.');
+      return;
+    }
     // Expand the row and enter return mode
     setExpandedRow(sale.id);
     setReturnEditMode(sale.id);
@@ -104,6 +222,17 @@ const SalesSummaryPage = () => {
   };
 
   const submitReturn = async (sale) => {
+    if (scope === 'all' && user?.role && !['admin', 'manager', 'supervisor'].includes(user.role)) {
+      alert('Returns across users are restricted to admin, manager, or supervisor.');
+      return;
+    }
+    const saleDate = sale.sale_date ? new Date(sale.sale_date) : null;
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    if (saleDate && saleDate < sevenDaysAgo) {
+      alert('Returns are limited to sales from the past 7 days.');
+      return;
+    }
     const saleSelections = returnSelections[sale.id] || {};
     const selectedItemIds = Object.keys(saleSelections);
     
@@ -190,51 +319,319 @@ const SalesSummaryPage = () => {
     }
   };
 
+  const closeVoidModal = useCallback(() => {
+    if (voidSubmitting) return;
+    setVoidModal(null);
+    setVoidModalError('');
+  }, [voidSubmitting]);
+
+  const handleVoidSale = useCallback((sale) => {
+    if (!isSupervisor || !sale || sale.is_return || sale.is_voided || sale.voided) return;
+    setVoidModal({
+      mode: 'sale',
+      sale,
+      item: null,
+      quantity: '1',
+      reason: ''
+    });
+    setVoidModalError('');
+  }, [isSupervisor]);
+
+  const handleVoidItem = useCallback((sale, item) => {
+    if (!isSupervisor || !sale || !item || sale.is_return || sale.is_voided || sale.voided) return;
+    const maxQty = Number(item.remaining_quantity ?? item.quantity_remaining ?? item.quantity ?? 0);
+    if (!item.id) {
+      setVoidModalError('');
+      setError('This item cannot be voided because its sale item id is missing.');
+      return;
+    }
+    if (!Number.isFinite(maxQty) || maxQty <= 0) {
+      setVoidModalError('');
+      setError('No remaining quantity available to void for this item.');
+      return;
+    }
+    setVoidModal({
+      mode: 'item',
+      sale,
+      item,
+      quantity: '1',
+      maxQuantity: maxQty,
+      reason: ''
+    });
+    setVoidModalError('');
+  }, [isSupervisor]);
+
+  const submitVoidAction = useCallback(async () => {
+    if (!voidModal || voidSubmitting) return;
+
+    const reason = (voidModal.reason || '').trim();
+    if (!reason) {
+      setVoidModalError('Reason is required.');
+      return;
+    }
+
+    try {
+      setVoidSubmitting(true);
+      setVoidModalError('');
+      setError(null);
+
+      if (voidModal.mode === 'item') {
+        const quantity = Math.max(
+          1,
+          Math.min(
+            Number(voidModal.maxQuantity || 0),
+            Number(voidModal.quantity || 0)
+          )
+        );
+
+        if (!voidModal.item?.id) {
+          setVoidModalError('This item cannot be voided because its sale item id is missing.');
+          return;
+        }
+        if (!Number.isFinite(quantity) || quantity <= 0) {
+          setVoidModalError('Enter a valid quantity to void.');
+          return;
+        }
+
+        await salesAPI.voidItems(voidModal.sale.id, {
+          reason,
+          items: [{ sale_item_id: voidModal.item.id, quantity }]
+        });
+      } else {
+        await salesAPI.adminVoidSale(voidModal.sale.id, { reason });
+      }
+
+      await Promise.all([fetchSalesSummary(), fetchShiftData(), fetchPersonalSalesSummary()]);
+      setVoidModal(null);
+      setVoidModalError('');
+    } catch (error) {
+      console.error('Error processing void action:', error);
+      setVoidModalError(error.message || 'Failed to process void action.');
+    } finally {
+      setVoidSubmitting(false);
+    }
+  }, [voidModal, voidSubmitting, fetchSalesSummary, fetchShiftData, fetchPersonalSalesSummary]);
+
   useEffect(() => {
     fetchSalesSummary();
-  }, [shiftId, fetchSalesSummary]);
+  }, [shiftId, scope, dateRange.start, dateRange.end, userFilter, fetchSalesSummary]);
+
+  useEffect(() => {
+    fetchShiftData();
+  }, [fetchShiftData]);
+
+  useEffect(() => {
+    if (isSupervisor && scope !== 'all') {
+      setScope('all');
+      const params = new URLSearchParams(location.search);
+      params.set('scope', 'all');
+      navigate({ pathname: location.pathname, search: params.toString() }, { replace: true });
+      return;
+    }
+    if (!showScopeBar && scope === 'all') {
+      setScope('mine');
+      const params = new URLSearchParams(location.search);
+      params.set('scope', 'mine');
+      navigate({ pathname: location.pathname, search: params.toString() }, { replace: true });
+    }
+  }, [isSupervisor, showScopeBar, scope, navigate, location.pathname, location.search]);
+
+  useEffect(() => {
+    fetchTodayAllSales();
+  }, [fetchTodayAllSales]);
+
+  useEffect(() => {
+    fetchPersonalSalesSummary();
+  }, [fetchPersonalSalesSummary]);
+
+  const voidedEntries = [
+    ...(salesData?.voided_sales || []),
+    ...(salesData?.voided_held_orders || []),
+  ];
+  const voidedSalesCount = voidedEntries.length;
+  const voidedSalesAmount = voidedEntries.reduce(
+    (sum, sale) => sum + Number(sale.total_amount || 0),
+    0
+  );
+  const personalVoidedEntries = [
+    ...(personalSalesData?.voided_sales || []),
+    ...(personalSalesData?.voided_held_orders || []),
+  ];
+  const personalNetSales = personalSalesData
+    ? (personalSalesData.net_sales !== undefined
+      ? personalSalesData.net_sales
+      : (personalSalesData.total_sales || 0) - (personalSalesData.total_returns || 0))
+    : 0;
+  const openWaiterShifts = shiftData.filter((shift) => (shift?.status || '').toLowerCase() === 'open');
+  const openWaiterSalesTotal = openWaiterShifts.reduce((sum, shift) => sum + Number(shift?.total_sales || 0), 0);
+  const openWaiterTransactions = openWaiterShifts.reduce(
+    (sum, shift) => sum + Number(shift?.transaction_count ?? shift?.sales_count ?? shift?.sales?.length ?? 0),
+    0
+  );
+  const openWaiterNetSales = openWaiterShifts.reduce(
+    (sum, shift) => sum + Number(shift?.net_sales ?? (Number(shift?.total_sales || 0) - Number(shift?.total_returns || 0))),
+    0
+  );
+  const openWaiterVoidedBills = openWaiterShifts.reduce(
+    (sum, shift) => sum + (Array.isArray(shift?.sales) ? shift.sales.filter((sale) => sale?.voided).length : 0),
+    0
+  );
+  const supervisorQuickActions = [
+    ...(personalSalesData?.recent_sales || []).map((sale) => ({
+      ...sale,
+      row_state: 'sale',
+      sort_date: sale.created_at,
+    })),
+    ...personalVoidedEntries.map((sale) => ({
+      ...sale,
+      payment_method: sale.payment_method || 'voided',
+      sale_type: 'voided',
+      voided: true,
+      is_voided: true,
+      row_state: 'voided',
+      sort_date: sale.voided_at || sale.created_at,
+    })),
+  ]
+    .sort((a, b) => new Date(b.sort_date || 0) - new Date(a.sort_date || 0))
+    .slice(0, 6);
+
+  useEffect(() => {
+    document.body.classList.add('pos-ssp-scroll-unlock');
+    document.documentElement.classList.add('pos-ssp-scroll-unlock');
+
+    return () => {
+      document.body.classList.remove('pos-ssp-scroll-unlock');
+      document.documentElement.classList.remove('pos-ssp-scroll-unlock');
+    };
+  }, []);
 
   return (
     <div className="pos-ssp-sales-summary-page">
-      <div className="pos-ssp-page-header">
-        <h2>Sales Summary</h2>
-        <div className="pos-ssp-page-header-actions">
-          <button className="pos-ssp-btn pos-ssp-btn-secondary" onClick={() => navigate('/')}>
-            <i className="fas fa-arrow-left"></i> Back to POS
+      <div className="pos-ssp-topbar-shell">
+        <div className="pos-ssp-page-header">
+          <div className="pos-ssp-page-header-copy">
+            <span className="pos-ssp-page-header-eyebrow">
+              {isSupervisor ? 'Supervisor Workspace' : 'Sales Workspace'}
+            </span>
+            <h2>Sales Summary</h2>
+            <p>
+              {isSupervisor
+                ? 'Monitor your own sales, review every waiter shift, and handle operations like voiding without leaving this page.'
+                : 'Review your sales, returns, and payment mix for the selected period.'}
+            </p>
+          </div>
+          <div className="pos-ssp-page-header-actions">
+            <button className="pos-ssp-btn pos-ssp-btn-secondary" onClick={() => navigate('/')}>
+              <i className="fas fa-arrow-left"></i> Back to POS
+            </button>
+            <button className="pos-ssp-btn pos-ssp-btn-primary" onClick={fetchSalesSummary} disabled={loading}>
+              <i className={`fas ${loading ? 'fa-spinner fa-spin' : 'fa-sync-alt'}`}></i>
+              {loading ? ' Refreshing...' : ' Refresh Data'}
+            </button>
+          </div>
+        </div>
+
+        {isSupervisor && (
+          <div className="pos-ssp-filters">
+            <div className="pos-ssp-filter-row">
+              {showScopeBar && (
+                <div className="pos-ssp-scope-block">
+                  <label>Scope</label>
+                  <div className="pos-ssp-scope-tabs" role="tablist" aria-label="Sales summary scope">
+                    <button
+                      type="button"
+                      className={`pos-ssp-scope-tab ${scope === 'all' ? 'is-active' : ''}`}
+                      onClick={() => {
+                        if (!allowAll) return;
+                        setScope('all');
+                        const params = new URLSearchParams(location.search);
+                        params.set('scope', 'all');
+                        navigate({ pathname: location.pathname, search: params.toString() });
+                      }}
+                      disabled={!allowAll}
+                    >
+                      Waiter Shift Summary
+                    </button>
+                  </div>
+                  {!allowAll && <small className="pos-ssp-muted-text">Enable "Team Sales" permission to view all.</small>}
+                  <small className="pos-ssp-muted-text">Supervisors see all waiter shifts here, collapsed until opened for detail.</small>
+                </div>
+              )}
+              <div>
+                <label>User</label>
+                <input
+                  type="text"
+                  placeholder="username (optional)"
+                  value={userFilter}
+                  onChange={(e) => setUserFilter(e.target.value)}
+                />
+              </div>
+              <div>
+                <label>Start</label>
+                <input
+                  type="date"
+                  value={dateRange.start}
+                  onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label>End</label>
+                <input
+                  type="date"
+                  value={dateRange.end}
+                  onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label>Shift Status</label>
+                <select
+                  value={shiftStatus}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setShiftStatus(val);
+                    const params = new URLSearchParams(location.search);
+                    params.set('shift_status', val);
+                    navigate({ pathname: location.pathname, search: params.toString() });
+                  }}
+                >
+                  <option value="all">All</option>
+                  <option value="open">Open</option>
+                  <option value="closed">Closed</option>
+                </select>
+              </div>
+              <button className="pos-ssp-inline-button pos-ssp-inline-button-primary" onClick={fetchSalesSummary} disabled={loading}>
+                Apply
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="pos-ssp-payment-tabs">
+          <button
+            className={`pos-ssp-tab-button ${activeTab === 'overview' ? 'active' : ''}`}
+            onClick={() => setActiveTab('overview')}
+          >
+            Overview
           </button>
-          <button className="pos-ssp-btn pos-ssp-btn-primary" onClick={fetchSalesSummary} disabled={loading}>
-            <i className={`fas ${loading ? 'fa-spinner fa-spin' : 'fa-sync-alt'}`}></i>
-            {loading ? ' Refreshing...' : ' Refresh Data'}
+          <button
+            className={`pos-ssp-tab-button ${activeTab === 'mpesa' ? 'active' : ''}`}
+            onClick={() => setActiveTab('mpesa')}
+          >
+            M-Pesa
+          </button>
+          <button
+            className={`pos-ssp-tab-button ${activeTab === 'cash' ? 'active' : ''}`}
+            onClick={() => setActiveTab('cash')}
+          >
+            Cash
+          </button>
+          <button
+            className={`pos-ssp-tab-button ${activeTab === 'split' ? 'active' : ''}`}
+            onClick={() => setActiveTab('split')}
+          >
+            Split Payments
           </button>
         </div>
-      </div>
-
-      {/* Payment Method Tabs */}
-      <div className="pos-ssp-payment-tabs">
-        <button
-          className={`pos-ssp-tab-button ${activeTab === 'overview' ? 'active' : ''}`}
-          onClick={() => setActiveTab('overview')}
-        >
-          Overview
-        </button>
-        <button
-          className={`tab-button ${activeTab === 'mpesa' ? 'active' : ''}`}
-          onClick={() => setActiveTab('mpesa')}
-        >
-          M-Pesa
-        </button>
-        <button
-          className={`tab-button ${activeTab === 'cash' ? 'active' : ''}`}
-          onClick={() => setActiveTab('cash')}
-        >
-          Cash
-        </button>
-        <button
-          className={`tab-button ${activeTab === 'split' ? 'active' : ''}`}
-          onClick={() => setActiveTab('split')}
-        >
-          Split Payments
-        </button>
       </div>
 
       <div className="pos-ssp-page-content">
@@ -244,12 +641,176 @@ const SalesSummaryPage = () => {
 
         {salesData && (
           <div className="pos-ssp-sales-summary">
-            {activeTab === 'overview' && (
+            {activeTab === 'overview' && isSupervisor && (
+              <div className="pos-ssp-supervisor-shell pos-ssp-supervisor-shell--compact">
+                <section className="pos-ssp-supervisor-strip">
+                  <div className="pos-ssp-supervisor-strip__item">
+                    <span>Your Net</span>
+                    <strong>{formatCurrency(personalNetSales)}</strong>
+                  </div>
+                  <div className="pos-ssp-supervisor-strip__item">
+                    <span>Your Sales</span>
+                    <strong>{formatCurrency(personalSalesData?.total_sales || 0)}</strong>
+                  </div>
+                  <div className="pos-ssp-supervisor-strip__item">
+                    <span>Waiter Sales</span>
+                    <strong>{formatCurrency(salesData.total_sales || 0)}</strong>
+                  </div>
+                  <div className="pos-ssp-supervisor-strip__item">
+                    <span>All Users Today</span>
+                    <strong>{formatCurrency(todayAllSales || 0)}</strong>
+                  </div>
+                  <div className="pos-ssp-supervisor-strip__item">
+                    <span>Voided</span>
+                    <strong>{voidedSalesCount + personalVoidedEntries.length}</strong>
+                  </div>
+                </section>
+
+                <div className="pos-ssp-supervisor-grid pos-ssp-supervisor-grid--tables">
+                  <section className="pos-ssp-supervisor-table-panel">
+                    <div className="pos-ssp-supervisor-table-panel__header">
+                      <h4>Your Recent Sales</h4>
+                      <p>Compact operations table for your own sales.</p>
+                    </div>
+                    <div className="pos-ssp-table-container pos-ssp-table-container--compact">
+                      <table className="pos-ssp-shared-summary-table pos-ssp-shared-summary-table--compact">
+                        <thead>
+                          <tr>
+                            <th>Time</th>
+                            <th>Receipt</th>
+                            <th>Payment</th>
+                            <th>Total</th>
+                            <th></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {supervisorQuickActions.length === 0 && (
+                            <tr><td colSpan="5" className="pos-ssp-muted-text">No supervisor sales in this range.</td></tr>
+                          )}
+                          {supervisorQuickActions.map((sale) => (
+                            <React.Fragment key={`personal-${sale.id}`}>
+                              <tr>
+                                <td>{(sale.voided_at || sale.created_at) ? new Date(sale.voided_at || sale.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A'}</td>
+                                <td className="pos-ssp-receipt-cell">{sale.receipt_number || `Sale #${sale.id}`}</td>
+                                <td><span className={`pos-ssp-payment-badge ${(sale.voided ? 'voided' : sale.payment_method?.toLowerCase()) || 'unknown'}`}>{getPaymentLabel(sale)}</span></td>
+                                <td className="pos-ssp-amount-cell">{formatCurrency(sale.total_amount || 0)}</td>
+                                <td>
+                                  <div className="pos-ssp-table-actions pos-ssp-table-actions--compact">
+                                    <button
+                                      className="pos-ssp-inline-button pos-ssp-inline-button-secondary pos-ssp-inline-button-sm"
+                                      onClick={() => setExpandedPersonalSaleId((prev) => prev === sale.id ? null : sale.id)}
+                                    >
+                                      {expandedPersonalSaleId === sale.id ? 'Hide' : 'Details'}
+                                    </button>
+                                    {!sale.voided && (
+                                      <>
+                                        <button
+                                          className="pos-ssp-inline-button pos-ssp-inline-button-secondary pos-ssp-inline-button-sm"
+                                          onClick={() => handleReprintReceipt(sale)}
+                                        >
+                                          Reprint
+                                        </button>
+                                        <button
+                                          className="pos-ssp-inline-button pos-ssp-inline-button-sm pos-ssp-inline-button-danger"
+                                          onClick={() => handleVoidSale(sale)}
+                                        >
+                                          Void
+                                        </button>
+                                      </>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                              {expandedPersonalSaleId === sale.id && (
+                                <tr className="pos-ssp-expanded-row">
+                                  <td colSpan="5" className="pos-ssp-expanded-content">
+                                    {sale.voided && (
+                                      <div className="pos-ssp-muted-text" style={{ marginBottom: '10px' }}>
+                                        Voided{sale.void_reason ? `: ${sale.void_reason}` : ''}.
+                                      </div>
+                                    )}
+                                    <table className="pos-ssp-items-table">
+                                      <thead>
+                                        <tr>
+                                          <th>Product</th>
+                                          <th>Qty</th>
+                                          <th>Unit</th>
+                                          <th>Total</th>
+                                          {isSupervisor && !sale.voided && <th></th>}
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {(sale.items || []).map((item, index) => (
+                                          <tr key={`${sale.id}-${item.id || index}`}>
+                                            <td>{item.product_name || item.name || `Item ${index + 1}`}</td>
+                                            <td>{item.quantity}</td>
+                                            <td>{formatCurrency(item.unit_price || 0)}</td>
+                                            <td>{formatCurrency((item.unit_price || 0) * (item.quantity || 0))}</td>
+                                            {isSupervisor && !sale.voided && (
+                                              <td>
+                                                <button
+                                                  type="button"
+                                                  className="pos-ssp-inline-button pos-ssp-inline-button-sm pos-ssp-inline-button-danger"
+                                                  onClick={() => handleVoidItem(sale, item)}
+                                                >
+                                                  Void Item
+                                                </button>
+                                              </td>
+                                            )}
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+
+                  <section className="pos-ssp-supervisor-table-panel">
+                    <div className="pos-ssp-supervisor-table-panel__header">
+                      <h4>Waiter Totals</h4>
+                      <p>Open waiter shifts only.</p>
+                    </div>
+                    <div className="pos-ssp-table-container pos-ssp-table-container--compact">
+                      <table className="pos-ssp-shared-summary-table pos-ssp-shared-summary-table--compact">
+                        <tbody>
+                          <tr>
+                            <th>Waiter Sales</th>
+                            <td>{formatCurrency(openWaiterSalesTotal)}</td>
+                            <th>Transactions</th>
+                            <td>{openWaiterTransactions}</td>
+                          </tr>
+                          <tr>
+                            <th>Net Sales</th>
+                            <td>{formatCurrency(openWaiterNetSales)}</td>
+                            <th>Voided Bills</th>
+                            <td>{openWaiterVoidedBills}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'overview' && !isSupervisor && (
               <div className="pos-ssp-summary-grid">
                 <div className="pos-ssp-summary-item">
                   <label>Total Sales:</label>
                   <span>{formatCurrency(salesData.total_sales || 0)}</span>
                 </div>
+                {isSupervisor && todayAllSales !== null && (
+                  <div className="pos-ssp-summary-item">
+                    <label>Today All Users:</label>
+                    <span>{formatCurrency(todayAllSales)}</span>
+                  </div>
+                )}
                 <div className="pos-ssp-summary-item">
                   <label>Transactions:</label>
                   <span>{salesData.total_transactions || 0}</span>
@@ -274,6 +835,18 @@ const SalesSummaryPage = () => {
                       : (salesData.total_sales || 0) - (salesData.total_returns || 0)
                   )}</span>
                 </div>
+                {voidedSalesCount > 0 && (
+                  <>
+                    <div className="pos-ssp-summary-item">
+                      <label>Voided Bills:</label>
+                      <span>{voidedSalesCount}</span>
+                    </div>
+                    <div className="pos-ssp-summary-item">
+                      <label>Voided Amount:</label>
+                      <span>{formatCurrency(voidedSalesAmount)}</span>
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
@@ -335,11 +908,187 @@ const SalesSummaryPage = () => {
               </div>
             )}
 
-            {salesData.recent_sales && salesData.recent_sales.length > 0 ? (
-              <div className="pos-ssp-recent-sales">
-                <h4>Recent Sales ({salesData.recent_sales.length})</h4>
+            {scope === 'all' && allowAll ? (
+              <div className={`pos-ssp-recent-sales ${isSupervisor ? 'pos-ssp-team-board' : ''}`}>
+                <div className={isSupervisor ? 'pos-ssp-team-board__header' : ''}>
+                  <div>
+                    <h4>{isSupervisor ? `Waiter Shift Summary (${shiftData.length})` : `Team Shift Summary (${shiftData.length})`}</h4>
+                    {isSupervisor && <p className="pos-ssp-team-board__subtext">Open a shift to inspect products, payment types, and void any sale directly.</p>}
+                  </div>
+                </div>
                 <div className="pos-ssp-table-container">
-                  <table className="pos-ssp-official-data-table">
+                  <table className="pos-ssp-shared-summary-table">
+                    <thead>
+                      <tr>
+                        <th>{isSupervisor ? 'User' : leadLabel}</th>
+                        <th>Shift</th>
+                        <th>Status</th>
+                        <th>Transactions</th>
+                        <th>Total</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {shiftLoading && (
+                        <tr><td colSpan="6" className="pos-ssp-muted-text">Loading shifts...</td></tr>
+                      )}
+                      {!shiftLoading && shiftData.length === 0 && (
+                        <tr><td colSpan="6" className="pos-ssp-muted-text">No shifts found for this filter.</td></tr>
+                      )}
+                      {!shiftLoading && shiftData.map((shift) => {
+                        const isShiftOpen = expandedShiftId === shift.id;
+                        const shiftSales = shift.sales || [];
+                        return (
+                          <React.Fragment key={shift.id}>
+                            <tr>
+                              <td>
+                                <div className="pos-ssp-user-stack">
+                                  <strong>{shift.cashier_name || shift.cashier_username || '—'}</strong>
+                                  <span className="pos-ssp-muted-text">{shift.branch_name || 'No branch'}</span>
+                                </div>
+                              </td>
+                              <td>
+                                <div className="pos-ssp-user-stack">
+                                  <strong>{shift.start_time ? new Date(shift.start_time).toLocaleString() : '—'}</strong>
+                                  <span className="pos-ssp-muted-text">{shift.end_time ? `End ${new Date(shift.end_time).toLocaleString()}` : 'Still open'}</span>
+                                </div>
+                              </td>
+                              <td><span className={`pos-ssp-status-pill ${shift.status === 'open' ? 'is-open' : 'is-closed'}`}>{shift.status}</span></td>
+                              <td>{shift.transaction_count ?? shift.sales_count ?? shiftSales.length}</td>
+                              <td>{formatCurrency(shift.total_sales || shift.net_sales || 0)}</td>
+                              <td>
+                                <div className="pos-ssp-table-actions">
+                                  <button
+                                    type="button"
+                                    className="pos-ssp-inline-button pos-ssp-inline-button-primary pos-ssp-inline-button-sm"
+                                    onClick={() => toggleShiftExpansion(shift.id)}
+                                  >
+                                    {isShiftOpen ? 'Hide Transactions' : 'View Transactions'}
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                            {isShiftOpen && (
+                              <tr className="pos-ssp-expanded-row">
+                                <td colSpan="6" className="pos-ssp-expanded-content">
+                                  <div className="pos-ssp-nested-summary">
+                                    <h5>Transactions for {shift.cashier_name || shift.cashier_username || 'this shift'}</h5>
+                                    <table className="pos-ssp-shared-summary-table pos-ssp-shared-summary-table-nested">
+                                      <thead>
+                                        <tr>
+                                          <th>Date & Time</th>
+                                          <th>Receipt #</th>
+                                          <th>Amount</th>
+                                          <th>Payment</th>
+                                          <th>Type</th>
+                                          <th></th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {shiftSales.length === 0 && (
+                                          <tr><td colSpan="6" className="pos-ssp-muted-text">No transactions recorded in this shift.</td></tr>
+                                        )}
+                                        {shiftSales.map((sale) => {
+                                          const isSaleOpen = expandedShiftSaleId === sale.id;
+                                          return (
+                                            <React.Fragment key={sale.id}>
+                                              <tr>
+                                                <td className="pos-ssp-date-cell">
+                                                  {sale.sale_date ? new Date(sale.sale_date).toLocaleDateString() : '—'}
+                                                  <br />
+                                                  <small>{sale.sale_date ? new Date(sale.sale_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</small>
+                                                </td>
+                                                <td className="pos-ssp-receipt-cell">{sale.receipt_number || 'N/A'}</td>
+                                                <td className="pos-ssp-amount-cell">{formatCurrency(sale.final_amount || sale.total_amount || 0)}</td>
+                                                <td className="pos-ssp-payment-cell"><span className={`pos-ssp-payment-badge ${(sale.voided ? 'voided' : sale.payment_method?.toLowerCase()) || 'unknown'}`}>{getPaymentLabel(sale)}</span></td>
+                                                <td className="pos-ssp-sale-type-cell"><span className={`pos-ssp-sale-type-badge ${(sale.voided ? 'voided' : sale.sale_type?.toLowerCase()) || 'unknown'}`}>{sale.voided ? 'Voided' : (sale.sale_type ? sale.sale_type.charAt(0).toUpperCase() + sale.sale_type.slice(1) : 'N/A')}</span></td>
+                                                <td>
+                                                  <div className="pos-ssp-table-actions">
+                                                    <button
+                                                      type="button"
+                                                      className="pos-ssp-inline-button pos-ssp-inline-button-secondary pos-ssp-inline-button-sm"
+                                                      onClick={() => toggleShiftSaleExpansion(sale.id)}
+                                                    >
+                                                      {isSaleOpen ? 'Hide Products' : 'View Products'}
+                                                    </button>
+                                                    {isSupervisor && !sale.voided && (
+                                                      <button
+                                                        type="button"
+                                                        className="pos-ssp-inline-button pos-ssp-inline-button-sm"
+                                                        style={{ backgroundColor: '#b91c1c', color: '#fff', borderColor: '#b91c1c' }}
+                                                        onClick={() => handleVoidSale(sale)}
+                                                      >
+                                                        Void Sale
+                                                      </button>
+                                                    )}
+                                                  </div>
+                                                </td>
+                                              </tr>
+                                              {isSaleOpen && (
+                                                <tr className="pos-ssp-expanded-row">
+                                                  <td colSpan="6" className="pos-ssp-expanded-content">
+                                                    <div className="pos-ssp-sale-items-detail">
+                                                      <h5>Products in receipt {sale.receipt_number || sale.id}</h5>
+                                                      <table className="pos-ssp-items-table">
+                                                        <thead>
+                                                          <tr>
+                                                            <th>Product</th>
+                                                            <th>Qty</th>
+                                                            <th>Unit Price</th>
+                                                            <th>Total</th>
+                                                            {isSupervisor && !sale.voided && <th></th>}
+                                                          </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                          {(sale.items || []).map((item, itemIndex) => (
+                                                            <tr key={`${sale.id}-${item.id || itemIndex}`}>
+                                                              <td>{item.product_name || item.name || 'Unknown product'}</td>
+                                                              <td>{item.quantity}</td>
+                                                              <td>{formatCurrency(item.unit_price || 0)}</td>
+                                                              <td>{formatCurrency((Number(item.unit_price || 0) * Number(item.quantity || 0)))}</td>
+                                                              {isSupervisor && !sale.voided && (
+                                                                <td>
+                                                                  <button
+                                                                    type="button"
+                                                                    className="pos-ssp-inline-button pos-ssp-inline-button-sm pos-ssp-inline-button-danger"
+                                                                    onClick={() => handleVoidItem(sale, item)}
+                                                                  >
+                                                                    Void Item
+                                                                  </button>
+                                                                </td>
+                                                              )}
+                                                            </tr>
+                                                          ))}
+                                                          {(!sale.items || sale.items.length === 0) && (
+                                                            <tr><td colSpan={isSupervisor && !sale.voided ? 5 : 4} className="pos-ssp-muted-text">No products found in this transaction.</td></tr>
+                                                          )}
+                                                        </tbody>
+                                                      </table>
+                                                    </div>
+                                                  </td>
+                                                </tr>
+                                              )}
+                                            </React.Fragment>
+                                          );
+                                        })}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : ((salesData.recent_sales?.length || 0) > 0 || voidedEntries.length > 0 || (returnsData?.recent_returns?.length || 0) > 0) ? (
+              <div className="pos-ssp-recent-sales">
+                <h4>Recent Activity ({(salesData.recent_sales?.length || 0) + voidedEntries.length + (returnsData?.recent_returns?.length || 0)})</h4>
+                <div className="pos-ssp-table-container">
+                  <table className="pos-ssp-shared-summary-table">
                     <thead>
                       <tr>
                         <th>Date & Time</th>
@@ -368,10 +1117,19 @@ const SalesSummaryPage = () => {
                           processed_by: ret.processed_by,
                           items: ret.items || []
                         })) || [];
+
+                        const voidedTransactions = voidedEntries.map((sale) => ({
+                          ...sale,
+                          id: `voided-${sale.type || 'sale'}-${sale.id}`,
+                          created_at: sale.voided_at || sale.created_at,
+                          sale_type: 'voided',
+                          is_voided: true,
+                        }));
                         
                         // Combine sales and returns
                         const allTransactions = [
                           ...(salesData.recent_sales || []),
+                          ...voidedTransactions,
                           ...returnTransactions
                         ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
                         
@@ -386,35 +1144,45 @@ const SalesSummaryPage = () => {
                           })
                           .map((sale, index) => (
                           <React.Fragment key={sale.id || index}>
-                            <tr className={sale.is_return ? 'pos-ssp-return-row' : ''}>
-                              <td className="pos-ssp-date-cell">
+                            <tr className={`pos-ssp-transaction-row ${sale.is_return ? 'pos-ssp-return-row' : sale.is_voided ? 'pos-ssp-return-row' : ''}`}>
+                              <td className="pos-ssp-date-cell" data-label="Date & Time">
                                 {new Date(sale.created_at).toLocaleDateString()}
                                 <br />
                                 <small>{new Date(sale.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</small>
                               </td>
-                              <td className="pos-ssp-receipt-cell">
+                              <td className="pos-ssp-receipt-cell" data-label="Receipt #">
                                 {sale.is_return ? (
                                   <span title={sale.original_sale ? `Original: ${sale.original_sale}` : ''}>
                                     {sale.receipt_number ? sale.receipt_number.split('-')[0] : 'RET-' + sale.id?.replace('return-', '')}
                                   </span>
+                                ) : sale.is_voided ? (
+                                  sale.receipt_number
+                                    ? sale.receipt_number.replace('POS-', '').split('-')[0]
+                                    : `HOLD-${String(sale.id).replace('voided-held_order-', '')}`
                                 ) : (
                                   sale.receipt_number ? sale.receipt_number.replace('POS-', '').split('-')[0] : 'N/A'
                                 )}
                               </td>
-                              <td className="pos-ssp-amount-cell">
+                              <td className="pos-ssp-amount-cell" data-label="Amount">
                                 {sale.is_return ? (
                                   <span style={{ color: '#dc3545' }}>-{formatCurrency(Math.abs(sale.total_amount))}</span>
+                                ) : sale.is_voided ? (
+                                  <span style={{ color: '#b45309' }}>{formatCurrency(sale.total_amount)}</span>
                                 ) : (
                                   formatCurrency(sale.total_amount)
                                 )}
                               </td>
-                              <td className="pos-ssp-payment-cell">
+                              <td className="pos-ssp-payment-cell" data-label="Payment">
                                 {sale.is_return ? (
                                   <span className="pos-ssp-payment-badge cash">
                                     Refund
                                   </span>
+                                ) : sale.is_voided ? (
+                                  <span className="pos-ssp-payment-badge unknown">
+                                    Voided
+                                  </span>
                                 ) : (
-                                  <span className={`payment-badge ${sale.payment_method?.toLowerCase() || 'unknown'}`}>
+                                  <span className={`pos-ssp-payment-badge ${sale.payment_method?.toLowerCase() || 'unknown'}`}>
                                     {activeTab === 'mpesa' ? 'M-Pesa' :
                                      activeTab === 'cash' ? 'Cash' :
                                      activeTab === 'split' ? 'Split' :
@@ -432,14 +1200,14 @@ const SalesSummaryPage = () => {
                                   </span>
                                 )}
                               </td>
-                              <td className="pos-ssp-sale-type-cell">
+                              <td className="pos-ssp-sale-type-cell" data-label="Type">
                                 <span className={`pos-ssp-sale-type-badge ${sale.sale_type?.toLowerCase() || (sale.is_return ? 'return' : 'unknown')}`}>
-                                  {sale.is_return ? 'Return' : (sale.sale_type ? sale.sale_type.charAt(0).toUpperCase() : 'N/A')}
+                                  {sale.is_return ? 'Return' : sale.is_voided ? 'Voided' : (sale.sale_type ? sale.sale_type.charAt(0).toUpperCase() : 'N/A')}
                                 </span>
                               </td>
-                              <td className="pos-ssp-actions-cell">
+                              <td className="pos-ssp-actions-cell" data-label="Actions">
                                 <div className="pos-ssp-sales-summary-action-buttons">
-                                  {sale.is_return ? (
+                                  {sale.is_return || sale.is_voided ? (
                                     <button
                                       className="pos-ssp-btn-icon pos-ssp-btn-outline-secondary"
                                       onClick={() => toggleRowExpansion(sale.id)}
@@ -463,6 +1231,15 @@ const SalesSummaryPage = () => {
                                       >
                                         <i className="fas fa-receipt"></i>
                                       </button>
+                                      {isSupervisor && (
+                                        <button
+                                          className="pos-ssp-btn-icon pos-ssp-btn-outline-danger"
+                                          onClick={() => handleVoidSale(sale)}
+                                          title="Void Entire Sale"
+                                        >
+                                          <i className="fas fa-ban"></i>
+                                        </button>
+                                      )}
                                       <button
                                         className="pos-ssp-btn-icon pos-ssp-btn-outline-danger"
                                         onClick={() => handleReturn(sale)}
@@ -657,6 +1434,55 @@ const SalesSummaryPage = () => {
                                           </p>
                                         </div>
                                       </>
+                                    ) : sale.is_voided ? (
+                                      <>
+                                        <h5>Voided Bill Details</h5>
+                                        <div style={{ marginBottom: '10px' }}>
+                                          <p><strong>{sale.receipt_number ? 'Receipt' : 'Held Order'}:</strong> {sale.receipt_number || `#${String(sale.id).replace('voided-held_order-', '')}`}</p>
+                                          <p><strong>Voided At:</strong> {sale.voided_at ? new Date(sale.voided_at).toLocaleString() : 'N/A'}</p>
+                                          <p><strong>Reason:</strong> {sale.void_reason || 'No reason recorded'}</p>
+                                        </div>
+
+                                        {sale.items && sale.items.length > 0 ? (
+                                          <>
+                                            <h6>Voided Items ({sale.items.length})</h6>
+                                            <table className="pos-ssp-items-table">
+                                              <thead>
+                                                <tr>
+                                                  <th>Product</th>
+                                                  <th>Qty</th>
+                                                  <th>Unit Price</th>
+                                                  <th>Total</th>
+                                                </tr>
+                                              </thead>
+                                              <tbody>
+                                                {sale.items.map((item, itemIndex) => (
+                                                  <tr key={itemIndex}>
+                                                    <td>{item.product_name || 'N/A'}</td>
+                                                    <td>{item.quantity}</td>
+                                                    <td>{formatCurrency(item.unit_price || 0)}</td>
+                                                    <td>{formatCurrency(item.total || ((item.unit_price || 0) * (item.quantity || 0)))}</td>
+                                                  </tr>
+                                                ))}
+                                              </tbody>
+                                            </table>
+                                          </>
+                                        ) : (
+                                          <p>No items available</p>
+                                        )}
+
+                                        <div style={{
+                                          background: '#fff7ed',
+                                          padding: '10px',
+                                          borderRadius: '4px',
+                                          border: '1px solid #fdba74',
+                                          marginTop: '10px'
+                                        }}>
+                                          <p style={{ color: '#b45309', fontWeight: 'bold', margin: 0 }}>
+                                            Voided Amount: {formatCurrency(sale.total_amount || 0)}
+                                          </p>
+                                        </div>
+                                      </>
                                     ) : sale.items && sale.items.length > 0 ? (
                                       /* Normal sale items display */
                                       <>
@@ -668,6 +1494,7 @@ const SalesSummaryPage = () => {
                                               <th>Qty</th>
                                               <th>Unit Price</th>
                                               <th>Total</th>
+                                              {isSupervisor && <th></th>}
                                             </tr>
                                           </thead>
                                           <tbody>
@@ -677,10 +1504,21 @@ const SalesSummaryPage = () => {
                                                 <td>{item.quantity}</td>
                                                 <td>{formatCurrency(item.unit_price)}</td>
                                                 <td>{formatCurrency(item.unit_price * item.quantity)}</td>
+                                                {isSupervisor && (
+                                                  <td>
+                                                    <button
+                                                      type="button"
+                                                      className="pos-ssp-inline-button pos-ssp-inline-button-sm pos-ssp-inline-button-danger"
+                                                      onClick={() => handleVoidItem(sale, item)}
+                                                    >
+                                                      Void Item
+                                                    </button>
+                                                  </td>
+                                                )}
                                               </tr>
                                             ))}
                                             <tr className="pos-ssp-items-total-row">
-                                              <td colSpan="3" className="pos-ssp-items-total-label">Total:</td>
+                                              <td colSpan={isSupervisor ? 4 : 3} className="pos-ssp-items-total-label">Total:</td>
                                               <td className="pos-ssp-items-total-amount">{formatCurrency(sale.total_amount)}</td>
                                             </tr>
                                           </tbody>
@@ -723,8 +1561,9 @@ const SalesSummaryPage = () => {
                             }).length || 0;
                             
                             const returnsCount = returnsData?.summary?.total_returns || 0;
+                            const voidedCount = voidedEntries.length;
                             
-                            if (activeTab === 'overview') return salesCount + returnsCount;
+                            if (activeTab === 'overview') return salesCount + returnsCount + voidedCount;
                             return salesCount;
                           })()}
                         </td>
@@ -741,6 +1580,102 @@ const SalesSummaryPage = () => {
           </div>
         )}
       </div>
+
+      {voidModal && (
+        <div className="pos-ssp-void-modal-backdrop" onClick={closeVoidModal}>
+          <div className="pos-ssp-void-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="pos-ssp-void-modal__header">
+              <div>
+                <span className="pos-ssp-void-modal__eyebrow">
+                  {voidModal.mode === 'item' ? 'Partial Void' : 'Full Sale Void'}
+                </span>
+                <h3>{voidModal.mode === 'item' ? 'Void Sale Item' : 'Void Entire Sale'}</h3>
+                <p>
+                  Receipt {voidModal.sale?.receipt_number || voidModal.sale?.id}
+                  {voidModal.mode === 'item' && voidModal.item
+                    ? ` • ${voidModal.item.product_name || voidModal.item.name}`
+                    : ''}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="pos-ssp-void-modal__close"
+                onClick={closeVoidModal}
+                disabled={voidSubmitting}
+                aria-label="Close void modal"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="pos-ssp-void-modal__body">
+              <div className="pos-ssp-void-modal__summary">
+                <div>
+                  <span>Amount</span>
+                  <strong>{formatCurrency(voidModal.sale?.total_amount || voidModal.sale?.final_amount || 0)}</strong>
+                </div>
+                <div>
+                  <span>Payment</span>
+                  <strong>{getPaymentLabel(voidModal.sale)}</strong>
+                </div>
+                {voidModal.mode === 'item' && (
+                  <div>
+                    <span>Available Qty</span>
+                    <strong>{voidModal.maxQuantity}</strong>
+                  </div>
+                )}
+              </div>
+
+              {voidModal.mode === 'item' && (
+                <div className="pos-ssp-void-modal__field">
+                  <label>Quantity to Void</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max={voidModal.maxQuantity || 1}
+                    value={voidModal.quantity}
+                    onChange={(e) => setVoidModal((prev) => ({ ...prev, quantity: e.target.value }))}
+                    disabled={voidSubmitting}
+                  />
+                </div>
+              )}
+
+              <div className="pos-ssp-void-modal__field">
+                <label>Reason</label>
+                <textarea
+                  value={voidModal.reason}
+                  onChange={(e) => setVoidModal((prev) => ({ ...prev, reason: e.target.value }))}
+                  placeholder={voidModal.mode === 'item' ? 'Explain why this product is being voided...' : 'Explain why this entire sale is being voided...'}
+                  disabled={voidSubmitting}
+                />
+              </div>
+
+              {voidModalError && <div className="pos-ssp-void-modal__error">{voidModalError}</div>}
+            </div>
+
+            <div className="pos-ssp-void-modal__footer">
+              <button
+                type="button"
+                className="pos-ssp-inline-button pos-ssp-inline-button-secondary"
+                onClick={closeVoidModal}
+                disabled={voidSubmitting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="pos-ssp-inline-button pos-ssp-inline-button-danger"
+                onClick={submitVoidAction}
+                disabled={voidSubmitting}
+              >
+                {voidSubmitting
+                  ? 'Processing...'
+                  : (voidModal.mode === 'item' ? 'Void Item' : 'Void Sale')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Reprint Receipt Modal */}
       {showReprintModal && reprintData && (
@@ -759,6 +1694,7 @@ const SalesSummaryPage = () => {
           mode={reprintData.mode}
           splitData={reprintData.splitData}
           isReprint={true}
+          user={user}
         />
       )}
     </div>

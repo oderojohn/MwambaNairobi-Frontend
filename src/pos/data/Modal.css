@@ -9,7 +9,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 10000;
+  z-index: 12000;
   opacity: 0;
   visibility: hidden;
   transition: all 0.3s ease;
@@ -28,6 +28,7 @@
   width: 90%;
   max-width: 600px;
   max-height: 90vh;
+  max-height: 90dvh;
   display: flex;
   flex-direction: column;
   transform: translateY(-20px);

@@ -14,7 +14,7 @@ import EndOfDayStockPage from './Inventory/inventorypages/inventory/EndOfDayStoc
 import OrdersPage from './Inventory/inventorypages/Purchasing/OrdersPage';
 import SuppliersPage from './Inventory/inventorypages/Purchasing/SuppliersPage';
 import ReceivingPage from './Inventory/inventorypages/Purchasing/ReceivingPage';
-import InvoicesPage from "./Inventory/inventorypages/sales/InvoicesPage";
+import InvoicesPage from './Inventory/inventorypages/sales/InvoicesPage';
 import CustomersPage from './Inventory/inventorypages/sales/CustomersPage';
 import ReturnsPage from './Inventory/inventorypages/sales/ReturnsPage';
 import InvoiceCreationPage from './Inventory/inventorypages/sales/InvoiceCreationPage';
@@ -25,16 +25,19 @@ import SalesSummaryPage from './pos/pages/SalesSummaryPage';
 import ReportingPage from './Inventory/inventorypages/ReportingPage';
 import SettingsPage from './Inventory/inventorypages/settings/SettingsPage';
 import PosAdminPage from './Inventory/inventorypages/PosAdminPage';
-// Accounting pages
 import ChartOfAccountsPage from './Inventory/inventorypages/accounting/ChartOfAccountsPage';
 import JournalEntriesPage from './Inventory/inventorypages/accounting/JournalEntriesPage';
 import TrialBalancePage from './Inventory/inventorypages/accounting/TrialBalancePage';
 import ProfitLossPage from './Inventory/inventorypages/accounting/ProfitLossPage';
 import BalanceSheetPage from './Inventory/inventorypages/accounting/BalanceSheetPage';
 import RecurringExpensesPage from './Inventory/inventorypages/accounting/RecurringExpensesPage';
-import "./assets/main.css";
+import { getDefaultRouteForRole, hasInventoryAccess, hasPosAccess } from './utils/roleAccess';
+import './assets/main.css';
+
 const AppRoutes = () => {
   const { isAuthenticated, loading, role, logout } = useContext(AuthContext);
+  const canAccessPos = hasPosAccess(role);
+  const canAccessInventory = hasInventoryAccess(role);
 
   if (loading) {
     return (
@@ -49,27 +52,27 @@ const AppRoutes = () => {
     return <LoginPage />;
   }
 
-  if (role === 'pos') {
+  if (canAccessPos && !canAccessInventory) {
     return (
       <Routes>
         <Route path="/" element={<PosApp />} />
+        <Route path="/pos" element={<PosApp />} />
         <Route path="/order-preparation" element={<PosApp />} />
         <Route path="/order-management" element={<PosApp />} />
         <Route path="/sales-summary" element={<SalesSummaryPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     );
   }
 
+  if (!canAccessPos && !canAccessInventory) {
+    return <LoginPage />;
+  }
+
   return (
     <Routes>
-      <Route
-        path="/login"
-        element={<LoginPage />}
-      />
-      <Route
-        path="/inventory"
-        element={<InventoryLayout onLogout={logout} />}
-      >
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/inventory" element={<InventoryLayout onLogout={logout} />}>
         <Route path="products" element={<ProductsPage />} />
         <Route path="categories" element={<CategoriesPage />} />
         <Route path="BatchesPage" element={<BatchesPage />} />
@@ -95,14 +98,17 @@ const AppRoutes = () => {
         <Route path="recurring-expenses" element={<RecurringExpensesPage />} />
         <Route path="settings/*" element={<SettingsPage />} />
       </Route>
-      <Route
-        path="/invoice-creation"
-        element={<InvoiceCreationPage />}
-      />
-      <Route
-        path="*"
-        element={<Navigate to="/inventory/dashboard" replace />}
-      />
+      <Route path="/invoice-creation" element={<InvoiceCreationPage />} />
+      {canAccessPos && (
+        <>
+          <Route path="/" element={<PosApp />} />
+          <Route path="/pos" element={<PosApp />} />
+          <Route path="/order-preparation" element={<PosApp />} />
+          <Route path="/order-management" element={<PosApp />} />
+          <Route path="/sales-summary" element={<SalesSummaryPage />} />
+        </>
+      )}
+      <Route path="*" element={<Navigate to={getDefaultRouteForRole(role)} replace />} />
     </Routes>
   );
 };

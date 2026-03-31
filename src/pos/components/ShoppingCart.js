@@ -8,12 +8,20 @@ const ShoppingCart = ({
   onUpdateQuantity, 
   onRemoveItem, 
   onProcessPayment, 
-  onHoldOrder, 
+  onCreatePendingBill,
   onClearCart,
+  primaryActionLabel = 'PAY',
+  heldOrderId = null,
+  heldOrderNeedsSave = false,
+  onExitHeldOrderEditing = () => {},
   disabled = false, 
   selectedCustomer, 
   mode, 
-  onCustomerClear
+  onCustomerClear,
+  canReduceItem = () => true,
+  canRemoveItem = () => true,
+  isMobileOpen = false,
+  onCloseMobile
 }) => {
   const itemsRef = useRef(null);
   const prevCartLengthRef = useRef(cart.length);
@@ -83,7 +91,9 @@ const ShoppingCart = ({
   const itemCount = cart.reduce((sum, item) => sum + toNumber(item.quantity), 0);
 
   return (
-    <section className="pos-shopping-cart">
+    <section
+      className={`pos-shopping-cart ${isMobileOpen ? 'pos-shopping-cart--mobile-open pos-shopping-cart--overlay' : 'pos-shopping-cart--mobile-closed'}`}
+    >
       {/* Cart Header */}
       <div className="pos-shopping-cart__header">
         <div className="pos-shopping-cart__title-section">
@@ -103,7 +113,53 @@ const ShoppingCart = ({
           <span className="pos-shopping-cart__total-label">Total:</span>
           <span className="pos-shopping-cart__total-amount">{formatCurrency(total)}</span>
         </div>
+        {onCloseMobile && (
+          <button
+            className="pos-shopping-cart__mobile-close"
+            onClick={onCloseMobile}
+            aria-label="Close cart"
+          >
+            <i className="fas fa-times"></i>
+          </button>
+        )}
       </div>
+
+      {heldOrderId && (
+        <div
+          style={{
+            margin: '12px 16px 0',
+            padding: '12px 14px',
+            borderRadius: '12px',
+            background: heldOrderNeedsSave ? '#fff7ed' : '#eff6ff',
+            border: `1px solid ${heldOrderNeedsSave ? '#fdba74' : '#93c5fd'}`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px'
+          }}
+        >
+          <div>
+            <div style={{ fontWeight: 700, color: '#0f172a' }}>
+              Editing held order #{heldOrderId}
+            </div>
+            <div style={{ fontSize: '0.9rem', color: '#475569' }}>
+              {heldOrderNeedsSave
+                ? 'You have unsaved changes. Save first, then pay when the customer is ready.'
+                : 'No changes yet. You can pay now or exit editing and come back later.'}
+            </div>
+          </div>
+          <button
+            type="button"
+            className="pos-shopping-cart__quick-btn pos-shopping-cart__quick-btn--secondary"
+            onClick={() => !disabled && onExitHeldOrderEditing()}
+            disabled={disabled}
+            title="Exit held order editing"
+          >
+            <i className="fas fa-sign-out-alt"></i>
+            EXIT
+          </button>
+        </div>
+      )}
 
       {/* Cart Items */}
       <div className="pos-shopping-cart__items" ref={itemsRef}>
@@ -173,6 +229,8 @@ const ShoppingCart = ({
             {cart.map((item, index) => {
               const productColor = getProductColor(item);
               const itemTotal = toNumber(item.price) * toNumber(item.quantity);
+              const allowReduce = canReduceItem(item);
+              const allowRemove = canRemoveItem(item);
               
               return (
                 <div 
@@ -221,9 +279,9 @@ const ShoppingCart = ({
                       <div className="pos-shopping-cart__quantity-controls">
                         <button
                           className="pos-shopping-cart__quantity-btn pos-shopping-cart__quantity-btn--decrease"
-                          onClick={() => !disabled && onUpdateQuantity(item.id, -1)}
-                          disabled={disabled}
-                          title="Decrease quantity"
+                          onClick={() => !disabled && allowReduce && onUpdateQuantity(item.id, -1)}
+                          disabled={disabled || !allowReduce}
+                          title={allowReduce ? 'Decrease quantity' : 'Original held-order items cannot be reduced'}
                         >
                           <i className="fas fa-minus"></i>
                         </button>
@@ -239,7 +297,7 @@ const ShoppingCart = ({
                                 return;
                               }
                               const newQty = parseInt(value) || 0;
-                              if (newQty >= 0) {
+                              if (newQty >= 0 && (newQty >= item.quantity || allowReduce)) {
                                 const diff = newQty - item.quantity;
                                 onUpdateQuantity(item.id, diff);
                               }
@@ -247,14 +305,14 @@ const ShoppingCart = ({
                           }}
                           onBlur={(e) => {
                             // If user leaves field empty or at 0, remove the item
-                            if (!disabled && (e.target.value === '' || parseInt(e.target.value) === 0)) {
+                            if (!disabled && allowRemove && (e.target.value === '' || parseInt(e.target.value) === 0)) {
                               onRemoveItem(item.id);
                             }
                           }}
                           onFocus={(e) => e.target.select()}
                           disabled={disabled}
                           min="0"
-                          title="Enter quantity (0 to remove)"
+                          title={allowReduce ? 'Enter quantity (0 to remove)' : 'Only quantity increases are allowed for original held-order items'}
                         />
                         <button
                           className="pos-shopping-cart__quantity-btn pos-shopping-cart__quantity-btn--increase"
@@ -269,12 +327,12 @@ const ShoppingCart = ({
                       <button
                         className="pos-shopping-cart__remove-btn"
                         onClick={() => {
-                          if (!disabled) {
+                          if (!disabled && allowRemove) {
                             onRemoveItem(item.id);
                           }
                         }}
-                        disabled={disabled}
-                        title="Remove item from cart"
+                        disabled={disabled || !allowRemove}
+                        title={allowRemove ? 'Remove item from cart' : 'Original held-order items cannot be removed'}
                       >
                         <i className="fas fa-trash"></i>
                       </button>
@@ -292,12 +350,12 @@ const ShoppingCart = ({
         <div className="pos-shopping-cart__quick-actions">
           <button 
             className="pos-shopping-cart__quick-btn pos-shopping-cart__quick-btn--secondary"
-            onClick={() => !disabled && onHoldOrder()} 
+            onClick={() => !disabled && onCreatePendingBill()} 
             disabled={disabled || cart.length === 0}
-            title="Hold Order"
+            title="Create Pending Bill"
           >
             <i className="fas fa-pause"></i>
-            HOLD
+            PENDING
           </button>
           <button 
             className="pos-shopping-cart__quick-btn pos-shopping-cart__quick-btn--danger"
@@ -339,11 +397,11 @@ const ShoppingCart = ({
             className="pos-shopping-cart__quick-btn pos-shopping-cart__quick-btn--primary"
             onClick={() => !disabled && onProcessPayment()} 
             disabled={cart.length === 0 || disabled}
-            title="Process Payment (Enter)"
+            title={primaryActionLabel === 'SAVE' ? 'Save Held Order' : 'Process Payment (Enter)'}
           >
-            <i className="fas fa-credit-card"></i>
-            PAY
-            <span style={{ fontSize: '0.65rem', opacity: 0.8 }}>[Enter]</span>
+            <i className={`fas ${primaryActionLabel === 'SAVE' ? 'fa-save' : 'fa-credit-card'}`}></i>
+            {primaryActionLabel}
+            {primaryActionLabel !== 'SAVE' && <span style={{ fontSize: '0.65rem', opacity: 0.8 }}>[Enter]</span>}
           </button>
         </div>
       </div>

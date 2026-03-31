@@ -1,7 +1,7 @@
 // components/TransactionTable.jsx
 import React from 'react';
 import PropTypes from 'prop-types';
-import { formatCurrency } from '../../../services/ApiService/api';
+import { formatCurrency, userService } from '../../../services/ApiService/api';
 import './TransactionTable.css';
 
 const TransactionTable = ({
@@ -12,6 +12,8 @@ const TransactionTable = ({
   handleRefundSale,
   handlePrintReceipt
 }) => {
+  const canVoidSales = userService.getUserRole() === 'supervisor';
+
   if (isLoading) {
     return (
       <div className="loading">
@@ -83,14 +85,16 @@ const TransactionTable = ({
                   >
                     <i className="fas fa-print"></i> Print
                   </button>
-                  <button
-                    className="excel-btn excel-btn-danger"
-                    onClick={() => handleVoidSale(sale)}
-                    disabled={isLoading || sale.status === 'voided'}
-                    title="Void Sale"
-                  >
-                    <i className="fas fa-ban"></i> Void
-                  </button>
+                  {canVoidSales && (
+                    <button
+                      className="excel-btn excel-btn-danger"
+                      onClick={() => handleVoidSale(sale)}
+                      disabled={isLoading || sale.status === 'voided'}
+                      title="Void Sale"
+                    >
+                      <i className="fas fa-ban"></i> Void
+                    </button>
+                  )}
                   <button
                     className="excel-btn excel-btn-secondary"
                     onClick={() => handleRefundSale(sale)}

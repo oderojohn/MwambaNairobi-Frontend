@@ -1,35 +1,134 @@
-import React, { useState, useContext } from 'react';
-import { FiLogIn, FiLock, FiEye, FiEyeOff, FiUser } from 'react-icons/fi';
+import React, { useState, useContext, useEffect, useRef } from 'react';
+import { FiLogIn, FiKey } from 'react-icons/fi';
 import logo from '../logo.png';
-import { AuthContext } from '../services/context/authContext'
+import { AuthContext } from '../services/context/authContext';
 import '../assets/pagesStyles/LoginPage.css';
 import { useNavigate } from 'react-router-dom';
+import { getDefaultRouteForRole } from '../utils/roleAccess';
 
 const LoginPage = () => {
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
 
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [pin, setPin] = useState(['', '', '', '', '']);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const inputRefs = useRef([]);
+  const PIN_LENGTH = 5;
+
+  useEffect(() => {
+    if (inputRefs.current[0]) {
+      inputRefs.current[0].focus();
+    }
+  }, []);
+
+  useEffect(() => {
+    const fullPin = pin.join('');
+    if (fullPin.length === PIN_LENGTH && !isLoading) {
+      handleSubmit(new Event('auto-submit'));
+    }
+  }, [pin]);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e && e.type !== 'auto-submit') {
+      e.preventDefault();
+    }
+
+    const fullPin = pin.join('');
+    if (fullPin.length !== PIN_LENGTH) return;
+
     setIsLoading(true);
     setError('');
 
     try {
-      await login(username, password);
-      navigate('/');
-    } catch (error) {
-      setError(error.message || 'Invalid username or password');
+      const result = await login(fullPin);
+      navigate(getDefaultRouteForRole(result?.role), { replace: true });
+    } catch (err) {
+      setError(err.message || 'Invalid PIN. Please try again.');
+      setPin(['', '', '', '', '']);
+      setTimeout(() => inputRefs.current[0]?.focus(), 100);
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handlePinChange = (index, value) => {
+    if (value.length > 1) return;
+    if (!/^\d*$/.test(value)) return;
+
+    const newPin = [...pin];
+    newPin[index] = value;
+    setPin(newPin);
+
+    if (value && index < PIN_LENGTH - 1) {
+      inputRefs.current[index + 1]?.focus();
+    }
+
+    const pinString = newPin.join('');
+    if (pinString.length === PIN_LENGTH && !isLoading) {
+      handleSubmit(new Event('submit'));
+    }
+  };
+
+  const handleKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !pin[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handlePaste = (e) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData('text').trim();
+    if (!/^\d+$/.test(pastedData)) return;
+
+    const digits = pastedData.slice(0, PIN_LENGTH).split('');
+    const newPin = [...pin];
+
+    digits.forEach((digit, i) => {
+      if (i < PIN_LENGTH) {
+        newPin[i] = digit;
+      }
+    });
+
+    setPin(newPin);
+    const lastFilledIndex = Math.min(digits.length, PIN_LENGTH - 1);
+    inputRefs.current[lastFilledIndex]?.focus();
+  };
+
+  const handleNumberPad = (num) => {
+    if (isLoading) return;
+
+    const firstEmptyIndex = pin.findIndex((p) => p === '');
+    if (firstEmptyIndex === -1) return;
+
+    const newPin = [...pin];
+    newPin[firstEmptyIndex] = num;
+    setPin(newPin);
+
+    if (firstEmptyIndex < PIN_LENGTH - 1) {
+      inputRefs.current[firstEmptyIndex + 1]?.focus();
+    }
+
+    const pinString = newPin.join('');
+    if (pinString.length === PIN_LENGTH) {
+      handleSubmit(new Event('submit'));
+    }
+  };
+
+  const handleKeypadBackspace = () => {
+    const lastFilledIndex = pin.findLastIndex((p) => p !== '');
+    if (lastFilledIndex === -1) return;
+
+    const newPin = [...pin];
+    newPin[lastFilledIndex] = '';
+    setPin(newPin);
+    inputRefs.current[lastFilledIndex]?.focus();
+  };
+
+  const handleKeypadClear = () => {
+    setPin(['', '', '', '', '']);
+    inputRefs.current[0]?.focus();
+  };
 
   return (
     <div className="stockmaster-login-page">
@@ -41,7 +140,7 @@ const LoginPage = () => {
           </div>
           <p className="stockmaster-tagline">DecodeX POS</p>
           <div className="stockmaster-branding-footer">
-            <p>© {new Date().getFullYear()}  DecodeX</p>
+            <p>&copy; {new Date().getFullYear()} DecodeX</p>
             <p>v0.0.1</p>
           </div>
         </div>
@@ -53,69 +152,83 @@ const LoginPage = () => {
 
             <form onSubmit={handleSubmit}>
               <div className="stockmaster-form-group">
-                <label htmlFor="username">Username</label>
-                <div className="stockmaster-input-with-icon">
-                  <FiUser className="input-icon" />
-                  <input
-                    id="username"
-                    type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    placeholder="Enter your username"
-                    required
-                  />
+                <label htmlFor="pin">Enter PIN</label>
+                <div className="pin-input-container" onPaste={handlePaste}>
+                  {pin.map((digit, index) => (
+                    <input
+                      key={index}
+                      ref={(el) => {
+                        inputRefs.current[index] = el;
+                      }}
+                      type="password"
+                      inputMode="numeric"
+                      maxLength={1}
+                      value={digit}
+                      onChange={(e) => handlePinChange(index, e.target.value)}
+                      onKeyDown={(e) => handleKeyDown(index, e)}
+                      className={`pin-box ${digit ? 'filled' : ''} ${error ? 'error' : ''}`}
+                      disabled={isLoading}
+                      autoFocus={index === 0}
+                    />
+                  ))}
                 </div>
+                {error && <div className="pin-error-message">{error}</div>}
               </div>
 
-              <div className="stockmaster-form-group">
-                <label htmlFor="password">Password</label>
-                <div className="stockmaster-input-with-icon">
-                  <FiLock className="input-icon" />
-                  <input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter your password"
-                    required
-                  />
-                  <button 
-                    type="button" 
-                    className="stockmaster-password-toggle"
-                    onClick={() => setShowPassword(!showPassword)}
+              <div className="numpad-container">
+                <div className="numpad">
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                    <button
+                      key={num}
+                      type="button"
+                      className="numpad-btn"
+                      onClick={() => handleNumberPad(num.toString())}
+                      disabled={isLoading}
+                    >
+                      {num}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    className="numpad-btn numpad-btn-clear"
+                    onClick={handleKeypadClear}
+                    disabled={isLoading}
                   >
-                    {showPassword ? <FiEyeOff /> : <FiEye />}
+                    C
+                  </button>
+                  <button
+                    type="button"
+                    className="numpad-btn"
+                    onClick={() => handleNumberPad('0')}
+                    disabled={isLoading}
+                  >
+                    0
+                  </button>
+                  <button
+                    type="button"
+                    className="numpad-btn numpad-btn-backspace"
+                    onClick={handleKeypadBackspace}
+                    disabled={isLoading}
+                  >
+                    ←
                   </button>
                 </div>
               </div>
 
-              <div className="stockmaster-form-options">
-                <label className="stockmaster-remember-me">
-                  <input type="checkbox" />
-                  <span>Remember me</span>
-                </label>
-              </div>
-
-              <button 
-                type="submit" 
-                className="stockmaster-login-button"
-                disabled={isLoading}
-              >
+              <button type="submit" className="stockmaster-login-button" disabled={isLoading || pin.join('').length !== PIN_LENGTH}>
                 {isLoading ? (
-                  <span className="stockmaster-spinner"></span>
+                  <>
+                    <FiKey className="spin" />
+                    Signing in...
+                  </>
                 ) : (
                   <>
-                    <FiLogIn /> Login In
+                    <FiLogIn />
+                    Sign In
                   </>
                 )}
               </button>
             </form>
-
-            <div className="stockmaster-login-footer">
-              <p>
-                <a href="/request-access">Request access</a>
-              </p>
-            </div>
           </div>
         </div>
       </div>

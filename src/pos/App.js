@@ -18,7 +18,7 @@ import OrderPreparationPage from './pages/OrderPreparationPage';
 import OrderManagementPage from './pages/OrderManagementPage';
 import ReceiptModal from './components/ReceiptModal';
 import ReturnCodeModal from './components/ReturnCodeModal';
-import { inventoryAPI, salesAPI, shiftsAPI, customersAPI, suppliersAPI, toNumber, formatCurrency, userService } from '../services/ApiService/api';
+import { inventoryAPI, salesAPI, shiftsAPI, customersAPI, suppliersAPI, toNumber, formatCurrency, userService, usersAPI, normalizeTopbarPermissions, DEFAULT_TOPBAR_PERMISSIONS } from '../services/ApiService/api';
 import { useAuth } from '../services/context/authContext';
 import './data/pos.css';
 import './data/Modal.css'
@@ -43,10 +43,13 @@ function PosApp() {
   const [activityRefreshKey, setActivityRefreshKey] = useState(0);
   const [initialPaymentMethod, setInitialPaymentMethod] = useState('cash');
   const [heldOrders, setHeldOrders] = useState([]);
+  const [voidedHeldOrders, setVoidedHeldOrders] = useState([]);
   const [showHeldOrdersModal, setShowHeldOrdersModal] = useState(false);
   const [showHeldOrderDetailsModal, setShowHeldOrderDetailsModal] = useState(false);
   const [selectedHeldOrder, setSelectedHeldOrder] = useState(null);
   const [currentHeldOrderId, setCurrentHeldOrderId] = useState(null);
+  const [heldOrderNeedsSave, setHeldOrderNeedsSave] = useState(false);
+  const [heldOrderOriginalQuantities, setHeldOrderOriginalQuantities] = useState({});
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState('retail');
   const [showErrorModal, setShowErrorModal] = useState(false);
@@ -54,6 +57,71 @@ function PosApp() {
   const [errorDetails, setErrorDetails] = useState({ title: '', message: '', details: '', errors: [] });
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [receiptData, setReceiptData] = useState(null);
+  const [topbarPermissions, setTopbarPermissions] = useState(DEFAULT_TOPBAR_PERMISSIONS);
+  
+  const getHeldOrderLockedQuantity = (item) => {
+    if (!currentHeldOrderId) {
+      return 0;
+    }
+
+    return Number(item?.heldOrderOriginalQuantity ?? heldOrderOriginalQuantities[String(item?.id)] ?? 0);
+  };
+
+  const clearHeldOrderCart = ({ closePaymentModal = false } = {}) => {
+    setCart([]);
+    setSelectedCustomer(null);
+    setSelectedHeldOrder(null);
+    setCurrentHeldOrderId(null);
+    setHeldOrderNeedsSave(false);
+    setHeldOrderOriginalQuantities({});
+
+    if (closePaymentModal) {
+      setShowPaymentModal(false);
+      setInitialPaymentMethod('cash');
+    }
+  };
+
+  const exitHeldOrderEditing = () => {
+    if (!currentHeldOrderId) {
+      return;
+    }
+
+    if (heldOrderNeedsSave) {
+      Swal.fire({
+        icon: 'question',
+        title: 'Exit Held Order Editing?',
+        text: `Order #${currentHeldOrderId} has unsaved changes. Exit without saving?`,
+        showCancelButton: true,
+        confirmButtonText: 'Exit Without Saving',
+        cancelButtonText: 'Stay Here',
+        zIndex: 10000
+      }).then((result) => {
+        if (result.isConfirmed) {
+          clearHeldOrderCart();
+        }
+      });
+      return;
+    }
+
+    clearHeldOrderCart();
+  };
+
+  // Load top bar permissions from auth payload and refresh from API so admin changes apply immediately
+  useEffect(() => {
+    const stored = user?.topbar_permissions || userService.getTopbarPermissions();
+    setTopbarPermissions(normalizeTopbarPermissions(stored));
+
+    const userId = user?.user_id || userService.getUserData()?.user_id;
+    if (userId) {
+      usersAPI.getTopbarPermissions(userId)
+        .then((res) => {
+          const perms = res?.allowed_buttons || res?.topbar_permissions || res;
+          setTopbarPermissions(normalizeTopbarPermissions(perms));
+        })
+        .catch((err) => console.warn('Top bar permission fetch failed:', err?.message || err));
+    }
+  }, [user]);
+
   const [showReturnCodeModal, setShowReturnCodeModal] = useState(false);
   const [appliedReturnCode, setAppliedReturnCode] = useState(null);
 
@@ -198,10 +266,11 @@ function PosApp() {
         });
         
         // Fetch held orders when shift is active
-        fetchHeldOrders();
+        fetchHeldOrders(loginShift.id);
       } else {
         console.log('No active shift - showing start shift modal');
         setCurrentShift(null);
+        fetchHeldOrders(null);
         setShowShiftModal(true);
       }
     } catch (error) {
@@ -335,6 +404,9 @@ function PosApp() {
         }];
       }
     });
+    if (currentHeldOrderId) {
+      setHeldOrderNeedsSave(true);
+    }
   };
 
   const updateQuantity = (productId, change) => {
@@ -359,6 +431,15 @@ function PosApp() {
       if (!item) return prevCart;
 
       const newQuantity = item.quantity + change;
+      const lockedQuantity = getHeldOrderLockedQuantity(item);
+
+      if (lockedQuantity > 0 && newQuantity < lockedQuantity) {
+        showError(
+          'Held Order Protected',
+          `You cannot reduce "${item.name}" below the original held quantity of ${lockedQuantity}.`
+        );
+        return prevCart;
+      }
 
       // Validate minimum quantity - always 1
       if (newQuantity < 1 && newQuantity > 0) {
@@ -382,6 +463,9 @@ function PosApp() {
           : item
       );
     });
+    if (currentHeldOrderId) {
+      setHeldOrderNeedsSave(true);
+    }
   };
 
   const removeItem = (productId) => {
@@ -401,7 +485,38 @@ function PosApp() {
       return;
     }
 
-    setCart(prevCart => prevCart.filter(item => item.id !== productId));
+    setCart(prevCart => {
+      const item = prevCart.find((cartItem) => cartItem.id === productId);
+      if (!item) {
+        return prevCart;
+      }
+
+      const lockedQuantity = getHeldOrderLockedQuantity(item);
+      if (lockedQuantity > 0) {
+        showError(
+          'Held Order Protected',
+          `You cannot remove "${item.name}" because it belongs to the original held order.`
+        );
+        return prevCart;
+      }
+
+      return prevCart.filter((cartItem) => cartItem.id !== productId);
+    });
+    if (currentHeldOrderId) {
+      setHeldOrderNeedsSave(true);
+    }
+  };
+
+  const handleClearCart = () => {
+    if (currentHeldOrderId) {
+      showError(
+        'Held Order Protected',
+        'You cannot clear a loaded held order. Cancel payment to exit this held order cart.'
+      );
+      return;
+    }
+
+    setCart([]);
   };
 
   const newSale = () => {
@@ -435,12 +550,14 @@ function PosApp() {
           setCart([]);
           setSelectedCustomer(null);
           setCurrentHeldOrderId(null);
+          setHeldOrderOriginalQuantities({});
         }
       });
     } else {
       setCart([]);
       setSelectedCustomer(null);
       setCurrentHeldOrderId(null);
+      setHeldOrderOriginalQuantities({});
     }
   };
 
@@ -758,6 +875,16 @@ function PosApp() {
         return;
       }
 
+      if (currentHeldOrderId && heldOrderNeedsSave) {
+        Swal.fire({
+          icon: 'info',
+          title: 'Save Held Order First',
+          text: 'Save your held order changes before proceeding to payment.',
+          zIndex: 10000
+        });
+        return;
+      }
+
       // Since PaymentModal has its own loading indicator, we don't need Swal here
       // Check if this is a held order being completed
       if (currentHeldOrderId) {
@@ -838,6 +965,8 @@ function PosApp() {
       // Clear cart and close modal
       setCart([]);
       setCurrentHeldOrderId(null);
+      setHeldOrderNeedsSave(false);
+      setHeldOrderOriginalQuantities({});
       setShowPaymentModal(false);
       setSelectedCustomer(null);
     } catch (error) {
@@ -897,13 +1026,41 @@ function PosApp() {
     }
   };
 
-  const holdOrder = async () => {
+  async function handlePrimaryCartAction() {
+    if (!currentHeldOrderId || !heldOrderNeedsSave) {
+      setShowPaymentModal(true);
+      return;
+    }
+
+    try {
+      await syncHeldOrderFromCart();
+      await Swal.fire({
+        icon: 'success',
+        title: 'Held Order Saved',
+        text: 'The bill is still held. You can keep adding items and complete payment when the customer is ready.',
+        timer: 1800,
+        showConfirmButton: false,
+        zIndex: 10000
+      });
+    } catch (error) {
+      console.error('Error saving held order from cart:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Save Failed',
+        text: error.message || 'Failed to save held order changes.',
+        zIndex: 10000
+      });
+    }
+  }
+
+  // Create pending bill for bar - allows printing receipt before payment
+  const createPendingBill = async () => {
     // Strict shift check - no operations allowed without active shift
     if (!currentShift) {
       Swal.fire({
         icon: 'warning',
         title: 'Shift Required',
-        text: 'You must start a shift before holding orders.',
+        text: 'You must start a shift before creating pending bills.',
         confirmButtonText: 'Start Shift',
         zIndex: 99999
       }).then((result) => {
@@ -915,25 +1072,60 @@ function PosApp() {
     }
 
     try {
-      console.log('Attempting to hold order with cart:', cart);
+      console.log('Creating pending bill with cart:', cart);
 
-      // Validate cart before holding
+      // Validate cart before creating pending bill
       const cartErrors = validateCartForSale(cart, mode, selectedCustomer);
       if (cartErrors.length > 0) {
         Swal.fire({
           icon: 'error',
-          title: 'Cannot Hold Order',
-          text: 'Please fix the following issues before holding the order:\n\n' + cartErrors.join('\n'),
+          title: 'Cannot Create Pending Bill',
+          text: 'Please fix the following issues before creating the pending bill:\n\n' + cartErrors.join('\n'),
           zIndex: 99999
         });
         return;
       }
 
+      if (currentHeldOrderId) {
+        await syncHeldOrderFromCart();
+        await fetchHeldOrders();
+        await Swal.fire({
+          icon: 'success',
+          title: 'Held Order Updated',
+          text: 'The held bill has been updated. You can continue adding items or complete it later.',
+          timer: 1800,
+          showConfirmButton: false,
+          zIndex: 10000
+        });
+        return;
+      }
+
+      // Show countdown dialog with undo option
+      const result = await Swal.fire({
+        title: 'Creating Pending Bill...',
+        text: 'Pending bill will be created in 5 seconds. Click "Undo" to cancel.',
+        icon: 'info',
+        showCancelButton: true,
+        confirmButtonText: 'Create Now',
+        cancelButtonText: 'Undo',
+        timer: 5000,
+        timerProgressBar: true,
+        allowOutsideClick: false,
+        zIndex: 10000
+      });
+
+      // Check if timer expired or user confirmed
+      if (result.dismiss === Swal.DismissReason.cancel) {
+        // User clicked Undo - just close without another dialog
+        return;
+      }
+
+      // If timer expired (result.dismiss === Swal.DismissReason.timer) or confirmed, proceed
+
       // Show loading Swal
-      // eslint-disable-next-line no-unused-vars
-      const loadingSwal = Swal.fire({
-        title: 'Holding Order...',
-        text: 'Please wait while we save your order',
+      Swal.fire({
+        title: 'Creating Pending Bill...',
+        text: 'Please wait while we save your pending bill',
         allowOutsideClick: false,
         allowEscapeKey: false,
         showConfirmButton: false,
@@ -943,7 +1135,7 @@ function PosApp() {
         }
       });
 
-      // Prepare cart data for backend with hold_order flag
+      // Prepare cart data for backend with pending_bill flag
       const cartData = {
         items: cart.map(item => ({
           product: item.id,
@@ -956,36 +1148,44 @@ function PosApp() {
         discount_amount: Number(0),
         customer: selectedCustomer ? selectedCustomer.id : null,
         sale_type: mode,
-        hold_order: true
+        hold_order: true,
+        is_pending_bill: true  // Mark as pending bill for bar
       };
 
-      console.log('Holding order with data:', cartData);
+      console.log('Creating pending bill with data:', cartData);
 
-      // Send to backend to create held cart
-      const heldCart = await salesAPI.createSale(cartData);
-      console.log('Order held successfully:', heldCart);
+      // Send to backend to create pending bill
+      const pendingBill = await salesAPI.createSale(cartData);
+      console.log('Pending bill created successfully:', pendingBill);
+
+      setHeldOrders((prev) => [
+        {
+          ...pendingBill,
+          customer: selectedCustomer ? selectedCustomer.id : pendingBill.customer,
+          customer_name: selectedCustomer ? selectedCustomer.name : pendingBill.customer_name
+        },
+        ...prev.filter((order) => order.id !== pendingBill.id)
+      ]);
 
       // Clear cart and customer
       setCart([]);
       setSelectedCustomer(null);
+      setSelectedHeldOrder(null);
       setCurrentHeldOrderId(null);
+      setHeldOrderNeedsSave(false);
 
-      Swal.fire({
-        icon: 'success',
-        title: 'Order Held',
-        text: 'Order held successfully! You can retrieve it later to complete payment.',
-        timer: 2000,
-        showConfirmButton: false,
-        zIndex: 10000
-      });
+      // Refresh held orders to include the new pending bill
+      await fetchHeldOrders();
+
+      Swal.close();
     } catch (error) {
-      console.error('Error holding order:', error);
+      console.error('Error creating pending bill:', error);
 
       // Close loading if it's still open
       Swal.close();
 
       if (error.response?.data) {
-        let errorMessage = 'Failed to hold order.';
+        let errorMessage = 'Failed to create pending bill.';
         let errorList = [];
 
         if (typeof error.response.data === 'object') {
@@ -1001,15 +1201,15 @@ function PosApp() {
 
         Swal.fire({
           icon: 'error',
-          title: 'Hold Order Failed',
+          title: 'Pending Bill Failed',
           text: errorMessage + (errorList.length > 0 ? '\n\nDetails:\n' + errorList.join('\n') : ''),
           zIndex: 10000
         });
       } else {
         Swal.fire({
           icon: 'error',
-          title: 'Hold Order Error',
-          text: error.message || 'Error holding order. Please try again.',
+          title: 'Pending Bill Error',
+          text: error.message || 'Error creating pending bill. Please try again.',
           zIndex: 10000
         });
       }
@@ -1051,18 +1251,24 @@ function PosApp() {
     }
   };
 
-  const fetchHeldOrders = async () => {
+  async function fetchHeldOrders(shiftOverride = undefined) {
     try {
-      // Pass shift_id if there's an active shift
-      const shiftId = currentShift?.id;
+      const roles = userService.getUserData()?.roles || [];
+      const isSupervisor = roles.includes('supervisor') || userService.getUserRole() === 'supervisor';
+      const shiftId = shiftOverride !== undefined ? shiftOverride : currentShift?.id;
       console.log('Fetching held orders with shift_id:', shiftId);
-      const params = shiftId ? { shift_id: shiftId } : {};
-      console.log('Fetch held orders params:', params);
-      const response = await salesAPI.getHeldOrders(params);
-      setHeldOrders(response || []);
+      const baseParams = isSupervisor ? { all_waiters: true } : (shiftId ? { shift_id: shiftId } : {});
+      console.log('Fetch held orders params:', baseParams);
+      const [activeOrders, voidedOrders] = await Promise.all([
+        salesAPI.getHeldOrders(baseParams),
+        salesAPI.getHeldOrders({ ...baseParams, status: 'voided' })
+      ]);
+      setHeldOrders(activeOrders || []);
+      setVoidedHeldOrders(voidedOrders || []);
     } catch (error) {
       console.error('Error fetching held orders:', error);
       setHeldOrders([]);
+      setVoidedHeldOrders([]);
       Swal.fire({
         icon: 'error',
         title: 'Held Orders Error',
@@ -1070,17 +1276,11 @@ function PosApp() {
         zIndex: 10000
       });
     }
-  };
+  }
 
-  const loadHeldOrder = (heldOrder) => {
-    setSelectedHeldOrder(heldOrder);
-    setShowHeldOrdersModal(false);
-    setShowHeldOrderDetailsModal(true);
-  };
-
-  const proceedToPayment = async (heldOrder) => {
+  const loadHeldOrderIntoCart = async (heldOrder, { openPayment = false } = {}) => {
     try {
-      console.log('Loading held order to cart for payment:', heldOrder);
+      console.log('Loading held order to cart:', heldOrder);
 
       // Validate held order data
       if (!heldOrder || !heldOrder.items || heldOrder.items.length === 0) {
@@ -1104,6 +1304,7 @@ function PosApp() {
             ...product,
             quantity: item.quantity,
             price: item.unit_price,
+            heldOrderOriginalQuantity: Number(item.quantity || 0),
           };
         } else {
           // Product not found in current inventory, create a minimal product object
@@ -1125,13 +1326,20 @@ function PosApp() {
             image: null,
             is_active: true,
             created_at: null,
-            updated_at: null
+            updated_at: null,
+            heldOrderOriginalQuantity: Number(item.quantity || 0)
           };
         }
       });
 
       console.log('Setting cart items:', cartItems);
       setCart(cartItems);
+      setHeldOrderOriginalQuantities(
+        heldOrder.items.reduce((acc, item) => {
+          acc[String(item.product)] = Number(item.quantity || 0);
+          return acc;
+        }, {})
+      );
 
       // Set customer if available
       if (heldOrder.customer) {
@@ -1144,17 +1352,20 @@ function PosApp() {
 
       // Track that this cart came from a held order
       setCurrentHeldOrderId(heldOrder.id);
+      setHeldOrderNeedsSave(false);
       console.log('Set currentHeldOrderId to:', heldOrder.id);
 
 
       console.log('Closing held order details modal');
       setShowHeldOrderDetailsModal(false);
 
-      // Small delay to ensure state updates before opening payment modal
-      setTimeout(() => {
-        console.log('Opening payment modal with total:', total, 'cart length:', cart.length);
-        setShowPaymentModal(true);
-      }, 100);
+      if (openPayment) {
+        // Small delay to ensure state updates before opening payment modal
+        setTimeout(() => {
+          console.log('Opening payment modal for held order');
+          setShowPaymentModal(true);
+        }, 100);
+      }
     } catch (error) {
       console.error('Error loading held order for payment:', error);
       Swal.fire({
@@ -1165,6 +1376,81 @@ function PosApp() {
       });
     }
   };
+
+  const loadHeldOrder = (heldOrder) => {
+    setShowHeldOrdersModal(false);
+    setSelectedHeldOrder(heldOrder);
+    loadHeldOrderIntoCart(heldOrder, { openPayment: false });
+  };
+
+  const proceedToPayment = async (heldOrder) => {
+    setSelectedHeldOrder(heldOrder);
+    await loadHeldOrderIntoCart(heldOrder, { openPayment: true });
+  };
+
+  async function syncHeldOrderFromCart() {
+    if (!currentHeldOrderId || !selectedHeldOrder) {
+      return null;
+    }
+
+    const originalItems = Array.isArray(selectedHeldOrder.items) ? selectedHeldOrder.items : [];
+    const cartByProduct = new Map(cart.map((item) => [String(item.id), item]));
+    const originalByProduct = new Map(originalItems.map((item) => [String(item.product), item]));
+
+    const items_to_remove = [];
+    const update_quantities = {};
+    const items_to_add = [];
+
+    originalItems.forEach((item) => {
+      const cartItem = cartByProduct.get(String(item.product));
+      if (!cartItem) {
+        items_to_remove.push(item.id);
+        return;
+      }
+
+      const nextQty = Number(cartItem.quantity || 0);
+      if (nextQty !== Number(item.quantity || 0)) {
+        update_quantities[item.id] = nextQty;
+      }
+    });
+
+    cart.forEach((item) => {
+      if (!originalByProduct.has(String(item.id))) {
+        items_to_add.push({
+          product: item.id,
+          quantity: Number(item.quantity || 0),
+          unit_price: Number(item.price || item.unit_price || 0)
+        });
+      }
+    });
+
+    if (
+      items_to_remove.length === 0 &&
+      items_to_add.length === 0 &&
+      Object.keys(update_quantities).length === 0 &&
+      String(selectedHeldOrder.customer || '') === String(selectedCustomer?.id || '')
+    ) {
+      return null;
+    }
+
+    const payload = {
+      items_to_add,
+      items_to_remove,
+      update_quantities,
+      customer: selectedCustomer ? selectedCustomer.id : null
+    };
+
+    const updatedOrder = await salesAPI.updateHeldOrder(currentHeldOrderId, payload);
+    setSelectedHeldOrder((prev) => prev ? ({
+      ...prev,
+      items: updatedOrder?.items || prev.items,
+      customer: selectedCustomer ? selectedCustomer.id : prev.customer,
+      customer_name: selectedCustomer ? selectedCustomer.name : prev.customer_name
+    }) : prev);
+    setHeldOrderNeedsSave(false);
+    await fetchHeldOrders();
+    return updatedOrder;
+  }
 
   const completeHeldOrder = async (heldOrderId, paymentData) => {
     try {
@@ -1183,6 +1469,36 @@ function PosApp() {
         showError('Payment Validation Failed', 'Please fix the following payment issues:', paymentErrors);
         return;
       }
+
+      // Show countdown with undo option before completing
+      const countdownResult = await Swal.fire({
+        title: 'Completing Payment...',
+        text: 'Payment will be completed in 4 seconds. Click "Undo" to cancel.',
+        icon: 'info',
+        showCancelButton: true,
+        confirmButtonText: 'Complete Now',
+        cancelButtonText: 'Undo',
+        timer: 4000,
+        timerProgressBar: true,
+        allowOutsideClick: false,
+        zIndex: 10000
+      });
+
+      // If timer expired (countdown completed) or user clicked "Complete Now"
+      if (countdownResult.dismiss === Swal.DismissReason.timer || countdownResult.isConfirmed) {
+        // User confirmed or timer expired - proceed with completion
+      } else if (countdownResult.dismiss === Swal.DismissReason.cancel) {
+        // User clicked Undo - cancel the operation
+        Swal.fire({
+          title: 'Payment Cancelled',
+          text: 'The pending order has not been completed.',
+          icon: 'info',
+          zIndex: 10000
+        });
+        return;
+      }
+
+      await syncHeldOrderFromCart();
 
       // Calculate totals from current cart
       const cartData = {
@@ -1240,9 +1556,7 @@ function PosApp() {
       setShowReceiptModal(true);
 
       // Clear cart and close modals
-      setCart([]);
-      setSelectedCustomer(null);
-      setCurrentHeldOrderId(null);
+      clearHeldOrderCart();
       setShowPaymentModal(false);
       setShowHeldOrdersModal(false);
 
@@ -1413,6 +1727,19 @@ function PosApp() {
 
   const subtotal = cart.reduce((sum, item) => sum + (toNumber(item.price) * toNumber(item.quantity)), 0);
   const total = Math.round(subtotal * 100) / 100; // Round to 2 decimal places properly
+  const itemCount = cart.reduce((sum, item) => sum + toNumber(item.quantity), 0);
+  const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 768) {
+        setIsMobileCartOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Check current path to determine which component to render
   const isOrderPreparationPage = location.pathname === '/order-preparation';
@@ -1460,6 +1787,7 @@ function PosApp() {
         onCustomerLookup={() => setShowCustomerLookupModal(true)}
         onCustomerClear={handleCustomerClear}
         selectedCustomer={selectedCustomer}
+        permissions={topbarPermissions}
       />
 
       {/* {!currentShift && !showShiftModal && (
@@ -1491,25 +1819,51 @@ function PosApp() {
           categories={categories}
           onUpdateQuantity={currentShift?.has_active_shift ? updateQuantity : () => {}}
           onRemoveItem={currentShift?.has_active_shift ? removeItem : () => {}}
-          onProcessPayment={currentShift?.has_active_shift ? () => setShowPaymentModal(true) : () => {}}
-          onHoldOrder={currentShift?.has_active_shift ? holdOrder : () => {}}
-          onClearCart={currentShift?.has_active_shift ? () => setCart([]) : () => {}}
+          onProcessPayment={currentShift?.has_active_shift ? handlePrimaryCartAction : () => {}}
+          onCreatePendingBill={currentShift?.has_active_shift ? createPendingBill : () => {}}
+          onClearCart={currentShift?.has_active_shift ? handleClearCart : () => {}}
+          primaryActionLabel={currentHeldOrderId && heldOrderNeedsSave ? 'SAVE' : 'PAY'}
+          heldOrderId={currentHeldOrderId}
+          heldOrderNeedsSave={heldOrderNeedsSave}
+          onExitHeldOrderEditing={currentShift?.has_active_shift ? exitHeldOrderEditing : () => {}}
           disabled={!currentShift?.has_active_shift}
           selectedCustomer={selectedCustomer}
           mode={mode}
           onCustomerClear={handleCustomerClear}
+          canReduceItem={(item) => getHeldOrderLockedQuantity(item) === 0 || Number(item.quantity) > getHeldOrderLockedQuantity(item)}
+          canRemoveItem={(item) => getHeldOrderLockedQuantity(item) === 0}
           onOpenReturnCodeModal={handleOpenReturnCodeModal}
           appliedReturnCode={appliedReturnCode}
           onClearAppliedReturnCode={clearAppliedReturnCode}
+          isMobileOpen={isMobileCartOpen}
+          onCloseMobile={() => setIsMobileCartOpen(false)}
         />
 
         <RecentActivityPanel
           heldOrders={heldOrders}
+          voidedHeldOrders={voidedHeldOrders}
           onLoadHeldOrder={loadHeldOrder}
           currentShift={currentShift}
           refreshKey={activityRefreshKey}
         />
       </div>
+
+      {isMobileCartOpen && (
+        <div
+          className="pos-mobile-cart-backdrop"
+          onClick={() => setIsMobileCartOpen(false)}
+        />
+      )}
+
+      <button
+        className={`pos-mobile-cart-toggle ${isMobileCartOpen ? 'pos-mobile-cart-toggle--hidden' : ''}`}
+        onClick={() => setIsMobileCartOpen(true)}
+        aria-label="Open cart"
+      >
+        <span className="pos-mobile-cart-toggle__label">Cart</span>
+        <span className="pos-mobile-cart-toggle__count">{itemCount}</span>
+        <span className="pos-mobile-cart-toggle__total">{formatCurrency(total)}</span>
+      </button>
 
       <ShiftModal
         isOpen={showShiftModal}
@@ -1528,6 +1882,10 @@ function PosApp() {
       <PaymentModal
         isOpen={showPaymentModal}
         onClose={() => {
+          if (currentHeldOrderId) {
+            clearHeldOrderCart({ closePaymentModal: true });
+            return;
+          }
           setShowPaymentModal(false);
           setInitialPaymentMethod('cash');
         }}
@@ -1549,16 +1907,35 @@ function PosApp() {
         isOpen={showHeldOrdersModal}
         onClose={() => setShowHeldOrdersModal(false)}
         heldOrders={heldOrders}
+        voidedHeldOrders={voidedHeldOrders}
         onLoadHeldOrder={loadHeldOrder}
+        onPrintReceipt={(order) => {
+          // Close held orders modal first
+          setShowHeldOrdersModal(false);
+          
+          // Prepare receipt data for printing
+          const receiptInfo = {
+            sale: order,
+            cart: order.items || [],
+            total: order.total_amount || order.items?.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0) || 0,
+            paymentMethod: 'pending',
+            change: 0,
+            customer: order.customer_name ? { name: order.customer_name } : null,
+            transactionId: order.id,
+            mode: order.sale_type || 'retail',
+            isPendingBill: true,
+            splitData: null
+          };
+          setReceiptData(receiptInfo);
+          setShowReceiptModal(true);
+        }}
       />
 
       <HeldOrderDetailsModal
         isOpen={showHeldOrderDetailsModal}
         onClose={() => {
           setShowHeldOrderDetailsModal(false);
-          setCart([]);
-          setSelectedCustomer(null);
-          setCurrentHeldOrderId(null);
+          clearHeldOrderCart();
         }}
         onProceedToPayment={proceedToPayment}
         heldOrder={selectedHeldOrder}
@@ -1600,7 +1977,9 @@ function PosApp() {
 
       <ReceiptModal
         isOpen={showReceiptModal}
-        onClose={() => setShowReceiptModal(false)}
+        onClose={() => {
+          setShowReceiptModal(false);
+        }}
         saleData={receiptData?.sale}
         cart={receiptData?.cart || []}
         total={receiptData?.total || 0}
@@ -1610,6 +1989,8 @@ function PosApp() {
         mode={receiptData?.mode || 'retail'}
         splitData={receiptData?.splitData}
         vatRate={0.16}
+        user={user}
+        isPendingBill={receiptData?.isPendingBill || false}
       />
 
       <ReturnCodeModal
@@ -1622,5 +2003,3 @@ function PosApp() {
 }
 
 export default PosApp;
-
-

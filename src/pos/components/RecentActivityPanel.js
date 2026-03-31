@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { formatCurrency, salesAPI, returnsAPI, toNumber, userService } from '../../services/ApiService/api';
+import { formatCurrency, salesAPI, returnsAPI, shiftsAPI, toNumber, userService } from '../../services/ApiService/api';
 import './RecentActivityPanel.css';
 
 const RecentActivityPanel = ({
   heldOrders = [],
+  voidedHeldOrders = [],
   onLoadHeldOrder,
   currentShift,
   refreshKey = 0
@@ -14,12 +15,124 @@ const RecentActivityPanel = ({
   const [totalReturns, setTotalReturns] = useState(0);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('home');
-  
-  // Calculator state
-  const [calcDisplay, setCalcDisplay] = useState('0');
-  const [calcPrevious, setCalcPrevious] = useState(null);
-  const [calcOperator, setCalcOperator] = useState(null);
-  const [calcWaitingForOperand, setCalcWaitingForOperand] = useState(false);
+  const [supervisorOrders, setSupervisorOrders] = useState([]);
+  const [supervisorShifts, setSupervisorShifts] = useState([]);
+  const palette = ['#f0f9ff', '#fef9c3', '#ecfdf3', '#f5f3ff', '#fff1f2', '#f0fdfa', '#fff7ed'];
+  const getWaiterColor = (key) => {
+    if (!key) return '#fafbff';
+    const sum = key.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+    return palette[sum % palette.length];
+  };
+  const getPersonName = (entry) => (
+    entry?.cashier_name ||
+    entry?.waiter_name ||
+    entry?.created_by_name ||
+    entry?.cashier_username ||
+    'Waiter'
+  );
+  const getPersonKey = (entry) => `${entry?.cashier || entry?.created_by || getPersonName(entry)}`;
+  const getItemsTotal = (items = []) => items.reduce(
+    (sum, item) => sum + (toNumber(item.unit_price || item.price) * toNumber(item.quantity || 0)),
+    0
+  );
+  const getOrderTotal = (order) => toNumber(order?.total_amount || order?.total || getItemsTotal(order?.items || []));
+  const getProductSummary = (items = []) => {
+    if (!Array.isArray(items) || items.length === 0) return [];
+    return items.map((item, index) => ({
+      id: item.id || `${item.product || item.product_name || 'item'}-${index}`,
+      name: item.product_name || item.name || `Item ${index + 1}`,
+      quantity: toNumber(item.quantity || 0),
+      price: toNumber(item.unit_price || item.price || 0)
+    }));
+  };
+  const formatReceiptLabel = (sale) => sale?.receipt_number || `Sale #${sale?.id || '—'}`;
+  const formatHeldLabel = (order) => order?.receipt_number || `Held #${order?.id || '—'}`;
+  const isWaiterEntry = (entry) => {
+    const role = (entry?.cashier_role || entry?.role || '').toLowerCase();
+    return !role || role === 'waiter';
+  };
+
+  const supervisorRoster = (() => {
+    const groups = new Map();
+
+    const ensureGroup = (entry) => {
+      const key = getPersonKey(entry);
+      if (!groups.has(key)) {
+        const name = getPersonName(entry);
+        groups.set(key, {
+          key,
+          name,
+          tint: getWaiterColor(name),
+          heldOrders: [],
+          completedSales: [],
+          shift: null,
+          heldTotal: 0,
+          completedTotal: 0,
+          heldItems: 0,
+          completedItems: 0
+        });
+      }
+      return groups.get(key);
+    };
+
+    supervisorOrders.filter(isWaiterEntry).forEach((order) => {
+      const group = ensureGroup(order);
+      const items = getProductSummary(order.items || []);
+      const total = getOrderTotal(order);
+      group.heldOrders.push({
+        ...order,
+        items,
+        total
+      });
+      group.heldTotal += total;
+      group.heldItems += items.reduce((sum, item) => sum + item.quantity, 0);
+    });
+
+    supervisorShifts.filter(isWaiterEntry).forEach((shift) => {
+      const group = ensureGroup(shift);
+      const sales = (shift.sales || [])
+        .filter((sale) => !sale.voided)
+        .map((sale) => {
+          const items = getProductSummary(sale.items || []);
+          const total = toNumber(sale.total_amount || sale.final_amount || getItemsTotal(items));
+          return {
+            ...sale,
+            items,
+            total
+          };
+        })
+        .sort((a, b) => new Date(b.sale_date || 0) - new Date(a.sale_date || 0));
+
+      group.shift = shift;
+      group.completedSales = sales;
+      group.completedTotal = sales.reduce((sum, sale) => sum + sale.total, 0);
+      group.completedItems = sales.reduce(
+        (sum, sale) => sum + sale.items.reduce((itemSum, item) => itemSum + item.quantity, 0),
+        0
+      );
+    });
+
+    return Array.from(groups.values())
+      .sort((a, b) => {
+        const totalA = a.completedTotal + a.heldTotal;
+        const totalB = b.completedTotal + b.heldTotal;
+        return totalB - totalA;
+      });
+  })();
+
+  const supervisorMetrics = supervisorRoster.reduce((acc, waiter) => ({
+    waiters: acc.waiters + 1,
+    heldOrders: acc.heldOrders + waiter.heldOrders.length,
+    completedSales: acc.completedSales + waiter.completedSales.length,
+    heldValue: acc.heldValue + waiter.heldTotal,
+    completedValue: acc.completedValue + waiter.completedTotal
+  }), {
+    waiters: 0,
+    heldOrders: 0,
+    completedSales: 0,
+    heldValue: 0,
+    completedValue: 0
+  });
 
   // System info
   const systemInfo = {
@@ -29,87 +142,28 @@ const RecentActivityPanel = ({
     companyName: 'DECODEX POS'
   };
 
-  // Calculator functions
-  const calcClear = () => {
-    setCalcDisplay('0');
-    setCalcPrevious(null);
-    setCalcOperator(null);
-    setCalcWaitingForOperand(false);
-  };
+  useEffect(() => {
+    setSupervisorOrders(heldOrders || []);
+  }, [heldOrders]);
 
-  const calcInputDigit = (digit) => {
-    if (calcWaitingForOperand) {
-      setCalcDisplay(digit);
-      setCalcWaitingForOperand(false);
-    } else {
-      setCalcDisplay(calcDisplay === '0' ? digit : calcDisplay + digit);
-    }
-  };
-
-  const calcInputDecimal = () => {
-    if (calcWaitingForOperand) {
-      setCalcDisplay('0.');
-      setCalcWaitingForOperand(false);
+  useEffect(() => {
+    const roles = userService.getUserData()?.roles || [];
+    const isSupervisor = roles.includes('supervisor') || userService.getUserRole() === 'supervisor';
+    if (!isSupervisor) {
+      setSupervisorShifts([]);
       return;
     }
-    if (!calcDisplay.includes('.')) {
-      setCalcDisplay(calcDisplay + '.');
-    }
-  };
-
-  const calcPerformOperation = (nextOperator) => {
-    const inputValue = parseFloat(calcDisplay);
-
-    if (calcPrevious === null) {
-      setCalcPrevious(inputValue);
-    } else if (calcOperator) {
-      const currentValue = calcPrevious || 0;
-      let result;
-
-      switch (calcOperator) {
-        case '+':
-          result = currentValue + inputValue;
-          break;
-        case '-':
-          result = currentValue - inputValue;
-          break;
-        case '×':
-          result = currentValue * inputValue;
-          break;
-        case '÷':
-          result = inputValue !== 0 ? currentValue / inputValue : 'Error';
-          break;
-        default:
-          result = inputValue;
+    (async () => {
+      try {
+        const res = await shiftsAPI.getAllShifts({ status: 'open', role: 'waiter', limit: 50 });
+        setSupervisorShifts(res?.results || res || []);
+      } catch (e) {
+        console.warn('Failed to load shifts for supervisor', e);
+        setSupervisorShifts([]);
       }
+    })();
+  }, [refreshKey]);
 
-      if (result === 'Error') {
-        setCalcDisplay('Error');
-        setCalcPrevious(null);
-      } else {
-        setCalcDisplay(String(result));
-        setCalcPrevious(result);
-      }
-    }
-
-    setCalcWaitingForOperand(true);
-    setCalcOperator(nextOperator);
-  };
-
-  const calcEquals = () => {
-    if (!calcOperator || calcPrevious === null) return;
-    calcPerformOperation(null);
-    setCalcOperator(null);
-    setCalcPrevious(null);
-  };
-
-  const calcBackspace = () => {
-    if (calcDisplay.length > 1) {
-      setCalcDisplay(calcDisplay.slice(0, -1));
-    } else {
-      setCalcDisplay('0');
-    }
-  };
 
   const fetchRecentActivity = useCallback(async () => {
     if (!currentShift?.has_active_shift || !currentShift?.id) {
@@ -247,39 +301,163 @@ const RecentActivityPanel = ({
         {/* Home Tab - Calculator and System Info */}
         {activeTab === 'home' && (
           <div className="recent-activity-panel__home">
-            {/* Calculator */}
-            <div className="calculator">
-              <div className="calculator__display">
-                <span className="calculator__previous">
-                  {calcPrevious !== null ? `${calcPrevious} ${calcOperator || ''}` : ''}
-                </span>
-                <span className="calculator__current">{calcDisplay}</span>
-              </div>
-              <div className="calculator__buttons">
-                <button className="calculator__btn calculator__btn--clear" onClick={calcClear}>C</button>
-                <button className="calculator__btn calculator__btn--operator" onClick={calcBackspace}>DEL</button>
-                <button className="calculator__btn calculator__btn--operator" onClick={() => calcPerformOperation('÷')}>÷</button>
-                <button className="calculator__btn calculator__btn--operator" onClick={() => calcPerformOperation('×')}>×</button>
-                
-                <button className="calculator__btn" onClick={() => calcInputDigit('7')}>7</button>
-                <button className="calculator__btn" onClick={() => calcInputDigit('8')}>8</button>
-                <button className="calculator__btn" onClick={() => calcInputDigit('9')}>9</button>
-                <button className="calculator__btn calculator__btn--operator" onClick={() => calcPerformOperation('-')}>-</button>
-                
-                <button className="calculator__btn" onClick={() => calcInputDigit('4')}>4</button>
-                <button className="calculator__btn" onClick={() => calcInputDigit('5')}>5</button>
-                <button className="calculator__btn" onClick={() => calcInputDigit('6')}>6</button>
-                <button className="calculator__btn calculator__btn--operator" onClick={() => calcPerformOperation('+')}>+</button>
-                
-                <button className="calculator__btn" onClick={() => calcInputDigit('1')}>1</button>
-                <button className="calculator__btn" onClick={() => calcInputDigit('2')}>2</button>
-                <button className="calculator__btn" onClick={() => calcInputDigit('3')}>3</button>
-                <button className="calculator__btn calculator__btn--equals" onClick={calcEquals}>=</button>
-                
-                <button className="calculator__btn calculator__btn--zero" onClick={() => calcInputDigit('0')}>0</button>
-                <button className="calculator__btn" onClick={calcInputDecimal}>.</button>
-              </div>
-            </div>
+            {(() => {
+              const roles = userService.getUserData()?.roles || [];
+              const isSupervisor = roles.includes('supervisor') || userService.getUserRole() === 'supervisor';
+              return isSupervisor;
+            })() && (
+              <>
+                <div className="sv-overview">
+                  <div className="sv-overview__hero">
+                    <span className="sv-overview__eyebrow">Supervisor Console</span>
+                    <h3>Waiter Activity Board</h3>
+                    <p>Each waiter’s held orders and completed sales with totals and product lines in one place.</p>
+                  </div>
+                  <div className="sv-overview__stats">
+                    <div className="sv-stat-card">
+                      <span className="sv-stat-card__label">Active Waiters</span>
+                      <strong className="sv-stat-card__value">{supervisorMetrics.waiters}</strong>
+                    </div>
+                    <div className="sv-stat-card">
+                      <span className="sv-stat-card__label">Completed Sales</span>
+                      <strong className="sv-stat-card__value">{supervisorMetrics.completedSales}</strong>
+                      <span className="sv-stat-card__meta">{formatCurrency(supervisorMetrics.completedValue)}</span>
+                    </div>
+                    <div className="sv-stat-card">
+                      <span className="sv-stat-card__label">Held Orders</span>
+                      <strong className="sv-stat-card__value">{supervisorMetrics.heldOrders}</strong>
+                      <span className="sv-stat-card__meta">{formatCurrency(supervisorMetrics.heldValue)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="sv-board">
+                  <div className="sv-board__header">
+                    <div>
+                      <h3>Waiter Activity</h3>
+                      <p>Held and completed sales grouped per waiter.</p>
+                    </div>
+                    <span className="badge">{supervisorMetrics.waiters}</span>
+                  </div>
+                  <div className="sv-board__list">
+                    {supervisorRoster.length === 0 && (
+                      <div className="muted-text">No waiter activity available right now.</div>
+                    )}
+                    {supervisorRoster.map((waiter) => (
+                      <div key={waiter.key} className="sv-waiter-card" style={{ '--sv-accent': waiter.tint }}>
+                        <div className="sv-waiter-card__header">
+                          <div>
+                            <div className="sv-waiter-card__name">
+                              <i className="fas fa-user-circle"></i>
+                              {waiter.name}
+                            </div>
+                            <div className="sv-waiter-card__subline">
+                              {waiter.shift ? `Shift #${waiter.shift.id}` : 'No active shift'}
+                              {waiter.shift?.start_time ? ` • Started ${formatTime(waiter.shift.start_time)}` : ''}
+                            </div>
+                          </div>
+                          <div className="sv-waiter-card__totals">
+                            <span>{formatCurrency(waiter.completedTotal + waiter.heldTotal)}</span>
+                            <small>combined value</small>
+                          </div>
+                        </div>
+
+                        <div className="sv-waiter-card__stats">
+                          <div className="sv-mini-stat">
+                            <strong>{waiter.completedSales.length}</strong>
+                            <span>completed</span>
+                            <small>{formatCurrency(waiter.completedTotal)}</small>
+                          </div>
+                          <div className="sv-mini-stat">
+                            <strong>{waiter.heldOrders.length}</strong>
+                            <span>held</span>
+                            <small>{formatCurrency(waiter.heldTotal)}</small>
+                          </div>
+                          <div className="sv-mini-stat">
+                            <strong>{waiter.completedItems + waiter.heldItems}</strong>
+                            <span>items</span>
+                            <small>{waiter.shift ? `Txns ${waiter.shift.transaction_count ?? waiter.completedSales.length}` : 'Orders only'}</small>
+                          </div>
+                        </div>
+
+                        <div className="sv-waiter-card__streams">
+                          <div className="sv-stream sv-stream--completed">
+                            <div className="sv-stream__header">
+                              <span>Completed Sales</span>
+                              <strong>{waiter.completedSales.length}</strong>
+                            </div>
+                            <div className="sv-stream__list">
+                              {waiter.completedSales.length === 0 && (
+                                <div className="sv-stream__empty">No completed sales yet.</div>
+                              )}
+                              {waiter.completedSales.map((sale) => (
+                                <div key={sale.id} className="sv-sale-card sv-sale-card--completed">
+                                  <div className="sv-sale-card__header">
+                                    <span className="sv-sale-card__title">{formatReceiptLabel(sale)}</span>
+                                    <span className="sv-sale-card__time">{formatTime(sale.sale_date)}</span>
+                                  </div>
+                                  <div className="sv-sale-card__meta">
+                                    <span className={`pill pill--status ${sale.payment_method === 'split' ? 'pill--paid' : 'pill--status-info'}`}>
+                                      {(sale.payment_method || 'cash').toUpperCase()}
+                                    </span>
+                                    <span className="pill pill--total">{formatCurrency(sale.total)}</span>
+                                  </div>
+                                  <div className="sv-sale-card__items">
+                                    {sale.items.map((item) => (
+                                      <div key={item.id} className="sv-sale-card__item">
+                                        <span>{item.name}</span>
+                                        <span>x{item.quantity}</span>
+                                        <span>{formatCurrency(item.price)}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="sv-stream sv-stream--held">
+                            <div className="sv-stream__header">
+                              <span>Held Orders</span>
+                              <strong>{waiter.heldOrders.length}</strong>
+                            </div>
+                            <div className="sv-stream__list">
+                              {waiter.heldOrders.length === 0 && (
+                                <div className="sv-stream__empty">No held orders waiting.</div>
+                              )}
+                              {waiter.heldOrders.map((order) => (
+                                <div key={order.id} className="sv-sale-card sv-sale-card--held">
+                                  <div className="sv-sale-card__header">
+                                    <span className="sv-sale-card__title">{formatHeldLabel(order)}</span>
+                                    <span className="sv-sale-card__time">{formatTime(order.created_at)}</span>
+                                  </div>
+                                  <div className="sv-sale-card__meta">
+                                    <span className={`pill pill--status ${order.payment_status === 'paid' ? 'pill--paid' : 'pill--hold'}`}>
+                                      {(order.payment_status || order.status || 'held').toUpperCase()}
+                                    </span>
+                                    <span className="pill">{order.items?.length || order.item_count || 0} items</span>
+                                    <span className="pill pill--total">{formatCurrency(order.total)}</span>
+                                  </div>
+                                  <div className="sv-sale-card__items">
+                                    {order.items.map((item) => (
+                                      <div key={item.id} className="sv-sale-card__item">
+                                        <span>{item.name}</span>
+                                        <span>x{item.quantity}</span>
+                                        <span>{formatCurrency(item.price)}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* System Info */}
             <div className="system-info">
@@ -322,6 +500,12 @@ const RecentActivityPanel = ({
                 User Information
               </h3>
               <div className="system-info__content">
+                {(() => {
+                  const roles = userService.getUserData()?.roles || [];
+                  const rawRole = roles[0] || userService.getUserRole() || 'Staff';
+                  const prettyRole = rawRole.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                  return (
+                    <>
                 <div className="system-info__item">
                   <i className="fas fa-user"></i>
                   <span className="system-info__label">Logged in as:</span>
@@ -333,9 +517,12 @@ const RecentActivityPanel = ({
                   <i className="fas fa-user-tag"></i>
                   <span className="system-info__label">Role:</span>
                   <span className="system-info__value">
-                    {userService.getUserRole() || 'Staff'}
+                    {roles.length > 1 ? roles.join(', ') : prettyRole}
                   </span>
                 </div>
+                    </>
+                  );
+                })()}
                 <div className="system-info__item">
                   <i className={`fas ${currentShift?.has_active_shift ? 'fa-check-circle' : 'fa-times-circle'}`}></i>
                   <span className="system-info__label">Shift Status:</span>
@@ -445,42 +632,83 @@ const RecentActivityPanel = ({
             {/* Held Orders Tab */}
             {activeTab === 'held' && (
               <div className="recent-activity-panel__list">
-                {heldOrders.length === 0 ? (
+                {heldOrders.length === 0 && voidedHeldOrders.length === 0 ? (
                   <div className="recent-activity-panel__empty">
                     <i className="fas fa-clock"></i>
                     <p>No held orders</p>
                   </div>
                 ) : (
-                  heldOrders.map((order) => (
-                    <div 
-                      key={order.id} 
-                      className="recent-activity-panel__item recent-activity-panel__item--held"
-                      onClick={() => onLoadHeldOrder && onLoadHeldOrder(order)}
-                    >
-                      <div className="recent-activity-panel__item-header">
-                        <span className="recent-activity-panel__receipt">HELD-{order.id}</span>
-                        <span className="recent-activity-panel__time">{formatTime(order.created_at)}</span>
-                      </div>
-                      <div className="recent-activity-panel__item-body">
-                        <span className="recent-activity-panel__items-count">
-                          <i className="fas fa-box"></i>
-                          {order.item_count || order.items?.length || 0}
-                        </span>
-                        <span className="recent-activity-panel__amount">{formatCurrency(order.total_amount)}</span>
-                      </div>
-                      {order.customer_name && (
-                        <div className="recent-activity-panel__item-footer">
-                          <i className="fas fa-user"></i>
-                          <span>{order.customer_name}</span>
+                  <>
+                    {heldOrders.length > 0 && (
+                      <>
+                        <div className="recent-activity-panel__item-footer" style={{ fontWeight: 700 }}>
+                          <i className="fas fa-clock"></i>
+                          <span>Active Held Orders</span>
                         </div>
-                      )}
-                      <div className="recent-activity-panel__item-actions">
-                        <button className="recent-activity-panel__action-btn recent-activity-panel__action-btn--load">
-                          <i className="fas fa-play"></i>
-                        </button>
-                      </div>
-                    </div>
-                  ))
+                        {heldOrders.map((order) => (
+                          <div 
+                            key={`held-${order.id}`} 
+                            className="recent-activity-panel__item recent-activity-panel__item--held"
+                            onClick={() => onLoadHeldOrder && onLoadHeldOrder(order)}
+                          >
+                            <div className="recent-activity-panel__item-header">
+                              <span className="recent-activity-panel__receipt">HELD-{order.id}</span>
+                              <span className="recent-activity-panel__time">{formatTime(order.created_at)}</span>
+                            </div>
+                            <div className="recent-activity-panel__item-body">
+                              <span className="recent-activity-panel__items-count">
+                                <i className="fas fa-box"></i>
+                                {order.item_count || order.items?.length || 0}
+                              </span>
+                              <span className="recent-activity-panel__amount">{formatCurrency(order.total_amount || order.items?.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0) || 0)}</span>
+                            </div>
+                            {order.customer_name && (
+                              <div className="recent-activity-panel__item-footer">
+                                <i className="fas fa-user"></i>
+                                <span>{order.customer_name}</span>
+                              </div>
+                            )}
+                            <div className="recent-activity-panel__item-actions">
+                              <button className="recent-activity-panel__action-btn recent-activity-panel__action-btn--load">
+                                <i className="fas fa-play"></i>
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </>
+                    )}
+
+                    {voidedHeldOrders.length > 0 && (
+                      <>
+                        <div className="recent-activity-panel__item-footer" style={{ fontWeight: 700, marginTop: heldOrders.length > 0 ? '8px' : 0 }}>
+                          <i className="fas fa-ban"></i>
+                          <span>Voided Held Orders</span>
+                        </div>
+                        {voidedHeldOrders.map((order) => (
+                          <div 
+                            key={`voided-${order.id}`} 
+                            className="recent-activity-panel__item recent-activity-panel__item--return"
+                          >
+                            <div className="recent-activity-panel__item-header">
+                              <span className="recent-activity-panel__receipt">VOID-HOLD-{order.id}</span>
+                              <span className="recent-activity-panel__time">{formatTime(order.updated_at || order.created_at)}</span>
+                            </div>
+                            <div className="recent-activity-panel__item-body">
+                              <span className="recent-activity-panel__refund-badge">
+                                <i className="fas fa-ban"></i>
+                                VOIDED
+                              </span>
+                              <span className="recent-activity-panel__amount">{formatCurrency(order.total_amount || order.items?.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0) || 0)}</span>
+                            </div>
+                            <div className="recent-activity-panel__item-footer">
+                              <i className="fas fa-comment-alt"></i>
+                              <span>{order.void_reason || 'No reason recorded'}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </>
                 )}
               </div>
             )}

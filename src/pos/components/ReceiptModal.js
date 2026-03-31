@@ -21,8 +21,16 @@ const ReceiptModal = ({
   mode = 'retail',
   splitData = null,
   vatRate = 0.16, // Default VAT rate of 16%
-  isReprint = false
+  isReprint = false,
+  user = null,
+  isPendingBill = false
 }) => {
+  const [recipientPhone, setRecipientPhone] = React.useState('');
+
+  React.useEffect(() => {
+    setRecipientPhone(customer?.phone || '');
+  }, [customer]);
+
   if (!isOpen) return null;
 
   // Calculate VAT
@@ -31,6 +39,7 @@ const ReceiptModal = ({
 
   const handlePrint = () => {
     const currentDate = new Date().toLocaleString();
+    const servedBy = user ? (user.name || user.username || 'Staff') : 'Staff';
 
     // Create print content with optimized thermal printer format
     const printContent = `
@@ -266,11 +275,26 @@ const ReceiptModal = ({
                   <span>${customer.name}</span>
                 </div>
               ` : ''}
+              ${isPendingBill ? `
+                <div class="receipt-info-row" style="color: #d97706; font-weight: bold;">
+                  <span>Status:</span>
+                  <span>PENDING - PAYMENT REQUIRED</span>
+                </div>
+              ` : `
               <div class="receipt-info-row">
                 <span>Payment:</span>
                 <span class="bold">${paymentMethod.toUpperCase()}</span>
               </div>
-              ${paymentMethod === 'split' && splitData ? `
+              `}
+              ${user ? `
+                <div class="receipt-info-row">
+                  <span>Served by:</span>
+                  <span class="bold">${servedBy}</span>
+                </div>
+              ` : ''}
+              ${!isPendingBill && paymentMethod === 'split' && splitData ? `
+                <div class="receipt-info-row">
+                  <span>MPesa:</span>
                 <div class="receipt-info-row">
                   <span>MPesa:</span>
                   <span>${formatCurrency(splitData.mpesa || 0)}</span>
@@ -333,7 +357,7 @@ const ReceiptModal = ({
                 <span>TOTAL:</span>
                 <span>${formatCurrency(total)}</span>
               </div>
-              ${change > 0 ? `
+              ${!isPendingBill && change > 0 ? `
                 <div class="receipt-total-row">
                   <span>Paid:</span>
                   <span>${formatCurrency(total + change)}</span>
@@ -341,6 +365,12 @@ const ReceiptModal = ({
                 <div class="receipt-total-row">
                   <span>Change:</span>
                   <span>${formatCurrency(change)}</span>
+                </div>
+              ` : ''}
+              ${isPendingBill ? `
+                <div class="receipt-total-row" style="color: #d97706;">
+                  <span>Balance Due:</span>
+                  <span>${formatCurrency(total)}</span>
                 </div>
               ` : ''}
             </div>
@@ -378,6 +408,29 @@ const ReceiptModal = ({
   };
 
   const currentDate = new Date().toLocaleString();
+  const buildReceiptMessage = () => {
+    const header = `Receipt ${saleData?.receipt_number || 'N/A'} - ${formatCurrency(total)}`;
+    const lines = (cart || []).map(
+      (item) => `${item.quantity} x ${item.name || item.product_name || 'Item'} @ ${formatCurrency(item.price || item.unit_price || 0)} = ${formatCurrency((item.price || item.unit_price || 0) * item.quantity)}`
+    );
+    const customerLine = customer ? `Customer: ${customer.name}${customer.phone ? ` (${customer.phone})` : ''}` : 'Customer: Walk-in';
+    return [header, customerLine, `Mode: ${mode.toUpperCase()}`, `Payment: ${paymentMethod.toUpperCase()}`, ...lines, `TOTAL: ${formatCurrency(total)}`, 'Thank you!'].join('\n');
+  };
+
+  const sanitizedPhone = (phone) => (phone || '').replace(/[^0-9+]/g, '');
+
+  const openWhatsApp = () => {
+    const message = encodeURIComponent(buildReceiptMessage());
+    const phone = sanitizedPhone(recipientPhone);
+    const url = `https://wa.me/${phone}?text=${message}`;
+    window.open(url, '_blank');
+  };
+
+  const openSMS = () => {
+    const message = encodeURIComponent(buildReceiptMessage());
+    const phone = sanitizedPhone(recipientPhone);
+    window.location.href = `sms:${phone}?&body=${message}`;
+  };
 
   return (
     <>
@@ -393,6 +446,25 @@ const ReceiptModal = ({
             </div>
           </div>
           <div className="receipt-modal-body">
+            <div className="receipt-send">
+              <label className="receipt-send__label" htmlFor="receipt-phone">Send to phone</label>
+              <div className="receipt-send__row">
+                <input
+                  id="receipt-phone"
+                  type="tel"
+                  className="receipt-send__input"
+                  placeholder="e.g. +254712345678"
+                  value={recipientPhone}
+                  onChange={(e) => setRecipientPhone(e.target.value)}
+                />
+                <button className="receipt-modal-btn receipt-modal-btn-secondary" onClick={openSMS}>
+                  <i className="fas fa-sms" /> SMS
+                </button>
+                <button className="receipt-modal-btn receipt-modal-btn-secondary" onClick={openWhatsApp}>
+                  <i className="fab fa-whatsapp" /> WhatsApp
+                </button>
+              </div>
+            </div>
             <div id="receipt-content" className="receipt">
               <div className="receipt-header">
                 <div className="logo-container">
@@ -437,7 +509,13 @@ const ReceiptModal = ({
                   <span>Payment:</span>
                   <span className="bold">{paymentMethod.toUpperCase()}</span>
                 </div>
-                {paymentMethod === 'split' && splitData && (
+                {user && (
+                  <div className="receipt-info-row">
+                    <span>Served by:</span>
+                    <span className="bold">{user.name || user.username || 'Staff'}</span>
+                  </div>
+                )}
+                {!isPendingBill && paymentMethod === 'split' && splitData && (
                   <>
                     <div className="receipt-info-row">
                       <span>MPesa:</span>
@@ -448,6 +526,12 @@ const ReceiptModal = ({
                       <span>{formatCurrency(splitData.cash || 0)}</span>
                     </div>
                   </>
+                )}
+                {isPendingBill && (
+                  <div className="receipt-info-row" style={{ color: '#d97706', fontWeight: 'bold' }}>
+                    <span>Status:</span>
+                    <span>PENDING - PAYMENT REQUIRED</span>
+                  </div>
                 )}
               </div>
 
@@ -553,4 +637,3 @@ const ReceiptModal = ({
 };
 
 export default ReceiptModal;
-

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { userService, authService } from '../services/ApiService/api';
+import { normalizeRole } from './roleAccess';
 
 const AuthContext = createContext();
 
@@ -30,7 +31,7 @@ export const AuthProvider = ({ children }) => {
       const data = await authService.login(credentials.username, credentials.password);
       userService.setUserData({ roles: data.roles });
       setUser(userService.getUserData());
-      return { success: true };
+      return { success: true, role: normalizeRole(data.role || data.roles?.[0]) };
     } catch (error) {
       return { success: false, error: error.message || 'Invalid credentials' };
     }

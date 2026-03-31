@@ -1,7 +1,20 @@
 /* ================= LOGIN PAGE STYLES ================= */
+:root {
+  --login-bg: #f3f4f6;
+  --login-white: #ffffff;
+  --login-primary: #3b82f6;
+  --login-primary-dark: #2563eb;
+  --login-text: #1f2937;
+  --login-text-light: #6b7280;
+  --login-border: #e5e7eb;
+  --login-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  --login-error: #ef4444;
+  --login-success: #10b981;
+}
+
 .stockmaster-login-page {
   min-height: 100vh;
-  background-color: var(--bg-color);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -10,57 +23,84 @@
 
 .stockmaster-login-container {
   display: flex;
-  max-width: 1200px;
+  max-width: 1000px;
   width: 100%;
-  background-color: var(--white);
-  border-radius: 1rem;
+  background-color: var(--login-white);
+  border-radius: 20px;
   overflow: hidden;
-  box-shadow: var(--shadow);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
 }
 
 .stockmaster-login-branding {
   flex: 1;
-  background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
-  color: var(--white);
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #ec4899 100%);
+  color: var(--login-white);
   padding: 3rem;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+}
+
+.stockmaster-login-branding::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+  animation: shimmer 15s infinite linear;
+}
+
+@keyframes shimmer {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 .stockmaster-logo {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 1rem;
   margin-bottom: 1rem;
+  position: relative;
+  z-index: 1;
 }
 
 .login-logo-png {
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 3.5rem;
+  height: 3.5rem;
   background: white;
   padding: 0.5rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   object-fit: contain;
 }
 
 .stockmaster-logo h1 {
-  font-size: 1.75rem;
-  font-weight: 700;
+  font-size: 2.5rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
 }
 
 .stockmaster-tagline {
-  opacity: 0.9;
+  font-size: 1.25rem;
+  opacity: 0.95;
   margin-bottom: 2rem;
+  font-weight: 500;
+  position: relative;
+  z-index: 1;
 }
 
 .stockmaster-branding-footer {
   margin-top: auto;
   font-size: 0.875rem;
-  opacity: 0.8;
+  opacity: 0.85;
   display: flex;
   justify-content: space-between;
+  position: relative;
+  z-index: 1;
 }
 
 .stockmaster-login-form-container {
@@ -69,200 +109,257 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  background: var(--login-white);
 }
 
 .stockmaster-login-card {
-  max-width: 400px;
+  max-width: 420px;
   width: 100%;
 }
 
 .stockmaster-login-card h2 {
-  font-size: 1.5rem;
-  font-weight: 600;
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: var(--login-text);
   margin-bottom: 0.5rem;
+  text-align: center;
 }
 
-.stockmaster-login-subtitle {
-  color: var(--text-light);
+.stockmaster-login-card > p {
+  color: var(--login-text-light);
+  text-align: center;
   margin-bottom: 2rem;
 }
 
-.stockmaster-error-message {
-  background-color: rgba(239, 68, 68, 0.1);
-  color: var(--error-color);
-  padding: 0.75rem 1rem;
-  border-radius: 0.375rem;
-  margin-bottom: 1.5rem;
-  font-size: 0.875rem;
-}
-
 .stockmaster-form-group {
-  margin-bottom: 1.25rem;
+  margin-bottom: 1.5rem;
 }
 
 .stockmaster-form-group label {
   display: block;
-  font-size: 0.875rem;
-  font-weight: 500;
-  margin-bottom: 0.5rem;
-  color: var(--text-color);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--login-text);
+  margin-bottom: 12px;
+  text-align: center;
 }
 
-.stockmaster-input-with-icon {
-  position: relative;
-}
-
-.stockmaster-input-with-icon .input-icon {
-  position: absolute;
-  left: 1rem;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--text-light);
-}
-
-.stockmaster-input-with-icon input {
-  width: 100%;
-  padding: 0.75rem 1rem 0.75rem 2.5rem;
-  border: 1px solid var(--border-color);
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
-  transition: all 0.2s;
-}
-
-.stockmaster-input-with-icon input:focus {
-  outline: none;
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.stockmaster-password-toggle {
-  position: absolute;
-  right: 1rem;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  color: var(--text-light);
-  cursor: pointer;
-  padding: 0.25rem;
-}
-
-.stockmaster-form-options {
+/* PIN Input Styles - Enhanced */
+.pin-input-container {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin: 1.5rem 0;
-  font-size: 0.875rem;
-}
-
-.stockmaster-remember-me {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
-}
-
-.stockmaster-remember-me input {
-  width: 1rem;
-  height: 1rem;
-  border: 1px solid var(--border-color);
-  border-radius: 0.25rem;
-}
-
-.stockmaster-forgot-password {
-  color: var(--primary-color);
-  text-decoration: none;
-  font-weight: 500;
-}
-
-.stockmaster-forgot-password:hover {
-  text-decoration: underline;
-}
-
-.stockmaster-login-button {
-  width: 100%;
-  padding: 0.75rem 1rem;
-  background-color: var(--primary-color);
-  color: var(--white);
-  border: none;
-  border-radius: 0.5rem;
-  font-weight: 500;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  transition: background-color 0.2s;
+  gap: 10px;
+  margin: 20px 0;
 }
 
-.stockmaster-login-button:hover {
-  background-color: var(--primary-hover);
+.pin-box {
+  width: 60px;
+  height: 70px;
+  font-size: 2rem;
+  text-align: center;
+  font-weight: 700;
+  color: #333;
+  border: 3px solid #cbd5e1;
+  border-radius: 14px;
+  background: #f8fafc;
+  transition: all 0.2s ease;
+  outline: none;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
-.stockmaster-login-button:disabled {
-  opacity: 0.7;
+.pin-box:focus {
+  border-color: var(--login-primary);
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15), inset 0 2px 4px rgba(0, 0, 0, 0.05);
+  background: var(--login-white);
+  transform: scale(1.02);
+}
+
+.pin-box.filled {
+  border-color: var(--login-success);
+  background: #ecfdf5;
+  color: #065f46;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1), inset 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.pin-box.error {
+  border-color: var(--login-error);
+  background: #fef2f2;
+  animation: shake 0.5s;
+}
+
+.pin-box:disabled {
+  opacity: 0.6;
   cursor: not-allowed;
 }
 
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-8px); }
+  80% { transform: translateX(8px); }
+}
+
+.pin-error-message {
+  color: var(--login-error);
+  font-size: 0.875rem;
+  text-align: center;
+  margin-top: 12px;
+  font-weight: 500;
+}
+
+/* Number Pad Styles - Enhanced */
+.numpad-container {
+  margin-top: 24px;
+  display: flex;
+  justify-content: center;
+}
+
+.numpad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  width: 100%;
+  max-width: 320px;
+}
+
+.numpad-btn {
+  padding: 18px;
+  font-size: 1.5rem;
+  font-weight: 700;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #f1f5f9, #e2e8f0);
+  color: #1e293b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  touch-action: manipulation;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.numpad-btn:hover {
+  background: linear-gradient(145deg, #e2e8f0, #cbd5e1);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px -2px rgba(0, 0, 0, 0.15);
+}
+
+.numpad-btn:active {
+  background: linear-gradient(145deg, #cbd5e1, #94a3b8);
+  transform: translateY(0);
+  box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+}
+
+.numpad-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.numpad-btn-clear {
+  background: linear-gradient(145deg, #fecaca, #fca5a5);
+  color: #991b1b;
+}
+
+.numpad-btn-clear:hover {
+  background: linear-gradient(145deg, #fca5a5, #f87171);
+}
+
+.numpad-btn-backspace {
+  background: linear-gradient(145deg, #bfdbfe, #93c5fd);
+  color: #1e40af;
+}
+
+.numpad-btn-backspace:hover {
+  background: linear-gradient(145deg, #93c5fd, #60a5fa);
+}
+
+/* Error Message */
+.stockmaster-error-message {
+  background: #fef2f2;
+  color: var(--login-error);
+  padding: 12px 16px;
+  border-radius: 10px;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-align: center;
+  border: 1px solid #fecaca;
+}
+
+/* Footer */
+.stockmaster-login-footer {
+  margin-top: 2rem;
+  text-align: center;
+}
+
+.stockmaster-login-footer p {
+  color: var(--login-text-light);
+  font-size: 0.9rem;
+}
+
+.stockmaster-login-footer a {
+  color: var(--login-primary);
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s;
+}
+
+.stockmaster-login-footer a:hover {
+  color: var(--login-primary-dark);
+  text-decoration: underline;
+}
+
+/* Loading Spinner */
 .stockmaster-spinner {
-  width: 1.25rem;
-  height: 1.25rem;
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 3px solid rgba(255, 255, 255, 0.3);
   border-radius: 50%;
-  border-top-color: var(--white);
-  animation: spin 1s ease-in-out infinite;
+  border-top-color: var(--login-white);
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
 }
 
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
 
-.stockmaster-login-footer {
-  margin-top: 1.5rem;
-  text-align: center;
-  font-size: 0.875rem;
-  color: var(--text-light);
-}
-
-.stockmaster-login-footer a {
-  color: var(--primary-color);
-  font-weight: 500;
-  text-decoration: none;
-}
-
-.stockmaster-login-footer a:hover {
-  text-decoration: underline;
-}
-
-/* Responsive styles */
+/* Responsive */
 @media (max-width: 768px) {
   .stockmaster-login-container {
     flex-direction: column;
+    max-width: 420px;
   }
 
   .stockmaster-login-branding {
     padding: 2rem;
-    text-align: center;
   }
 
-  .stockmaster-logo {
-    justify-content: center;
+  .stockmaster-logo h1 {
+    font-size: 1.75rem;
+  }
+
+  .login-logo-png {
+    width: 2.5rem;
+    height: 2.5rem;
   }
 
   .stockmaster-login-form-container {
     padding: 2rem;
   }
-}
 
-@media (max-width: 480px) {
-  .stockmaster-login-branding,
-  .stockmaster-login-form-container {
-    padding: 1.5rem;
+  .stockmaster-login-card h2 {
+    font-size: 1.5rem;
   }
 
-  .stockmaster-form-options {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.75rem;
+  .pin-box {
+    width: 50px;
+    height: 60px;
+    font-size: 1.5rem;
+  }
+
+  .numpad-btn {
+    padding: 14px;
+    font-size: 1.25rem;
   }
 }

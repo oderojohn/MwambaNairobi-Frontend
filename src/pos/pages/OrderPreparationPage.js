@@ -917,7 +917,7 @@ const OrderPreparationPage = ({ products, categories, suppliers }) => {
       </header>
 
       {/* Main Content */}
-      <main className="order-prep-main-content" style={{ height: 'calc(100vh - 150px)', overflow: 'hidden' }}>
+      <main className="order-prep-main-content">
         <div className="order-prep-layout">
           {renderProductsTable()}
           {renderOrderItemsTable()}

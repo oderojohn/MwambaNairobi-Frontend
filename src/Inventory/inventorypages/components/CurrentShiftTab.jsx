@@ -1,7 +1,7 @@
 // components/CurrentShiftTab.jsx
 import React from 'react';
 import PropTypes from 'prop-types';
-import { formatCurrency } from '../../../services/ApiService/api';
+import { formatCurrency, userService } from '../../../services/ApiService/api';
 import './CurrentShiftTab.css';
 
 const CurrentShiftTab = ({
@@ -13,6 +13,8 @@ const CurrentShiftTab = ({
   handleViewTransactionDetails,
   loadCurrentShift
 }) => {
+  const canVoidSales = userService.getUserRole() === 'supervisor';
+
   if (!currentShift) {
     return (
       <div className="pos-admin-tab-content">
@@ -148,13 +150,15 @@ const CurrentShiftTab = ({
                         >
                           <i className="fas fa-eye"></i> View
                         </button>
-                        <button
-                          className="btn btn-sm btn-danger"
-                          onClick={() => handleVoidSale(sale)}
-                          disabled={isLoading}
-                        >
-                          <i className="fas fa-ban"></i> Void
-                        </button>
+                        {canVoidSales && (
+                          <button
+                            className="btn btn-sm btn-danger"
+                            onClick={() => handleVoidSale(sale)}
+                            disabled={isLoading}
+                          >
+                            <i className="fas fa-ban"></i> Void
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}

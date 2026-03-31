@@ -35,6 +35,7 @@
   flex-direction: column;
   animation: heldOrdersSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   border: 1px solid #e2e8f0;
+  backdrop-filter: blur(6px);
 }
 
 @keyframes heldOrdersSlideUp {
@@ -94,6 +95,44 @@
   background: #f8fafc;
 }
 
+.held-orders-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: linear-gradient(180deg, #f8fafc 0%, #f8fafc 85%, rgba(248,250,252,0));
+  padding-top: 6px;
+  padding-bottom: 6px;
+  box-shadow: 0 8px 12px -10px rgba(15, 23, 42, 0.35);
+}
+
+.held-summary-card {
+  background: linear-gradient(135deg, #0f172a, #1f2937);
+  color: #e5e7eb;
+  padding: 12px 14px;
+  border-radius: 12px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.25);
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.held-summary-label {
+  display: block;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.8;
+}
+
+.held-summary-value {
+  display: block;
+  font-size: 20px;
+  font-weight: 800;
+  margin-top: 6px;
+}
+
 /* Empty State */
 .held-orders-empty-state {
   text-align: center;
@@ -127,7 +166,7 @@
   overflow-x: auto;
   border-radius: 10px;
   border: 1px solid #e2e8f0;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
 }
 
 .held-orders-table {
@@ -135,6 +174,7 @@
   border-collapse: collapse;
   font-size: 14px;
   background: white;
+  border-spacing: 0 8px;
 }
 
 .held-orders-table thead th {
@@ -157,15 +197,25 @@
   border-bottom: 1px solid #f1f5f9;
   vertical-align: middle;
   transition: background-color 0.15s ease;
+  background: #ffffff;
+  position: relative;
 }
 
 /* Table Rows */
 .held-order-row {
   transition: background-color 0.15s ease;
+  border-left: 4px solid transparent;
+  background: #ffffff;
+  border-radius: 12px;
 }
 
 .held-order-row:hover {
-  background-color: #f1f5f9;
+  background-color: #f8fafc;
+  box-shadow: inset 0 1px 0 #e2e8f0;
+}
+
+.held-order-row:nth-child(even) td {
+  background: #f9fafb;
 }
 
 .held-order-row:last-child td {
@@ -176,6 +226,9 @@
 .held-order-id {
   font-weight: 600;
   color: #1e293b;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .held-order-date {
@@ -193,9 +246,9 @@
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
-  background: rgba(99, 102, 241, 0.1);
-  color: #6366f1;
-  border-radius: 20px;
+  background: linear-gradient(135deg, #eef2ff, #e0f2fe);
+  color: #1d4ed8;
+  border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
 }
@@ -212,6 +265,7 @@
 /* Items Summary */
 .held-order-items {
   min-width: 200px;
+  color: #0f172a;
 }
 
 .held-items-summary {
@@ -225,6 +279,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 4px 0;
+  border-bottom: 1px dashed #e2e8f0;
 }
 
 .held-item-name {
@@ -254,8 +309,8 @@
   font-style: italic;
   text-align: center;
   padding: 4px;
-  background: rgba(148, 163, 184, 0.1);
-  border-radius: 6px;
+  background: rgba(59, 130, 246, 0.08);
+  border-radius: 999px;
 }
 
 /* Total Amount */
@@ -266,26 +321,56 @@
 .held-total-amount {
   color: #059669;
   font-size: 14px;
-  background: rgba(5, 150, 105, 0.1);
-  padding: 8px 12px;
-  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(5,150,105,0.12), rgba(34,197,94,0.12));
+  padding: 10px 14px;
+  border-radius: 10px;
   display: inline-block;
 }
 
 /* Actions */
 .held-order-actions {
   text-align: center;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.held-order-print-btn {
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+  color: white;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  margin-right: 8px;
+  box-shadow: 0 6px 14px rgba(14,165,233,0.25);
+}
+
+.held-order-print-btn:hover {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+}
+
+.held-order-print-btn:active {
+  transform: translateY(0);
 }
 
 .held-order-load-btn {
-  background: #1d4ed8;
+  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
   color: white;
   border: none;
-  padding: 10px 18px;
-  border-radius: 6px;
+  padding: 10px 16px;
+  border-radius: 10px;
   cursor: pointer;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 800;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -371,46 +456,67 @@
 /* Responsive Design */
 @media (max-width: 768px) {
   .held-orders-modal-content {
-    width: 95%;
-    margin: 20px;
+    width: 97%;
+    margin: 12px;
+    max-height: 90vh;
+    border-radius: 18px;
+    box-shadow: 0 18px 36px rgba(15, 23, 42, 0.25);
+    overflow: hidden;
   }
 
   .held-orders-modal-header {
-    padding: 20px 24px;
+    padding: 16px 18px;
   }
 
   .held-orders-modal-body {
-    padding: 24px;
+    padding: 14px 12px;
+    padding-bottom: calc(14px + env(safe-area-inset-bottom));
   }
 
   .held-orders-modal-footer {
-    padding: 16px 24px;
+    padding: 12px 14px;
+  }
+
+  /* Keep dense table layout on mobile */
+  .held-orders-table-container {
+    max-height: 65vh;
+    overflow-y: auto;
+    overflow-x: auto;
+    border-radius: 12px;
+  }
+
+  .held-orders-table {
+    font-size: 12px;
+    min-width: 640px;
   }
 
   .held-orders-table thead th,
   .held-orders-table tbody td {
-    padding: 12px 8px;
-    font-size: 12px;
+    padding: 10px 10px;
   }
 
-  .held-order-items {
-    min-width: 150px;
+  .held-orders-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 4;
   }
 
-  .held-item-summary {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
+  .held-order-row {
+    border-left-width: 3px;
   }
 
+  .held-order-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .held-order-print-btn,
   .held-order-load-btn {
-    padding: 8px 12px;
-    font-size: 11px;
-  }
-
-  .held-orders-close-btn {
-    padding: 10px 20px;
-    font-size: 13px;
+    flex: 1 1 48%;
+    min-width: 120px;
+    padding: 10px 12px;
+    font-size: 12px;
   }
 }
 
@@ -419,12 +525,8 @@
     font-size: 18px;
   }
 
-  .held-orders-modal-body {
-    padding: 20px;
-  }
-
-  .held-orders-table-container {
-    font-size: 11px;
+  .held-orders-table {
+    min-width: 560px;
   }
 
   .customer-tag {
@@ -434,6 +536,29 @@
 
   .held-total-amount {
     padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  .held-orders-summary {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .held-summary-value {
+    font-size: 18px;
+  }
+
+  .held-orders-modal-content {
+    width: 96%;
+    margin: 10px;
+    max-height: 86vh;
+  }
+
+  .held-order-print-btn,
+  .held-order-load-btn {
+    flex: 1 1 100%;
+    min-width: 0;
+    padding: 10px 12px;
     font-size: 12px;
   }
 }

@@ -425,7 +425,7 @@ ${order.notes ? `Notes: ${order.notes}` : ''}
                               onClick={() => updateOrderStatus(order.id, 'pending')}
                               disabled={isLoading}
                             >
-                              <i className="fas fa-pause"></i> Hold
+                              <i className="fas fa-pause"></i> Pending
                             </button>
                             <button
                               className="btn btn-sm btn-success"

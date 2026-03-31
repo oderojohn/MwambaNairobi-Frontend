@@ -1,6 +1,5 @@
 // apiBase.js
-const API_BASE_URL = 'https://pos-iota-five.vercel.app';
-
+const API_BASE_URL = "http://localhost:8000";
 // Utility function to safely convert values to numbers
 export const toNumber = (value) => {
   if (typeof value === 'number') return value;
@@ -119,13 +118,15 @@ export const apiRequest = async (endpoint, method = 'GET', body = null, headers 
 };
 
 export const authService = {
-  login: async (username, password) => {
-    const response = await apiRequest('/api/auth/login/', 'POST', { username, password });
+  login: async (pin) => {
+    const response = await apiRequest('/api/auth/login/', 'POST', { pin });
     tokenService.setTokens(response.access, response.refresh);
+    const roles = response.roles?.length ? response.roles : (response.role ? [response.role] : []);
     userService.setUserData({
       username: response.username,
       name: response.name,
-      roles: response.roles,
+      roles,
+      role: response.role || roles[0] || null,
       tenant_roles: response.tenant_roles,
       is_superadmin: response.is_superadmin,
       tenant: response.tenant,
@@ -190,9 +191,6 @@ export const authService = {
         tokenService.clearTokens();
         userService.clearUserData();
         console.log('Logout process completed');
-
-        // Refresh the page to show login
-        window.location.reload();
       } catch (cleanupError) {
         console.error('Error during client cleanup:', {
           error: cleanupError,
@@ -218,7 +216,7 @@ export const userService = {
   clearUserData: () => localStorage.removeItem(STORAGE_KEYS.USER_DATA),
   getUserRole: () => {
     const data = userService.getUserData();
-    return data?.roles || null;
+    return data?.roles?.[0] || data?.role || null;
   },
   getIsSuperAdmin: () => {
     const data = userService.getUserData();

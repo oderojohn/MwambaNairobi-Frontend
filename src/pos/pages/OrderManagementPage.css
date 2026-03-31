@@ -5,6 +5,7 @@
   margin: 0 auto;
   background-color: #f5f7fa;
   min-height: 100vh;
+  min-height: 100dvh;
   font-family: 'Segoe UI', 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
   width: 100%;
 }

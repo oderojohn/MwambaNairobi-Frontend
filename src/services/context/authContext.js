@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useCallback, useMemo, useContext } from 'react';
 import { initializeAuth, authService, userService } from '../ApiService/api';
+import { normalizeRole } from '../../utils/roleAccess';
 
 export const AuthContext = createContext();
 
@@ -21,23 +22,25 @@ export const AuthProvider = ({ children }) => {
 
   const loadAuth = () => {
     const result = initializeAuth();
-    setAuthState({ ...result, loading: false });
+    setAuthState({ ...result, role: normalizeRole(result.role), loading: false });
   };
 
   useEffect(() => {
     loadAuth();
   }, []);
 
-  const login = useCallback(async (username, password) => {
-    const response = await authService.login(username, password); // This calls your API
-    console.log('Login response:', response); // Temporary console log for debugging
-    // After successful API response, update context state
+  const login = useCallback(async (pin) => {
+    const response = await authService.login(pin);
+    const role = normalizeRole(userService.getUserRole() || response?.role || response?.roles?.[0]);
+
     setAuthState({
       isAuthenticated: true,
       user: userService.getUserData(),
-      role: userService.getUserRole(),
+      role,
       loading: false
     });
+
+    return { role };
   }, []);
 
   const logout = useCallback(async () => {

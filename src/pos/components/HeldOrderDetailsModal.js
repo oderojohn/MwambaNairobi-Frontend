@@ -16,76 +16,37 @@ const HeldOrderDetailsModal = ({
   const [showVoidModal, setShowVoidModal] = useState(false);
   const [voidReason, setVoidReason] = useState('');
   const [isVoiding, setIsVoiding] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedItems, setEditedItems] = useState([]);
+  // editing existing items is locked in this module
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [productSearch, setProductSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isUpdatingItem, setIsUpdatingItem] = useState(false);
 
   if (!isOpen || !heldOrder) return null;
 
-  // Initialize edited items when modal opens or edit mode starts
-  const initializeEditItems = () => {
-    if (heldOrder.items && Array.isArray(heldOrder.items)) {
-      setEditedItems([...heldOrder.items]);
-    }
-  };
-
-  const handleStartEdit = () => {
-    initializeEditItems();
-    setIsEditing(true);
-  };
-
-  const handleCancelEdit = () => {
-    setIsEditing(false);
-    setEditedItems([]);
-    setShowAddProduct(false);
-    setProductSearch('');
-  };
-
-  const handleRemoveItem = (index) => {
-    const newItems = [...editedItems];
-    newItems.splice(index, 1);
-    setEditedItems(newItems);
-  };
-
-  const handleUpdateQuantity = (index, newQuantity) => {
-    const qty = parseInt(newQuantity) || 0;
-    if (qty <= 0) {
-      handleRemoveItem(index);
-    } else {
-      const newItems = [...editedItems];
-      newItems[index] = { ...newItems[index], quantity: qty };
-      setEditedItems(newItems);
-    }
-  };
-
-  const handleAddProduct = (product) => {
-    // Check if product already exists in items
-    const existingIndex = editedItems.findIndex(item => item.product === product.id);
-    if (existingIndex >= 0) {
-      // Update quantity
-      const newItems = [...editedItems];
-      newItems[existingIndex] = { 
-        ...newItems[existingIndex], 
-        quantity: newItems[existingIndex].quantity + 1 
+  const handleAddProduct = async (product) => {
+    setIsSaving(true);
+    try {
+      const payload = {
+        items_to_add: [{
+          product: product.id,
+          quantity: 1,
+          unit_price: product.selling_price,
+        }],
+        items_to_remove: [],
+        update_quantities: {}
       };
-      setEditedItems(newItems);
-    } else {
-      // Add new item
-      const newItem = {
-        id: `new_${Date.now()}_${product.id}`,
-        product: product.id,
-        product_name: product.name,
-        quantity: 1,
-        unit_price: product.selling_price,
-        is_new: true
-      };
-      setEditedItems([...editedItems, newItem]);
+      const result = await salesAPI.updateHeldOrder(heldOrder.id, payload);
+      setShowAddProduct(false);
+      setProductSearch('');
+      if (onOrderUpdated) onOrderUpdated(result);
+    } catch (error) {
+      console.error('Error adding product to held order:', error);
+      alert('Could not add product. Please try again.');
+    } finally {
+      setIsSaving(false);
     }
-    setShowAddProduct(false);
-    setProductSearch('');
   };
 
   const calculateTotal = (items) => {
@@ -95,53 +56,21 @@ const HeldOrderDetailsModal = ({
     }, 0);
   };
 
-  const handleSaveChanges = async () => {
-    setIsSaving(true);
+  const handleIncreaseQuantity = async (item) => {
+    setIsUpdatingItem(true);
     try {
-      // Separate new items and existing items
-      const newItems = editedItems.filter(item => item.is_new).map(item => ({
-        product: item.product,
-        quantity: item.quantity,
-        unit_price: item.unit_price
-      }));
-      
-      // Get items to remove (items in original but not in edited)
-      const originalIds = (heldOrder.items || []).map(item => item.id);
-      const editedIds = editedItems.map(item => item.id).filter(id => !String(id).startsWith('new_'));
-      const itemsToRemove = originalIds.filter(id => !editedIds.includes(id));
-      
-      // Get quantity updates
-      const updateQuantities = {};
-      editedItems.forEach(item => {
-        if (!item.is_new) {
-          const original = heldOrder.items.find(i => i.id === item.id);
-          if (original && original.quantity !== item.quantity) {
-            updateQuantities[item.id] = item.quantity;
-          }
-        }
-      });
-
+      const newQty = (item.quantity || 0) + 1;
       const result = await salesAPI.updateHeldOrder(heldOrder.id, {
-        items_to_add: newItems,
-        items_to_remove: itemsToRemove,
-        update_quantities: updateQuantities
+        items_to_add: [],
+        items_to_remove: [],
+        update_quantities: { [item.id]: newQty }
       });
-
-      if (onOrderUpdated) {
-        onOrderUpdated(result);
-      }
-      
-      setIsEditing(false);
-      setShowAddProduct(false);
-      setEditedItems([]);
-      
-      // Show success
-      alert('Held order updated successfully!');
+      if (onOrderUpdated) onOrderUpdated(result);
     } catch (error) {
-      console.error('Error updating held order:', error);
-      alert('Failed to update held order. Please try again.');
+      console.error('Error increasing quantity:', error);
+      alert('Could not update quantity. Please try again.');
     } finally {
-      setIsSaving(false);
+      setIsUpdatingItem(false);
     }
   };
 
@@ -169,8 +98,8 @@ const HeldOrderDetailsModal = ({
     }
   };
 
-  const displayItems = isEditing ? editedItems : heldOrder.items;
-  const displayTotal = isEditing ? calculateTotal(editedItems) : calculateTotal(heldOrder.items);
+  const displayItems = heldOrder.items || [];
+  const displayTotal = calculateTotal(displayItems);
 
   // Get all products for adding - show both stock and out of stock
   let availableProducts = products ? products.filter(p => 
@@ -201,16 +130,97 @@ const HeldOrderDetailsModal = ({
     return item.product_name || `Product ${item.product}`;
   };
 
-  const mainModal = (
-    <div className="held-order-modal-overlay">
-      <div className="held-order-modal-content held-order-modal-large">
+  const renderVoidModal = () => (
+    <div className="held-order-modal-overlay" style={{ zIndex: 1100 }}>
+      <div className="held-order-modal-content">
         <div className="modal-header">
           <h3>
-            <i className="fas fa-receipt"></i>
-            Held Order Details - Order #{heldOrder.id}
-            {isEditing && <span className="edit-badge">Editing</span>}
+            <i className="fas fa-exclamation-triangle"></i>
+            Void Held Order
           </h3>
-          <span className="close" onClick={onClose}>&times;</span>
+          <span className="close" onClick={() => setShowVoidModal(false)}>&times;</span>
+        </div>
+
+        <div className="held-order-modal-body">
+          <div className="alert alert-warning">
+            <i className="fas fa-exclamation-circle"></i>
+            <div>
+              <strong>Warning: Destructive Action</strong>
+              <div>This pending order will be permanently voided and cannot be recovered.</div>
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label>
+              <i className="fas fa-edit"></i>
+              Reason for Voiding
+            </label>
+            <textarea
+              value={voidReason}
+              onChange={(e) => setVoidReason(e.target.value)}
+              placeholder="Please provide a detailed reason for voiding this order..."
+              rows="4"
+              className="form-control"
+              required
+              disabled={isVoiding}
+            />
+            <small className="text-muted">This reason will be recorded in the system logs.</small>
+          </div>
+        </div>
+
+        <div className="held-order-modal-footer">
+          <button
+            className="held-order-modal-btn held-order-modal-btn-secondary"
+            onClick={() => setShowVoidModal(false)}
+            disabled={isVoiding}
+          >
+            <i className="fas fa-arrow-left"></i>
+            Go Back
+          </button>
+          <button
+            className="held-order-modal-btn held-order-modal-btn-danger"
+            onClick={handleVoidOrder}
+            disabled={isVoiding || !voidReason.trim()}
+          >
+            {isVoiding ? (
+              <>
+                <i className="fas fa-spinner fa-spin"></i>
+                Voiding...
+              </>
+            ) : (
+              <>
+                <i className="fas fa-ban"></i>
+                Confirm Void
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (showVoidModal) {
+    return renderVoidModal();
+  }
+
+  return (
+    <div className="held-order-modal-overlay">
+      <div className="held-order-modal-content held-order-modal-large">
+        <div className="modal-header held-order-modal-hero">
+          <div className="held-order-modal-hero__title-wrap">
+            <div className="held-order-modal-hero__icon">
+              <i className="fas fa-receipt"></i>
+            </div>
+            <div className="held-order-modal-hero__copy">
+              <span className="held-order-modal-hero__eyebrow">Pending Order Workspace</span>
+              <h3 className="held-order-modal-hero__title">Held Order Details</h3>
+              <div className="held-order-modal-hero__meta">
+                <span className="held-order-modal-hero__order-badge">Order #{heldOrder.id}</span>
+                <span className="held-order-modal-hero__timestamp">{new Date(heldOrder.created_at).toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+          <button type="button" className="held-order-modal-hero__close" onClick={onClose} aria-label="Close held order details">&times;</button>
         </div>
 
         <div className="held-order-modal-body">
@@ -239,7 +249,7 @@ const HeldOrderDetailsModal = ({
               </div>
             )}
 
-            <div className="info-card info-card--total">
+            <div className="info-card info-card--total" style={{ display: 'none' }}>
               <div className="info-card__icon">
                 <i className="fas fa-dollar-sign"></i>
               </div>
@@ -258,21 +268,18 @@ const HeldOrderDetailsModal = ({
                 <i className="fas fa-list-ul"></i>
                 Order Items ({displayItems?.length || 0})
               </h4>
-              {!isEditing && (
-                <button className="btn-edit-items" onClick={handleStartEdit}>
-                  <i className="fas fa-edit"></i> Edit Items
-                </button>
-              )}
+              <div className="held-edit-locked">
+                Editing locked. Add similar items or increase quantities only.
+              </div>
             </div>
             
             {/* Add Product Section */}
-            {isEditing && (
-              <div className="add-product-section">
-                <div className="add-product-header">
-                  <button 
-                    className="btn-add-product-toggle"
-                    onClick={() => setShowAddProduct(!showAddProduct)}
-                  >
+            <div className="add-product-section">
+              <div className="add-product-header">
+                <button 
+                  className="btn-add-product-toggle"
+                  onClick={() => setShowAddProduct(!showAddProduct)}
+                >
                     <i className="fas fa-plus"></i> Add Product
                   </button>
                   
@@ -376,7 +383,7 @@ const HeldOrderDetailsModal = ({
                   </div>
                 )}
               </div>
-            )}
+            </div>
             
             <div className="held-order-modal-table-responsive">
               <table className="held-order-modal-table">
@@ -384,10 +391,10 @@ const HeldOrderDetailsModal = ({
                   <tr>
                     <th>#</th>
                     <th>Product</th>
-                    <th>Quantity</th>
-                    <th>Unit Price</th>
+                    <th>Qty</th>
+                    <th>Unit</th>
                     <th>Total</th>
-                    {isEditing && <th>Actions</th>}
+                    <th style={{ width: '72px' }}>Add</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -395,32 +402,19 @@ const HeldOrderDetailsModal = ({
                     <tr key={item.id || index}>
                       <td>{index + 1}</td>
                       <td>{getProductName(item)}</td>
-                      <td>
-                        {isEditing ? (
-                          <input
-                            type="number"
-                            min="1"
-                            value={item.quantity}
-                            onChange={(e) => handleUpdateQuantity(index, e.target.value)}
-                            className="quantity-input"
-                          />
-                        ) : (
-                          item.quantity
-                        )}
-                      </td>
+                      <td>{item.quantity}</td>
                       <td>{formatCurrency(parseFloat(item.unit_price || 0))}</td>
                       <td>{formatCurrency(parseFloat(item.unit_price || 0) * parseInt(item.quantity || 0))}</td>
-                      {isEditing && (
-                        <td>
-                          <button
-                            className="btn-remove-item"
-                            onClick={() => handleRemoveItem(index)}
-                            title="Remove item"
-                          >
-                            <i className="fas fa-trash"></i>
-                          </button>
-                        </td>
-                      )}
+                      <td>
+                        <button
+                          className="btn-qty-increase"
+                          onClick={() => handleIncreaseQuantity(item)}
+                          disabled={isUpdatingItem}
+                          title="Add one more"
+                        >
+                          <i className={`fas ${isUpdatingItem ? 'fa-spinner fa-spin' : 'fa-plus'}`}></i>
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -430,129 +424,22 @@ const HeldOrderDetailsModal = ({
         </div>
 
         <div className="held-order-modal-footer">
-          {isEditing ? (
-            <>
-              <button 
-                className="held-order-modal-btn held-order-modal-btn-secondary" 
-                onClick={handleCancelEdit}
-                disabled={isSaving}
-              >
-                <i className="fas fa-times"></i>
-                Cancel
-              </button>
-              <button 
-                className="held-order-modal-btn held-order-modal-btn-primary" 
-                onClick={handleSaveChanges}
-                disabled={isSaving || displayItems.length === 0}
-              >
-                {isSaving ? (
-                  <>
-                    <i className="fas fa-spinner fa-spin"></i>
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <i className="fas fa-save"></i>
-                    Save Changes
-                  </>
-                )}
-              </button>
-            </>
-          ) : (
-            <>
-              <button className="held-order-modal-btn held-order-modal-btn-danger" onClick={() => setShowVoidModal(true)}>
-                <i className="fas fa-ban"></i>
-                Void Order
-              </button>
-              <button className="held-order-modal-btn held-order-modal-btn-secondary" onClick={onClose}>
-                <i className="fas fa-times"></i>
-                Cancel
-              </button>
-              <button className="held-order-modal-btn held-order-modal-btn-primary" onClick={() => onProceedToPayment(heldOrder)}>
-                <i className="fas fa-credit-card"></i>
-                Proceed to Payment
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderVoidModal = () => (
-    <div className="held-order-modal-overlay" style={{ zIndex: 1100 }}>
-      <div className="held-order-modal-content">
-        <div className="modal-header">
-          <h3>
-            <i className="fas fa-exclamation-triangle"></i>
-            Void Held Order
-          </h3>
-          <span className="close" onClick={() => setShowVoidModal(false)}>&times;</span>
-        </div>
-
-        <div className="held-order-modal-body">
-          <div className="alert alert-warning">
-            <i className="fas fa-exclamation-circle"></i>
-            <div>
-              <strong>Warning: Destructive Action</strong>
-              <div>This held order will be permanently voided and cannot be recovered.</div>
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label>
-              <i className="fas fa-edit"></i>
-              Reason for Voiding
-            </label>
-            <textarea
-              value={voidReason}
-              onChange={(e) => setVoidReason(e.target.value)}
-              placeholder="Please provide a detailed reason for voiding this order..."
-              rows="4"
-              className="form-control"
-              required
-              disabled={isVoiding}
-            />
-            <small className="text-muted">This reason will be recorded in the system logs.</small>
-          </div>
-        </div>
-
-        <div className="held-order-modal-footer">
-          <button
-            className="held-order-modal-btn held-order-modal-btn-secondary"
-            onClick={() => setShowVoidModal(false)}
-            disabled={isVoiding}
-          >
-            <i className="fas fa-arrow-left"></i>
-            Go Back
+          <button className="held-order-modal-btn held-order-modal-btn-danger" onClick={() => setShowVoidModal(true)}>
+            <i className="fas fa-ban"></i>
+            Void Order
           </button>
-          <button
-            className="held-order-modal-btn held-order-modal-btn-danger"
-            onClick={handleVoidOrder}
-            disabled={isVoiding || !voidReason.trim()}
-          >
-            {isVoiding ? (
-              <>
-                <i className="fas fa-spinner fa-spin"></i>
-                Voiding...
-              </>
-            ) : (
-              <>
-                <i className="fas fa-ban"></i>
-                Confirm Void
-              </>
-            )}
+          <button className="held-order-modal-btn held-order-modal-btn-secondary" onClick={onClose}>
+            <i className="fas fa-times"></i>
+            Cancel
+          </button>
+          <button className="held-order-modal-btn held-order-modal-btn-primary" onClick={() => onProceedToPayment(heldOrder)}>
+            <i className="fas fa-credit-card"></i>
+            Proceed to Payment
           </button>
         </div>
       </div>
-    </div>
+   
   );
-
-  if (showVoidModal) {
-    return renderVoidModal();
-  }
-
-  return mainModal;
 };
 
 export default HeldOrderDetailsModal;
