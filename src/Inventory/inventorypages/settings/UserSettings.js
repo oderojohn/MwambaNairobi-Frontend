@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   FiEdit,
   FiPlus,
@@ -81,7 +81,7 @@ const UserSettings = () => {
     return data ? Object.values(data) : [];
   };
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     setErrorMessage('');
     try {
@@ -108,11 +108,11 @@ const UserSettings = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [editingUser]);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   const handlePermissionToggle = async (userId, key) => {
     const target = users.find((u) => u.id === userId);

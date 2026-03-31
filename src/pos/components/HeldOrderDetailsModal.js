@@ -20,13 +20,11 @@ const HeldOrderDetailsModal = ({
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [productSearch, setProductSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
   const [isUpdatingItem, setIsUpdatingItem] = useState(false);
 
   if (!isOpen || !heldOrder) return null;
 
   const handleAddProduct = async (product) => {
-    setIsSaving(true);
     try {
       const payload = {
         items_to_add: [{
@@ -44,8 +42,6 @@ const HeldOrderDetailsModal = ({
     } catch (error) {
       console.error('Error adding product to held order:', error);
       alert('Could not add product. Please try again.');
-    } finally {
-      setIsSaving(false);
     }
   };
 

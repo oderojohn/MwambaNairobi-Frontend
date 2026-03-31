@@ -1,10 +1,12 @@
-import React, { useState, useContext, useEffect, useRef } from 'react';
+import React, { useState, useContext, useEffect, useRef, useCallback } from 'react';
 import { FiLogIn, FiKey } from 'react-icons/fi';
 import logo from '../logo.png';
 import { AuthContext } from '../services/context/authContext';
 import '../assets/pagesStyles/LoginPage.css';
 import { useNavigate } from 'react-router-dom';
 import { getDefaultRouteForRole } from '../utils/roleAccess';
+
+const PIN_LENGTH = 5;
 
 const LoginPage = () => {
   const { login } = useContext(AuthContext);
@@ -14,7 +16,6 @@ const LoginPage = () => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const inputRefs = useRef([]);
-  const PIN_LENGTH = 5;
 
   useEffect(() => {
     if (inputRefs.current[0]) {
@@ -22,14 +23,7 @@ const LoginPage = () => {
     }
   }, []);
 
-  useEffect(() => {
-    const fullPin = pin.join('');
-    if (fullPin.length === PIN_LENGTH && !isLoading) {
-      handleSubmit(new Event('auto-submit'));
-    }
-  }, [pin]);
-
-  const handleSubmit = async (e) => {
+  const handleSubmit = useCallback(async (e) => {
     if (e && e.type !== 'auto-submit') {
       e.preventDefault();
     }
@@ -50,7 +44,14 @@ const LoginPage = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [login, navigate, pin]);
+
+  useEffect(() => {
+    const fullPin = pin.join('');
+    if (fullPin.length === PIN_LENGTH && !isLoading) {
+      handleSubmit(new Event('auto-submit'));
+    }
+  }, [handleSubmit, isLoading, pin]);
 
   const handlePinChange = (index, value) => {
     if (value.length > 1) return;
