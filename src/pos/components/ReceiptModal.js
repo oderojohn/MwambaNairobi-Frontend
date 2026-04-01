@@ -408,28 +408,80 @@ const ReceiptModal = ({
   };
 
   const currentDate = new Date().toLocaleString();
-  const buildReceiptMessage = () => {
-    const header = `Receipt ${saleData?.receipt_number || 'N/A'} - ${formatCurrency(total)}`;
-    const lines = (cart || []).map(
-      (item) => `${item.quantity} x ${item.name || item.product_name || 'Item'} @ ${formatCurrency(item.price || item.unit_price || 0)} = ${formatCurrency((item.price || item.unit_price || 0) * item.quantity)}`
-    );
-    const customerLine = customer ? `Customer: ${customer.name}${customer.phone ? ` (${customer.phone})` : ''}` : 'Customer: Walk-in';
-    return [header, customerLine, `Mode: ${mode.toUpperCase()}`, `Payment: ${paymentMethod.toUpperCase()}`, ...lines, `TOTAL: ${formatCurrency(total)}`, 'Thank you!'].join('\n');
+  const normalizePhoneNumber = (value) => {
+    const raw = String(value || '').trim().replace(/[^\d+]/g, '');
+
+    if (!raw) return '';
+    if (raw.startsWith('+254') && /^\+254\d{9}$/.test(raw)) return raw;
+    if (raw.startsWith('254') && /^254\d{9}$/.test(raw)) return `+${raw}`;
+    if (raw.startsWith('0') && /^0\d{9}$/.test(raw)) return `+254${raw.slice(1)}`;
+
+    return raw;
   };
 
-  const sanitizedPhone = (phone) => (phone || '').replace(/[^0-9+]/g, '');
+  const buildWhatsAppMessage = () => {
+    const items = (cart || []).map(
+      (item) => `- ${item.quantity} x ${item.name || item.product_name || 'Item'} @ ${formatCurrency(item.price || item.unit_price || 0)} = ${formatCurrency((item.price || item.unit_price || 0) * item.quantity)}`
+    );
+
+    return [
+      '*MWAMBA LIQUOR STORES*',
+      '*RECEIPT*',
+      `${saleData?.receipt_number || 'N/A'}`,
+      '',
+      `Date: ${currentDate}`,
+      `Customer: ${customer?.name || 'Walk-in'}`,
+      `Mode: ${mode.toUpperCase()}`,
+      `Payment: ${paymentMethod.toUpperCase()}`,
+      '',
+      '*Items*',
+      ...items,
+      '',
+      `*Total: ${formatCurrency(total)}*`,
+      change > 0 ? `Change: ${formatCurrency(change)}` : null,
+      '',
+      'Thank you for shopping with us.'
+    ].filter(Boolean).join('\n');
+  };
+
+  const buildSmsMessage = () => {
+    const lines = (cart || []).map(
+      (item) => `${item.quantity} x ${item.name || item.product_name || 'Item'} = ${formatCurrency((item.price || item.unit_price || 0) * item.quantity)}`
+    );
+
+    return [
+      `Receipt ${saleData?.receipt_number || 'N/A'}`,
+      `Customer: ${customer?.name || 'Walk-in'}`,
+      ...lines,
+      `Total: ${formatCurrency(total)}`,
+      'Thank you.'
+    ].join('\n');
+  };
 
   const openWhatsApp = () => {
-    const message = encodeURIComponent(buildReceiptMessage());
-    const phone = sanitizedPhone(recipientPhone);
-    const url = `https://wa.me/${phone}?text=${message}`;
+    const normalizedPhone = normalizePhoneNumber(recipientPhone);
+    if (!/^\+254\d{9}$/.test(normalizedPhone)) {
+      alert('WhatsApp number must be in the format +254712345678.');
+      return;
+    }
+
+    setRecipientPhone(normalizedPhone);
+    const message = encodeURIComponent(buildWhatsAppMessage());
+    const waPhone = normalizedPhone.replace('+', '');
+    const url = `https://wa.me/${waPhone}?text=${message}`;
     window.open(url, '_blank');
   };
 
   const openSMS = () => {
-    const message = encodeURIComponent(buildReceiptMessage());
-    const phone = sanitizedPhone(recipientPhone);
-    window.location.href = `sms:${phone}?&body=${message}`;
+    const normalizedPhone = normalizePhoneNumber(recipientPhone);
+    if (!/^\+254\d{9}$/.test(normalizedPhone)) {
+      alert('SMS number must be in the format +254712345678.');
+      return;
+    }
+
+    setRecipientPhone(normalizedPhone);
+    const message = encodeURIComponent(buildSmsMessage());
+    window.location.href = `sms:${normalizedPhone}?&body=${message}`;
   };
 
   return (

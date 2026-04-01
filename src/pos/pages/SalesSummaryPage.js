@@ -50,6 +50,7 @@ const SalesSummaryPage = () => {
   const [shiftStatus, setShiftStatus] = useState(searchParams.get('shift_status') || 'open');
   const topbarPerms = user?.topbar_permissions || userService.getTopbarPermissions();
   const isSupervisor = user?.role === 'supervisor';
+  const canProcessReturns = user?.role !== 'waiter';
   const allowAll = topbarPerms.global_sales || ['admin', 'manager', 'supervisor'].includes(user?.role);
   const leadLabel = isSupervisor ? 'User' : 'Cashier';
   const showScopeBar = isSupervisor;
@@ -176,6 +177,9 @@ const SalesSummaryPage = () => {
   };
 
   const handleReturn = (sale) => {
+    if (!canProcessReturns) {
+      return;
+    }
     if (scope === 'all' && user?.role && !['admin', 'manager', 'supervisor'].includes(user.role)) {
       alert('Returns across users are restricted to admin, manager, or supervisor.');
       return;
@@ -222,6 +226,9 @@ const SalesSummaryPage = () => {
   };
 
   const submitReturn = async (sale) => {
+    if (!canProcessReturns) {
+      return;
+    }
     if (scope === 'all' && user?.role && !['admin', 'manager', 'supervisor'].includes(user.role)) {
       alert('Returns across users are restricted to admin, manager, or supervisor.');
       return;
@@ -1240,14 +1247,16 @@ const SalesSummaryPage = () => {
                                           <i className="fas fa-ban"></i>
                                         </button>
                                       )}
-                                      <button
-                                        className="pos-ssp-btn-icon pos-ssp-btn-outline-danger"
-                                        onClick={() => handleReturn(sale)}
-                                        title="Process Return"
-                                      >
-                                        <i className="fas fa-undo"></i>
-                                        <span style={{ marginLeft: '4px', fontSize: '10px' }}>Return</span>
-                                      </button>
+                                      {canProcessReturns && (
+                                        <button
+                                          className="pos-ssp-btn-icon pos-ssp-btn-outline-danger"
+                                          onClick={() => handleReturn(sale)}
+                                          title="Process Return"
+                                        >
+                                          <i className="fas fa-undo"></i>
+                                          <span style={{ marginLeft: '4px', fontSize: '10px' }}>Return</span>
+                                        </button>
+                                      )}
                                     </>
                                   )}
                                 </div>
