@@ -58,6 +58,10 @@ function PosApp() {
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [receiptData, setReceiptData] = useState(null);
   const [topbarPermissions, setTopbarPermissions] = useState(DEFAULT_TOPBAR_PERMISSIONS);
+  const [refreshingProducts, setRefreshingProducts] = useState(false);
+  const currentRole = String(user?.role || user?.roles?.[0] || userService.getUserRole() || '').toLowerCase();
+  const canUseWholesale = currentRole !== 'waiter';
+  const showWaiterMobileRefresh = currentRole === 'waiter';
   
   const getHeldOrderLockedQuantity = (item) => {
     if (!currentHeldOrderId) {
@@ -302,8 +306,15 @@ function PosApp() {
     fetchData();
   }, [user, fetchData]);
 
+  useEffect(() => {
+    if (!canUseWholesale && mode === 'wholesale') {
+      setMode('retail');
+    }
+  }, [canUseWholesale, mode]);
+
   // Handle mode changes
   const handleModeChange = async (newMode) => {
+    if (newMode === 'wholesale' && !canUseWholesale) return;
     if (newMode === mode) return;
 
     // Clear cart when switching modes
@@ -344,6 +355,24 @@ function PosApp() {
   const handleCustomerClear = () => {
     setSelectedCustomer(null);
   };
+
+  const refreshProductsOnly = useCallback(async () => {
+    try {
+      setRefreshingProducts(true);
+      const [productsRes, categoriesRes] = await Promise.all([
+        inventoryAPI.products.getPosProducts({ mode }),
+        inventoryAPI.categories.getAll()
+      ]);
+
+      setProducts(productsRes || []);
+      setCategories(categoriesRes || []);
+    } catch (error) {
+      console.error('Error refreshing products:', error);
+      showError('Refresh Failed', error.message || 'Could not refresh products right now.');
+    } finally {
+      setRefreshingProducts(false);
+    }
+  }, [mode]);
 
   const addToCart = (product) => {
     // Strict shift check - no operations allowed without active shift
@@ -1741,6 +1770,12 @@ function PosApp() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  useEffect(() => {
+    if (itemCount === 0 && isMobileCartOpen) {
+      setIsMobileCartOpen(false);
+    }
+  }, [itemCount, isMobileCartOpen]);
+
   // Check current path to determine which component to render
   const isOrderPreparationPage = location.pathname === '/order-preparation';
   const isOrderManagementPage = location.pathname === '/order-management';
@@ -1784,6 +1819,10 @@ function PosApp() {
         currentShift={currentShift}
         mode={mode}
         onModeChange={handleModeChange}
+        canUseWholesale={canUseWholesale}
+        showMobileRefreshButton={showWaiterMobileRefresh}
+        onRefreshProducts={refreshProductsOnly}
+        refreshingProducts={refreshingProducts}
         onCustomerLookup={() => setShowCustomerLookupModal(true)}
         onCustomerClear={handleCustomerClear}
         selectedCustomer={selectedCustomer}

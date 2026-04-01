@@ -851,7 +851,7 @@
 
 .sv-waiter-card__streams {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -884,7 +884,7 @@
   color: #475569;
 }
 
-.sv-stream__list {
+.sv-stream__table-wrap {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -900,70 +900,58 @@
   background: rgba(255, 255, 255, 0.85);
 }
 
-.sv-sale-card {
-  border-radius: 14px;
-  padding: 10px;
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 8px 18px rgba(148, 163, 184, 0.08);
-}
-
-.sv-sale-card--completed {
-  border-left: 4px solid #22c55e;
-}
-
-.sv-sale-card--held {
-  border-left: 4px solid #f97316;
-}
-
-.sv-sale-card__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.sv-sale-card__title {
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  font-size: 0.72rem;
-  font-weight: 800;
-  color: #0f172a;
-}
-
-.sv-sale-card__time {
-  font-size: 0.66rem;
-  color: #64748b;
-}
-
-.sv-sale-card__meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 8px 0;
-}
-
-.sv-sale-card__items {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.sv-sale-card__item {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  gap: 8px;
+.sv-compact-table {
+  width: 100%;
+  border-collapse: collapse;
   font-size: 0.7rem;
-  color: #334155;
+  overflow: hidden;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.88);
 }
 
-.sv-sale-card__item span:first-child {
-  font-weight: 700;
-  color: #111827;
+.sv-compact-table th,
+.sv-compact-table td {
+  padding: 7px 8px;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.sv-compact-table th {
+  font-size: 0.64rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+  background: rgba(248, 250, 252, 0.96);
+}
+
+.sv-compact-table td {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.sv-compact-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.sv-compact-table th:last-child,
+.sv-compact-table td:last-child {
+  text-align: right;
+}
+
+.sv-stream__more {
+  font-size: 0.68rem;
+  color: #64748b;
+  text-align: right;
 }
 
 @media (max-width: 768px) {
   .sv-overview__stats,
   .sv-waiter-card__stats {
+    grid-template-columns: 1fr;
+  }
+
+  .sv-waiter-card__streams {
     grid-template-columns: 1fr;
   }
 }

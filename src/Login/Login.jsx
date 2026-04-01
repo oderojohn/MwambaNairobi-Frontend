@@ -96,41 +96,6 @@ const LoginPage = () => {
     inputRefs.current[lastFilledIndex]?.focus();
   };
 
-  const handleNumberPad = (num) => {
-    if (isLoading) return;
-
-    const firstEmptyIndex = pin.findIndex((p) => p === '');
-    if (firstEmptyIndex === -1) return;
-
-    const newPin = [...pin];
-    newPin[firstEmptyIndex] = num;
-    setPin(newPin);
-
-    if (firstEmptyIndex < PIN_LENGTH - 1) {
-      inputRefs.current[firstEmptyIndex + 1]?.focus();
-    }
-
-    const pinString = newPin.join('');
-    if (pinString.length === PIN_LENGTH) {
-      handleSubmit(new Event('submit'));
-    }
-  };
-
-  const handleKeypadBackspace = () => {
-    const lastFilledIndex = pin.findLastIndex((p) => p !== '');
-    if (lastFilledIndex === -1) return;
-
-    const newPin = [...pin];
-    newPin[lastFilledIndex] = '';
-    setPin(newPin);
-    inputRefs.current[lastFilledIndex]?.focus();
-  };
-
-  const handleKeypadClear = () => {
-    setPin(['', '', '', '', '']);
-    inputRefs.current[0]?.focus();
-  };
-
   return (
     <div className="stockmaster-login-page">
       <div className="stockmaster-login-container">
@@ -173,47 +138,8 @@ const LoginPage = () => {
                     />
                   ))}
                 </div>
+                <div className="pin-helper-text">Use keyboard only. PIN submits automatically after 5 digits.</div>
                 {error && <div className="pin-error-message">{error}</div>}
-              </div>
-
-              <div className="numpad-container">
-                <div className="numpad">
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
-                    <button
-                      key={num}
-                      type="button"
-                      className="numpad-btn"
-                      onClick={() => handleNumberPad(num.toString())}
-                      disabled={isLoading}
-                    >
-                      {num}
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    className="numpad-btn numpad-btn-clear"
-                    onClick={handleKeypadClear}
-                    disabled={isLoading}
-                  >
-                    C
-                  </button>
-                  <button
-                    type="button"
-                    className="numpad-btn"
-                    onClick={() => handleNumberPad('0')}
-                    disabled={isLoading}
-                  >
-                    0
-                  </button>
-                  <button
-                    type="button"
-                    className="numpad-btn numpad-btn-backspace"
-                    onClick={handleKeypadBackspace}
-                    disabled={isLoading}
-                  >
-                    ←
-                  </button>
-                </div>
               </div>
 
               <button type="submit" className="stockmaster-login-button" disabled={isLoading || pin.join('').length !== PIN_LENGTH}>

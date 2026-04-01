@@ -208,69 +208,11 @@
   font-weight: 500;
 }
 
-/* Number Pad Styles - Enhanced */
-.numpad-container {
-  margin-top: 24px;
-  display: flex;
-  justify-content: center;
-}
-
-.numpad {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  width: 100%;
-  max-width: 320px;
-}
-
-.numpad-btn {
-  padding: 18px;
-  font-size: 1.5rem;
-  font-weight: 700;
-  border: none;
-  border-radius: 14px;
-  background: linear-gradient(145deg, #f1f5f9, #e2e8f0);
-  color: #1e293b;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  touch-action: manipulation;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-}
-
-.numpad-btn:hover {
-  background: linear-gradient(145deg, #e2e8f0, #cbd5e1);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 12px -2px rgba(0, 0, 0, 0.15);
-}
-
-.numpad-btn:active {
-  background: linear-gradient(145deg, #cbd5e1, #94a3b8);
-  transform: translateY(0);
-  box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1);
-}
-
-.numpad-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.numpad-btn-clear {
-  background: linear-gradient(145deg, #fecaca, #fca5a5);
-  color: #991b1b;
-}
-
-.numpad-btn-clear:hover {
-  background: linear-gradient(145deg, #fca5a5, #f87171);
-}
-
-.numpad-btn-backspace {
-  background: linear-gradient(145deg, #bfdbfe, #93c5fd);
-  color: #1e40af;
-}
-
-.numpad-btn-backspace:hover {
-  background: linear-gradient(145deg, #93c5fd, #60a5fa);
+.pin-helper-text {
+  margin-top: 10px;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--login-text-light);
 }
 
 /* Error Message */
@@ -356,10 +298,5 @@
     width: 50px;
     height: 60px;
     font-size: 1.5rem;
-  }
-
-  .numpad-btn {
-    padding: 14px;
-    font-size: 1.25rem;
   }
 }

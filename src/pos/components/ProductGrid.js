@@ -2,11 +2,19 @@
 import React, { useState, useRef, useEffect } from 'react';
 import "../data/ProductGrid.css";
 
-const ProductGrid = ({ products = [], categories = [], onAddToCart, loading = false, disabled = false }) => {
+const ProductGrid = ({
+  products = [],
+  categories = [],
+  onAddToCart,
+  loading = false,
+  disabled = false
+}) => {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => (
+    typeof window !== 'undefined' ? window.innerWidth <= 768 : false
+  ));
   const [displayMode, setDisplayMode] = useState('cards');
   const searchInputRef = useRef(null);
 
@@ -42,6 +50,17 @@ const ProductGrid = ({ products = [], categories = [], onAddToCart, loading = fa
       setIsLoadingProducts(false);
     }
   }, [loading]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth <= 768) {
+        setIsSidebarCollapsed(true);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Function to get color for category ID
   const getCategoryColor = (categoryId) => {
@@ -152,7 +171,7 @@ const ProductGrid = ({ products = [], categories = [], onAddToCart, loading = fa
               : categories.find(c => c.id === selectedCategory)?.name || 'Products'
             }
           </h2>
-          
+
           {/* Search - Always Visible */}
           <div className="pos-products-grid__search">
             <i className="fas fa-search pos-products-grid__search-icon"></i>

@@ -47,6 +47,7 @@ const RecentActivityPanel = ({
   };
   const formatReceiptLabel = (sale) => sale?.receipt_number || `Sale #${sale?.id || '—'}`;
   const formatHeldLabel = (order) => order?.receipt_number || `Held #${order?.id || '—'}`;
+  const compactRows = (entries = [], limit = 4) => entries.slice(0, limit);
   const isWaiterEntry = (entry) => {
     const role = (entry?.cashier_role || entry?.role || '').toLowerCase();
     return !role || role === 'waiter';
@@ -310,8 +311,8 @@ const RecentActivityPanel = ({
                 <div className="sv-overview">
                   <div className="sv-overview__hero">
                     <span className="sv-overview__eyebrow">Supervisor Console</span>
-                    <h3>Waiter Activity Board</h3>
-                    <p>Each waiter’s held orders and completed sales with totals and product lines in one place.</p>
+                    <h3>Waiter Snapshot</h3>
+                    <p>Compact live view of open waiter activity.</p>
                   </div>
                   <div className="sv-overview__stats">
                     <div className="sv-stat-card">
@@ -335,7 +336,7 @@ const RecentActivityPanel = ({
                   <div className="sv-board__header">
                     <div>
                       <h3>Waiter Activity</h3>
-                      <p>Held and completed sales grouped per waiter.</p>
+                      <p>Small tables for quick checks.</p>
                     </div>
                     <span className="badge">{supervisorMetrics.waiters}</span>
                   </div>
@@ -358,7 +359,7 @@ const RecentActivityPanel = ({
                           </div>
                           <div className="sv-waiter-card__totals">
                             <span>{formatCurrency(waiter.completedTotal + waiter.heldTotal)}</span>
-                            <small>combined value</small>
+                            <small>total value</small>
                           </div>
                         </div>
 
@@ -383,72 +384,75 @@ const RecentActivityPanel = ({
                         <div className="sv-waiter-card__streams">
                           <div className="sv-stream sv-stream--completed">
                             <div className="sv-stream__header">
-                              <span>Completed Sales</span>
+                              <span>Completed</span>
                               <strong>{waiter.completedSales.length}</strong>
                             </div>
-                            <div className="sv-stream__list">
+                            <div className="sv-stream__table-wrap">
                               {waiter.completedSales.length === 0 && (
-                                <div className="sv-stream__empty">No completed sales yet.</div>
+                                <div className="sv-stream__empty">No completed sales.</div>
                               )}
-                              {waiter.completedSales.map((sale) => (
-                                <div key={sale.id} className="sv-sale-card sv-sale-card--completed">
-                                  <div className="sv-sale-card__header">
-                                    <span className="sv-sale-card__title">{formatReceiptLabel(sale)}</span>
-                                    <span className="sv-sale-card__time">{formatTime(sale.sale_date)}</span>
-                                  </div>
-                                  <div className="sv-sale-card__meta">
-                                    <span className={`pill pill--status ${sale.payment_method === 'split' ? 'pill--paid' : 'pill--status-info'}`}>
-                                      {(sale.payment_method || 'cash').toUpperCase()}
-                                    </span>
-                                    <span className="pill pill--total">{formatCurrency(sale.total)}</span>
-                                  </div>
-                                  <div className="sv-sale-card__items">
-                                    {sale.items.map((item) => (
-                                      <div key={item.id} className="sv-sale-card__item">
-                                        <span>{item.name}</span>
-                                        <span>x{item.quantity}</span>
-                                        <span>{formatCurrency(item.price)}</span>
-                                      </div>
+                              {waiter.completedSales.length > 0 && (
+                                <table className="sv-compact-table">
+                                  <thead>
+                                    <tr>
+                                      <th>Sale</th>
+                                      <th>Time</th>
+                                      <th>Pay</th>
+                                      <th>Total</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {compactRows(waiter.completedSales).map((sale) => (
+                                      <tr key={sale.id}>
+                                        <td>{formatReceiptLabel(sale)}</td>
+                                        <td>{formatTime(sale.sale_date)}</td>
+                                        <td>{(sale.payment_method || 'cash').toUpperCase()}</td>
+                                        <td>{formatCurrency(sale.total)}</td>
+                                      </tr>
                                     ))}
-                                  </div>
-                                </div>
-                              ))}
+                                  </tbody>
+                                </table>
+                              )}
+                              {waiter.completedSales.length > 4 && (
+                                <div className="sv-stream__more">+{waiter.completedSales.length - 4} more sales</div>
+                              )}
                             </div>
                           </div>
 
                           <div className="sv-stream sv-stream--held">
                             <div className="sv-stream__header">
-                              <span>Held Orders</span>
+                              <span>Held</span>
                               <strong>{waiter.heldOrders.length}</strong>
                             </div>
-                            <div className="sv-stream__list">
+                            <div className="sv-stream__table-wrap">
                               {waiter.heldOrders.length === 0 && (
-                                <div className="sv-stream__empty">No held orders waiting.</div>
+                                <div className="sv-stream__empty">No held orders.</div>
                               )}
-                              {waiter.heldOrders.map((order) => (
-                                <div key={order.id} className="sv-sale-card sv-sale-card--held">
-                                  <div className="sv-sale-card__header">
-                                    <span className="sv-sale-card__title">{formatHeldLabel(order)}</span>
-                                    <span className="sv-sale-card__time">{formatTime(order.created_at)}</span>
-                                  </div>
-                                  <div className="sv-sale-card__meta">
-                                    <span className={`pill pill--status ${order.payment_status === 'paid' ? 'pill--paid' : 'pill--hold'}`}>
-                                      {(order.payment_status || order.status || 'held').toUpperCase()}
-                                    </span>
-                                    <span className="pill">{order.items?.length || order.item_count || 0} items</span>
-                                    <span className="pill pill--total">{formatCurrency(order.total)}</span>
-                                  </div>
-                                  <div className="sv-sale-card__items">
-                                    {order.items.map((item) => (
-                                      <div key={item.id} className="sv-sale-card__item">
-                                        <span>{item.name}</span>
-                                        <span>x{item.quantity}</span>
-                                        <span>{formatCurrency(item.price)}</span>
-                                      </div>
+                              {waiter.heldOrders.length > 0 && (
+                                <table className="sv-compact-table">
+                                  <thead>
+                                    <tr>
+                                      <th>Order</th>
+                                      <th>Time</th>
+                                      <th>Items</th>
+                                      <th>Total</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {compactRows(waiter.heldOrders).map((order) => (
+                                      <tr key={order.id}>
+                                        <td>{formatHeldLabel(order)}</td>
+                                        <td>{formatTime(order.created_at)}</td>
+                                        <td>{order.items?.length || order.item_count || 0}</td>
+                                        <td>{formatCurrency(order.total)}</td>
+                                      </tr>
                                     ))}
-                                  </div>
-                                </div>
-                              ))}
+                                  </tbody>
+                                </table>
+                              )}
+                              {waiter.heldOrders.length > 4 && (
+                                <div className="sv-stream__more">+{waiter.heldOrders.length - 4} more held</div>
+                              )}
                             </div>
                           </div>
                         </div>
