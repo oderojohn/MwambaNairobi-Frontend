@@ -1,5 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { reportsAPI, salesAPI, formatCurrency, userService } from '../../../services/ApiService/api';
+import {
+  RECEIPT_LOCATION,
+  RECEIPT_PAYMENT_DETAILS,
+  RECEIPT_STORE_NAME,
+} from '../../../utils/receiptConfig';
 import EditTransactionModal from './modals/EditTransactionModal';
 import VoidModal from './modals/VoidModal';
 import './SalesSummaryPage.css';
@@ -153,6 +158,9 @@ const PosManagerDashboard = ({ shiftId }) => {
     let content = `
       <div style="font-family: monospace; font-size: 12px; max-width: 300px; margin: 0 auto;">
         <div style="text-align: center; margin-bottom: 10px;">
+          <h3 style="margin: 0;">${RECEIPT_STORE_NAME}</h3>
+          <p style="margin: 5px 0;">${RECEIPT_LOCATION}</p>
+          <p style="margin: 5px 0;">${RECEIPT_PAYMENT_DETAILS}</p>
           <h3 style="margin: 0;">RECEIPT</h3>
           <p style="margin: 5px 0;">Receipt #: ${chitDetails.receipt_number || 'N/A'}</p>
           <p style="margin: 5px 0;">Date: ${new Date(chitDetails.sale_date).toLocaleString()}</p>

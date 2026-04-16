@@ -1,6 +1,12 @@
 import React from 'react';
 import logo from '../../logo.png';
 import { formatCurrency } from '../../services/ApiService/api';
+import {
+  RECEIPT_LOCATION,
+  RECEIPT_PAYMENT_DETAILS,
+  RECEIPT_STORE_DETAILS,
+  RECEIPT_STORE_NAME,
+} from '../../utils/receiptConfig';
 import './ReceiptModal.css';
 
 // Custom format function without currency symbol for receipts
@@ -248,11 +254,7 @@ const ReceiptModal = ({
               <div class="receipt-title">RECEIPT</div>
               ${isReprint ? '<div class="reprinted-label">REPRINTED</div>' : ''}
               <div class="receipt-store-info">
-                MWAMBA LIQUOR STORES<br>
-                RONGO<br>
-                Tel: +254 745 119 135<br>
-                Paybill: 522533<br>
-                Account: 8015580
+                ${[RECEIPT_STORE_NAME, ...RECEIPT_STORE_DETAILS].join('<br>')}
               </div>
             </div>
 
@@ -293,8 +295,6 @@ const ReceiptModal = ({
                 </div>
               ` : ''}
               ${!isPendingBill && paymentMethod === 'split' && splitData ? `
-                <div class="receipt-info-row">
-                  <span>MPesa:</span>
                 <div class="receipt-info-row">
                   <span>MPesa:</span>
                   <span>${formatCurrency(splitData.mpesa || 0)}</span>
@@ -425,7 +425,9 @@ const ReceiptModal = ({
     );
 
     return [
-      '*MWAMBA LIQUOR STORES*',
+      `*${RECEIPT_STORE_NAME}*`,
+      `Location: ${RECEIPT_LOCATION}`,
+      RECEIPT_PAYMENT_DETAILS,
       '*RECEIPT*',
       `${saleData?.receipt_number || 'N/A'}`,
       '',
@@ -451,6 +453,8 @@ const ReceiptModal = ({
 
     return [
       `Receipt ${saleData?.receipt_number || 'N/A'}`,
+      `Location: ${RECEIPT_LOCATION}`,
+      RECEIPT_PAYMENT_DETAILS,
       `Customer: ${customer?.name || 'Walk-in'}`,
       ...lines,
       `Total: ${formatCurrency(total)}`,
@@ -526,11 +530,10 @@ const ReceiptModal = ({
                 <h1 className="receipt-title">RECEIPT</h1>
                 {isReprint && <div className="reprinted-label">REPRINTED</div>}
                 <div className="receipt-store-info">
-                  <h2>MWAMBA LIQUOR STORES</h2>
-                  <p>RONGO</p>
-                  <p>Tel: +254 745 119 135</p>
-                  <p>Paybill: 522533</p>
-                  <p>Account: 8015580</p>
+                  <h2>{RECEIPT_STORE_NAME}</h2>
+                  {RECEIPT_STORE_DETAILS.map((line) => (
+                    <p key={line}>{line}</p>
+                  ))}
                 </div>
               </div>
 
